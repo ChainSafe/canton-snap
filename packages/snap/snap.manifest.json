@@ -3,7 +3,7 @@
   "description": "Canton Network key management and transaction signing for MetaMask",
   "proposedName": "Canton Snap",
   "source": {
-    "shasum": "/MmM9K8hn4B8oHh6+pT2FBLwpZuZzC8PgtNl+nvNG5g=",
+    "shasum": "yJ+mhURtkfmcGqEutgRLLvwSqHOgbtPyOxH/4U8oYBc=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -13,11 +13,7 @@
     }
   },
   "initialPermissions": {
-    "snap_getBip44Entropy": [
-      {
-        "coinType": 60
-      }
-    ],
+    "snap_getEntropy": {},
     "snap_dialog": {},
     "snap_manageState": {},
     "endowment:rpc": {

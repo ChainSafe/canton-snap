@@ -1,16 +1,18 @@
 /**
- * BIP-44 key derivation for Canton signing keys.
+ * Key derivation for Canton signing keys using snap_getEntropy.
  *
- * Derives secp256k1 keys from the user's MetaMask seed phrase
- * at path m/44'/60'/1'/0/{keyIndex}.
+ * Uses snap_getEntropy to derive deterministic, snap-specific entropy
+ * from the user's MetaMask seed phrase. The entropy is then used as
+ * a secp256k1 private key for Canton signing.
  *
- * - Coin type 60 (Ethereum) — only option via snap_getBip44Entropy
- * - Account 1' — Canton namespace, avoids collision with ETH account at 0'
- * - Keys are re-derived on every invocation, never persisted
+ * snap_getEntropy is the recommended approach for snaps that need
+ * non-Ethereum keys, as snap_getBip44Entropy forbids coin type 60.
+ *
+ * Keys are re-derived on every invocation, never persisted.
  */
 
-import { SLIP10Node } from "@metamask/key-tree";
 import { secp256k1 } from "@noble/curves/secp256k1";
+import { sha256 } from "@noble/hashes/sha256";
 
 export interface DerivedKey {
   privateKey: Uint8Array;
@@ -20,31 +22,31 @@ export interface DerivedKey {
 /**
  * Derive a Canton signing key from the MetaMask seed.
  *
- * @param keyIndex - Address index in the BIP-44 path (default 0)
+ * Uses snap_getEntropy with a salt that includes the key index,
+ * producing a deterministic 32-byte value used as a secp256k1 private key.
+ *
+ * The same seed + same salt always produces the same key.
+ * Different key indices produce different keys.
+ *
+ * @param keyIndex - Key index (default 0). Different indices produce different keys.
  * @returns 32-byte private key and 33-byte compressed public key
  */
 export async function deriveCantonKey(keyIndex: number = 0): Promise<DerivedKey> {
-  // Step 1: Get BIP-44 entropy from MetaMask (node at m/44'/60')
-  const bip44Node = await snap.request({
-    method: "snap_getBip44Entropy",
-    params: { coinType: 60 },
+  // snap_getEntropy returns deterministic entropy derived from the user's
+  // seed phrase, unique to this snap and the provided salt.
+  const entropy = await snap.request({
+    method: "snap_getEntropy",
+    params: {
+      version: 1,
+      salt: `canton-network-key-${keyIndex}`,
+    },
   });
 
-  // Step 2: Reconstitute as SLIP-10 node
-  const parentNode = await SLIP10Node.fromJSON(bip44Node);
+  // The entropy is a hex string. Hash it to ensure uniform distribution
+  // as a secp256k1 private key (must be < curve order n).
+  const entropyBytes = hexToBytes(entropy);
+  const privateKey = sha256(entropyBytes);
 
-  // Step 3: Derive m/44'/60'/1'/0/{keyIndex}
-  const accountNode = await parentNode.derive(["bip32:1'"]);
-  const changeNode = await accountNode.derive(["bip32:0"]);
-  const addressNode = await changeNode.derive([`bip32:${keyIndex}`]);
-
-  // Step 4: Extract key material
-  const privateKeyHex = addressNode.privateKey;
-  if (!privateKeyHex) {
-    throw new Error("Failed to derive private key");
-  }
-
-  const privateKey = hexToBytes(privateKeyHex);
   const compressedPubKey = secp256k1.getPublicKey(privateKey, true);
 
   return { privateKey, compressedPubKey };

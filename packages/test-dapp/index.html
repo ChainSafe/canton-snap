@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canton Snap Test dApp</title>
+  <style>
+    body { font-family: monospace; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #1a1a2e; color: #eee; }
+    h1 { color: #e94560; }
+    h2 { color: #0f3460; background: #e94560; padding: 8px 12px; margin-top: 30px; }
+    button { background: #0f3460; color: #eee; border: 1px solid #e94560; padding: 10px 20px; cursor: pointer; margin: 5px 0; font-family: monospace; font-size: 14px; }
+    button:hover { background: #e94560; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .result { background: #16213e; padding: 12px; margin: 10px 0; border-left: 3px solid #e94560; word-break: break-all; white-space: pre-wrap; font-size: 13px; }
+    .error { border-left-color: #ff6b6b; color: #ff6b6b; }
+    .success { border-left-color: #51cf66; }
+    input { background: #16213e; color: #eee; border: 1px solid #0f3460; padding: 8px; font-family: monospace; width: 100%; box-sizing: border-box; margin: 4px 0; }
+    label { display: block; margin-top: 10px; color: #aaa; }
+    .row { display: flex; gap: 10px; align-items: center; }
+  </style>
+</head>
+<body>
+  <h1>Canton Snap Test dApp</h1>
+  <p>Local testing interface for the Canton MetaMask Snap.</p>
+
+  <h2>Connection</h2>
+  <div class="row">
+    <button id="connectBtn" onclick="connectSnap()">Install / Connect Snap</button>
+    <span id="connectStatus"></span>
+  </div>
+  <div id="connectResult" class="result" hidden></div>
+
+  <h2>canton_getPublicKey</h2>
+  <label>Key Index: <input id="getPubKeyIndex" type="number" value="0" min="0" style="width:80px"></label>
+  <button onclick="getPublicKey()">Get Public Key</button>
+  <div id="pubKeyResult" class="result" hidden></div>
+
+  <h2>canton_getFingerprint</h2>
+  <label>Key Index: <input id="getFpIndex" type="number" value="0" min="0" style="width:80px"></label>
+  <button onclick="getFingerprint()">Get Fingerprint</button>
+  <div id="fpResult" class="result" hidden></div>
+
+  <h2>canton_signHash (Transfer)</h2>
+  <label>Hash (hex): <input id="signHashInput" placeholder="32-byte hex hash (with or without 0x)" value="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"></label>
+  <label>Operation: <input id="signOp" value="Transfer"></label>
+  <label>Token: <input id="signToken" value="DEMO"></label>
+  <label>Amount: <input id="signAmount" value="100"></label>
+  <label>Recipient: <input id="signRecipient" placeholder="0x..."></label>
+  <button onclick="signHash()">Sign Hash</button>
+  <div id="signResult" class="result" hidden></div>
+
+  <h2>canton_signTopology (Registration)</h2>
+  <label>Topology Hash (hex): <input id="topoHashInput" placeholder="topology hash from prepare-topology"></label>
+  <button onclick="signTopology()">Sign Topology</button>
+  <div id="topoResult" class="result" hidden></div>
+
+  <script>
+    const SNAP_ID = 'local:http://localhost:8080';
+
+    function show(id, data, isError = false) {
+      const el = document.getElementById(id);
+      el.hidden = false;
+      el.className = 'result ' + (isError ? 'error' : 'success');
+      el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    async function connectSnap() {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_requestSnaps',
+          params: { [SNAP_ID]: {} },
+        });
+        document.getElementById('connectStatus').textContent = 'Connected';
+        show('connectResult', 'Snap installed successfully');
+      } catch (e) {
+        show('connectResult', e.message, true);
+      }
+    }
+
+    async function invokeSnap(method, params) {
+      return window.ethereum.request({
+        method: 'wallet_invokeSnap',
+        params: { snapId: SNAP_ID, request: { method, params } },
+      });
+    }
+
+    async function getPublicKey() {
+      try {
+        const keyIndex = parseInt(document.getElementById('getPubKeyIndex').value) || 0;
+        const result = await invokeSnap('canton_getPublicKey', { keyIndex });
+        show('pubKeyResult', result);
+      } catch (e) {
+        show('pubKeyResult', e.message, true);
+      }
+    }
+
+    async function getFingerprint() {
+      try {
+        const keyIndex = parseInt(document.getElementById('getFpIndex').value) || 0;
+        const result = await invokeSnap('canton_getFingerprint', { keyIndex });
+        show('fpResult', result);
+      } catch (e) {
+        show('fpResult', e.message, true);
+      }
+    }
+
+    async function signHash() {
+      try {
+        const hash = document.getElementById('signHashInput').value;
+        const metadata = {
+          operation: document.getElementById('signOp').value,
+          tokenSymbol: document.getElementById('signToken').value,
+          amount: document.getElementById('signAmount').value,
+          recipient: document.getElementById('signRecipient').value || undefined,
+        };
+        const result = await invokeSnap('canton_signHash', { hash, metadata });
+        show('signResult', result);
+      } catch (e) {
+        show('signResult', e.message, true);
+      }
+    }
+
+    async function signTopology() {
+      try {
+        const hash = document.getElementById('topoHashInput').value;
+        const result = await invokeSnap('canton_signTopology', { hash });
+        show('topoResult', result);
+      } catch (e) {
+        show('topoResult', e.message, true);
+      }
+    }
+  </script>
+</body>
+</html>
