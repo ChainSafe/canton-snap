@@ -6,7 +6,7 @@
  */
 
 import { sha256 } from "@noble/hashes/sha256";
-import { compressedPubKeyToSPKIDer } from "./spki.js";
+import { compressedPubKeyToSPKIDer } from "./spki";
 
 /**
  * Compute the Canton key fingerprint from SPKI DER bytes.

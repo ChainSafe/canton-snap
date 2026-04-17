@@ -1,29 +1,15 @@
 {
-  "name": "@chainsafe/canton-snap",
-  "version": "0.1.0",
+  "name": "@chainsafe/canton-snap-workspace",
+  "version": "0.2.0",
+  "private": true,
   "description": "MetaMask Snap for non-custodial Canton Network signing",
   "license": "MIT",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "build": "tsc",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "eslint src/ test/",
-    "clean": "rm -rf dist"
-  },
-  "dependencies": {
-    "@noble/curves": "^1.8.0",
-    "@noble/hashes": "^1.7.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "eslint": "^9.0.0",
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "build": "npm -w packages/snap run build",
+    "test": "npm -w packages/snap run test:crypto",
+    "test:snap": "npm -w packages/snap run test"
   }
 }
