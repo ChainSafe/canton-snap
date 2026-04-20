@@ -3,7 +3,7 @@
   "description": "Canton Network key management and transaction signing for MetaMask",
   "proposedName": "Canton Snap",
   "source": {
-    "shasum": "zZ+vPN4ilgaGZrtzAQrv+zhzIsEVrwB34BWYpMwdc9Y=",
+    "shasum": "bPhuBgdm//5Zf4bONlaiG2XSANTi0EKcb7aJktu9azs=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
