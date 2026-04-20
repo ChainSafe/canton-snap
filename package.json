@@ -9,7 +9,13 @@
   ],
   "scripts": {
     "build": "npm -w packages/snap run build",
+    "serve:snap": "npm -w packages/snap run serve",
+    "serve:dapp": "npx serve packages/test-dapp -p 3000 --no-clipboard",
+    "serve": "concurrently -n snap,dapp -c cyan,magenta \"npm run serve:snap\" \"npm run serve:dapp\"",
     "test": "npm -w packages/snap run test:crypto",
     "test:snap": "npm -w packages/snap run test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
   }
 }

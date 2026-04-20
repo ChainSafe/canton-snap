@@ -12,7 +12,7 @@ const config: SnapConfig = {
     buffer: false,
   },
   server: {
-    port: 8080,
+    port: 4001,
   },
 };
 
