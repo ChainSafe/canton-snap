@@ -23,11 +23,6 @@
     <symbol id="icoTransfer" viewBox="0 0 20 20"><path d="M4 10 H15 M10 5 L15 10 L10 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
     <symbol id="icoBridge" viewBox="0 0 20 20"><path d="M3 8 H15 M12 5 L15 8 L12 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M17 12 H5 M8 15 L5 12 L8 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
     <symbol id="icoActivity" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M10 6 V10 L13 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></symbol>
-
-    <symbol id="checkDone" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="12" fill="#00d4a4" fill-opacity="0.15"/>
-      <path d="M7 12 L10 15 L17 8" stroke="#00d4a4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    </symbol>
   </defs>
 
   <rect width="1440" height="900" fill="#0a0b14"/>
@@ -49,7 +44,6 @@
       <g transform="translate(16, 0)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoProfile" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Profile</text></g>
       <g transform="translate(16, 48)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoBalances" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Balances</text></g>
 
-      <!-- Transfer (active) -->
       <g transform="translate(16, 96)">
         <rect width="208" height="40" rx="10" fill="#00d4a4" fill-opacity="0.1"/>
         <rect width="3" height="22" y="9" rx="1.5" fill="#00d4a4"/>
@@ -76,91 +70,103 @@
     <path d="M116 13 L120 17 L124 13" stroke="#a1a6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
   </g>
 
-  <!-- ═══ MAIN CONTENT — Transfer progress ═══ -->
+  <!-- ═══ MAIN CONTENT ═══ -->
   <g transform="translate(280, 104)">
-    <!-- Back link -->
-    <text font-size="13" font-weight="500" fill="#a1a6c4" dominant-baseline="middle">← Back to form</text>
-
-    <g transform="translate(0, 32)">
-      <text font-size="28" font-weight="700" fill="#f1f3f9" letter-spacing="-0.4">Confirm transfer</text>
-      <text y="28" font-size="13" fill="#a1a6c4">
-        <tspan>Sending </tspan>
-        <tspan font-weight="600" fill="#f1f3f9" font-family="JetBrains Mono, monospace">100 DEMO</tspan>
-        <tspan> to </tspan>
-        <tspan font-weight="600" fill="#f1f3f9" font-family="JetBrains Mono, monospace">0xabcd…1234</tspan>
-        <tspan> — 2 signatures required.</tspan>
-      </text>
+    <!-- Title row — same pattern as step 1 -->
+    <g>
+      <text font-size="28" font-weight="700" fill="#f1f3f9" letter-spacing="-0.4">Transfer</text>
+      <g transform="translate(138, -14)">
+        <rect width="128" height="24" rx="12" fill="#00d4a4" fill-opacity="0.12" stroke="#00d4a4" stroke-opacity="0.3"/>
+        <text x="64" y="12" font-size="11" font-weight="600" letter-spacing="0.6" fill="#00d4a4" text-anchor="middle" dominant-baseline="middle">NON-CUSTODIAL</text>
+      </g>
     </g>
+    <text y="28" font-size="13" fill="#a1a6c4">
+      <tspan>Sending </tspan>
+      <tspan font-weight="600" fill="#f1f3f9" font-family="JetBrains Mono, monospace">100 DEMO</tspan>
+      <tspan> to </tspan>
+      <tspan font-weight="600" fill="#f1f3f9" font-family="JetBrains Mono, monospace">0xabcd…1234</tspan>
+      <tspan>.</tspan>
+    </text>
 
-    <!-- Progress bar -->
-    <g transform="translate(0, 96)">
-      <rect width="1120" height="4" rx="2" fill="#252840"/>
-      <rect width="560" height="4" rx="2" fill="url(#ctaFill)"/>
-    </g>
+    <!-- ═══ Steps bar — step 2 active ═══ -->
+    <g transform="translate(290, 78)">
+      <!-- Connector 1: Details → Sign (DONE, teal) -->
+      <line x1="28" y1="18" x2="238" y2="18" stroke="#00d4a4" stroke-width="2"/>
+      <!-- Connector 2: Sign → Done (PENDING) -->
+      <line x1="266" y1="18" x2="476" y2="18" stroke="#353a5a" stroke-width="2"/>
 
-    <!-- Steps container -->
-    <g transform="translate(0, 136)">
-
-      <!-- Step 1 — authenticate (DONE) -->
-      <g>
-        <rect width="1120" height="80" rx="12" fill="url(#cardBg)" stroke="#252840"/>
-        <use href="#checkDone" x="24" y="28" width="24" height="24"/>
-        <text x="68" y="34" font-size="14" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">Authenticate request</text>
-        <text x="68" y="56" font-size="12" font-family="JetBrains Mono, monospace" fill="#656a8a" dominant-baseline="middle">personal_sign(transfer:1713800000) — MetaMask</text>
-        <text x="1096" y="44" font-size="11" font-weight="600" letter-spacing="0.5" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">DONE</text>
+      <!-- Step 1 — Details (DONE) -->
+      <g transform="translate(14, 18)">
+        <circle r="18" fill="#00d4a4" fill-opacity="0.18" stroke="#00d4a4" stroke-width="2"/>
+        <path d="M-6 0 L-1 5 L7 -4" stroke="#00d4a4" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <text y="44" font-size="12" font-weight="500" fill="#a1a6c4" text-anchor="middle">Details</text>
       </g>
 
-      <!-- Step 2 — prepare (DONE) -->
-      <g transform="translate(0, 96)">
-        <rect width="1120" height="80" rx="12" fill="url(#cardBg)" stroke="#252840"/>
-        <use href="#checkDone" x="24" y="28" width="24" height="24"/>
-        <text x="68" y="34" font-size="14" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">Prepare transaction</text>
-        <text x="68" y="56" font-size="12" font-family="JetBrains Mono, monospace" fill="#656a8a" dominant-baseline="middle">POST /api/v2/transfer/prepare → hash a7f3c2b1…8e92f5d4</text>
-        <text x="1096" y="44" font-size="11" font-weight="600" letter-spacing="0.5" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">DONE</text>
+      <!-- Step 2 — Sign (ACTIVE) -->
+      <g transform="translate(252, 18)">
+        <circle r="18" fill="#00d4a4"/>
+        <text y="0" font-size="13" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">2</text>
+        <text y="44" font-size="12" font-weight="600" fill="#f1f3f9" text-anchor="middle">Sign</text>
       </g>
 
-      <!-- Step 3 — sign hash (IN PROGRESS) -->
-      <g transform="translate(0, 192)">
-        <rect width="1120" height="136" rx="12" fill="url(#cardBgActive)" stroke="#00d4a4" stroke-opacity="0.45"/>
-
-        <!-- Spinner -->
-        <g transform="translate(24, 28)">
-          <circle cx="12" cy="12" r="11" stroke="#252840" stroke-width="2.4" fill="none"/>
-          <path d="M23 12 A11 11 0 0 0 12 1" stroke="#00d4a4" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-        </g>
-
-        <text x="68" y="34" font-size="15" font-weight="700" fill="#f1f3f9" dominant-baseline="middle">Sign transaction in Canton Snap</text>
-        <text x="68" y="56" font-size="12" fill="#a1a6c4" dominant-baseline="middle">The snap will show the transaction hash and a summary. Review and approve.</text>
-
-        <!-- Hash preview -->
-        <g transform="translate(68, 72)">
-          <rect width="660" height="40" rx="8" fill="#0a0b14" stroke="#252840"/>
-          <text x="16" y="20" font-size="11" font-family="JetBrains Mono, monospace" fill="#f1f3f9" dominant-baseline="middle">a7f3c2b1…8e92f5d4</text>
-          <text x="644" y="20" font-size="10" fill="#656a8a" text-anchor="end" dominant-baseline="middle">32 bytes</text>
-        </g>
-        <!-- Action button -->
-        <g transform="translate(744, 80)">
-          <rect width="180" height="36" rx="8" fill="url(#ctaFill)"/>
-          <text x="90" y="18" font-size="12" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Open snap dialog</text>
-        </g>
-
-        <text x="1096" y="44" font-size="11" font-weight="600" letter-spacing="0.5" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">IN PROGRESS</text>
-      </g>
-
-      <!-- Step 4 — execute (LOCKED) -->
-      <g transform="translate(0, 348)" opacity="0.5">
-        <rect width="1120" height="80" rx="12" fill="url(#cardBg)" stroke="#252840"/>
-        <g transform="translate(24, 28)">
-          <circle cx="12" cy="12" r="12" fill="#232640"/>
-          <text x="12" y="12" font-size="11" font-weight="700" fill="#656a8a" text-anchor="middle" dominant-baseline="middle">4</text>
-        </g>
-        <text x="68" y="34" font-size="14" font-weight="600" fill="#a1a6c4" dominant-baseline="middle">Submit to Canton</text>
-        <text x="68" y="56" font-size="12" font-family="JetBrains Mono, monospace" fill="#656a8a" dominant-baseline="middle">POST /api/v2/transfer/execute — ledger settlement ~2-4s</text>
-        <text x="1096" y="44" font-size="11" font-weight="600" letter-spacing="0.5" fill="#656a8a" text-anchor="end" dominant-baseline="middle">LOCKED</text>
+      <!-- Step 3 — Done (PENDING) -->
+      <g transform="translate(490, 18)">
+        <circle r="18" fill="#1a1d2e" stroke="#353a5a" stroke-width="2"/>
+        <text y="0" font-size="13" font-weight="700" fill="#656a8a" text-anchor="middle" dominant-baseline="middle">3</text>
+        <text y="44" font-size="12" fill="#656a8a" text-anchor="middle">Done</text>
       </g>
     </g>
 
-    <!-- Helper -->
-    <text x="560" y="672" font-size="12" fill="#656a8a" text-anchor="middle">The signed transaction expires in 2 minutes. Cancel here returns you to the form.</text>
+    <!-- ═══ Sign card (centered, focused on current action) ═══ -->
+    <g transform="translate(176, 200)">
+      <rect width="768" height="480" rx="16" fill="url(#cardBgActive)" stroke="#00d4a4" stroke-opacity="0.4" stroke-width="1.5"/>
+
+      <!-- Animated snap icon at top -->
+      <g transform="translate(352, 48)">
+        <circle cx="32" cy="32" r="32" fill="#00d4a4" fill-opacity="0.1"/>
+        <circle cx="32" cy="32" r="28" stroke="#252840" stroke-width="3" fill="none"/>
+        <path d="M60 32 A28 28 0 0 0 32 4" stroke="#00d4a4" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <!-- Small snap/lock glyph inside -->
+        <g transform="translate(22, 22)" stroke="#00d4a4" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 2 L3 5 V11 C3 15 6 18 10 19 C14 18 17 15 17 11 V5 Z"/>
+          <path d="M7 11 L9 13 L13 8"/>
+        </g>
+      </g>
+
+      <!-- Title + description -->
+      <text x="384" y="160" font-size="22" font-weight="700" fill="#f1f3f9" text-anchor="middle">Sign in Canton Snap</text>
+      <text x="384" y="192" font-size="14" fill="#a1a6c4" text-anchor="middle">Review the transaction hash in the snap dialog</text>
+      <text x="384" y="212" font-size="14" fill="#a1a6c4" text-anchor="middle">and approve to send the transfer.</text>
+
+      <!-- Hash preview -->
+      <g transform="translate(96, 248)">
+        <rect width="576" height="52" rx="10" fill="#0a0b14" stroke="#252840"/>
+        <text x="20" y="20" font-size="10" font-weight="600" letter-spacing="1" fill="#656a8a">TRANSACTION HASH</text>
+        <text x="20" y="40" font-size="12" font-family="JetBrains Mono, monospace" fill="#f1f3f9">a7f3c2b1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3…8e92f5d4</text>
+        <text x="556" y="40" font-size="10" fill="#656a8a" text-anchor="end">32B</text>
+      </g>
+
+      <!-- CTA -->
+      <g transform="translate(96, 336)">
+        <rect width="576" height="52" rx="12" fill="url(#ctaFill)"/>
+        <text x="288" y="26" font-size="15" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Open snap dialog</text>
+      </g>
+
+      <!-- Sub-status row (what's happening under the hood) -->
+      <g transform="translate(96, 412)" font-size="11">
+        <g>
+          <circle cx="6" cy="6" r="6" fill="#00d4a4" fill-opacity="0.2" stroke="#00d4a4"/>
+          <path d="M3 6 L5 8 L9 3" stroke="#00d4a4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <text x="20" y="6" fill="#a1a6c4" dominant-baseline="middle">Authenticated with MetaMask</text>
+        </g>
+        <g transform="translate(220, 0)">
+          <circle cx="6" cy="6" r="6" fill="#00d4a4" fill-opacity="0.2" stroke="#00d4a4"/>
+          <path d="M3 6 L5 8 L9 3" stroke="#00d4a4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <text x="20" y="6" fill="#a1a6c4" dominant-baseline="middle">Transaction prepared</text>
+        </g>
+        <!-- Cancel right-aligned -->
+        <text x="576" y="6" font-size="12" font-weight="500" fill="#a1a6c4" text-anchor="end" dominant-baseline="middle">Cancel</text>
+      </g>
+    </g>
   </g>
 </svg>

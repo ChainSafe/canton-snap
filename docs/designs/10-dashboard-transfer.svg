@@ -40,7 +40,6 @@
       <g transform="translate(16, 0)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoProfile" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Profile</text></g>
       <g transform="translate(16, 48)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoBalances" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Balances</text></g>
 
-      <!-- Transfer (active) -->
       <g transform="translate(16, 96)">
         <rect width="208" height="40" rx="10" fill="#00d4a4" fill-opacity="0.1"/>
         <rect width="3" height="22" y="9" rx="1.5" fill="#00d4a4"/>
@@ -51,7 +50,6 @@
       <g transform="translate(16, 144)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoBridge" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Bridge</text></g>
       <g transform="translate(16, 192)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoActivity" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Activity</text></g>
     </g>
-
   </g>
 
   <!-- Top bar -->
@@ -68,31 +66,62 @@
     <path d="M116 13 L120 17 L124 13" stroke="#a1a6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
   </g>
 
-  <!-- ═══ MAIN CONTENT — Transfer form ═══ -->
+  <!-- ═══ MAIN CONTENT ═══ -->
   <g transform="translate(280, 104)">
-    <text font-size="28" font-weight="700" fill="#f1f3f9" letter-spacing="-0.4">Transfer</text>
-    <text y="28" font-size="13" fill="#a1a6c4">Send tokens to another Canton party on the same network.</text>
+    <!-- Title row with NON-CUSTODIAL tag next to title -->
+    <g>
+      <text font-size="28" font-weight="700" fill="#f1f3f9" letter-spacing="-0.4">Transfer</text>
+      <g transform="translate(138, -14)">
+        <rect width="128" height="24" rx="12" fill="#00d4a4" fill-opacity="0.12" stroke="#00d4a4" stroke-opacity="0.3"/>
+        <text x="64" y="12" font-size="11" font-weight="600" letter-spacing="0.6" fill="#00d4a4" text-anchor="middle" dominant-baseline="middle">NON-CUSTODIAL</text>
+      </g>
+    </g>
+    <text y="28" font-size="13" fill="#a1a6c4">Send tokens on Canton Network.</text>
 
-    <!-- Two columns: form (left) + summary (right) -->
+    <!-- ═══ Steps bar ═══ -->
+    <g transform="translate(290, 78)">
+      <!-- Connectors (draw first so circles sit on top) -->
+      <line x1="28" y1="18" x2="238" y2="18" stroke="#353a5a" stroke-width="2"/>
+      <line x1="266" y1="18" x2="476" y2="18" stroke="#353a5a" stroke-width="2"/>
 
-    <!-- Form card -->
-    <g transform="translate(0, 64)">
-      <rect width="680" height="540" rx="16" fill="url(#cardBg)" stroke="#252840"/>
+      <!-- Step 1 — Details (active) -->
+      <g transform="translate(14, 18)">
+        <circle r="18" fill="#00d4a4"/>
+        <text y="0" font-size="13" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">1</text>
+        <text y="44" font-size="12" font-weight="600" fill="#f1f3f9" text-anchor="middle">Details</text>
+      </g>
 
-      <!-- Token selector -->
+      <!-- Step 2 — Sign -->
+      <g transform="translate(252, 18)">
+        <circle r="18" fill="#1a1d2e" stroke="#353a5a" stroke-width="2"/>
+        <text y="0" font-size="13" font-weight="700" fill="#656a8a" text-anchor="middle" dominant-baseline="middle">2</text>
+        <text y="44" font-size="12" fill="#656a8a" text-anchor="middle">Sign</text>
+      </g>
+
+      <!-- Step 3 — Done -->
+      <g transform="translate(490, 18)">
+        <circle r="18" fill="#1a1d2e" stroke="#353a5a" stroke-width="2"/>
+        <text y="0" font-size="13" font-weight="700" fill="#656a8a" text-anchor="middle" dominant-baseline="middle">3</text>
+        <text y="44" font-size="12" fill="#656a8a" text-anchor="middle">Done</text>
+      </g>
+    </g>
+
+    <!-- ═══ Form card (centered, narrower for minimal feel) ═══ -->
+    <g transform="translate(176, 200)">
+      <rect width="768" height="540" rx="16" fill="url(#cardBg)" stroke="#252840"/>
+
+      <!-- Token -->
       <g transform="translate(32, 32)">
         <text font-size="11" font-weight="600" letter-spacing="1.2" fill="#656a8a">TOKEN</text>
         <g transform="translate(0, 18)">
-          <rect width="616" height="64" rx="10" fill="#1a1d2e" stroke="#353a5a"/>
-          <!-- Selected token DEMO -->
+          <rect width="704" height="64" rx="10" fill="#1a1d2e" stroke="#353a5a"/>
           <g transform="translate(16, 12)">
             <circle cx="20" cy="20" r="20" fill="#00d4a4"/>
             <text x="20" y="20" font-size="11" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">D</text>
           </g>
           <text x="72" y="28" font-size="15" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">DEMO</text>
           <text x="72" y="46" font-size="11" fill="#656a8a" dominant-baseline="middle">Balance: 4,500.25</text>
-          <!-- Caret -->
-          <path d="M596 28 L600 32 L604 28" stroke="#a1a6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M684 28 L688 32 L692 28" stroke="#a1a6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         </g>
       </g>
 
@@ -100,11 +129,10 @@
       <g transform="translate(32, 134)">
         <text font-size="11" font-weight="600" letter-spacing="1.2" fill="#656a8a">RECIPIENT</text>
         <g transform="translate(0, 18)">
-          <rect width="616" height="56" rx="10" fill="#1a1d2e" stroke="#353a5a"/>
+          <rect width="704" height="56" rx="10" fill="#1a1d2e" stroke="#353a5a"/>
           <text x="16" y="28" font-size="13" font-family="JetBrains Mono, monospace" fill="#f1f3f9" dominant-baseline="middle">0xabcd35Cc6634C0532925a3b844Bc1234</text>
           <text x="16" y="44" font-size="11" fill="#34d399" dominant-baseline="middle">✓ Registered Canton party</text>
-          <!-- Paste action -->
-          <text x="600" y="28" font-size="11" font-weight="600" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">Paste</text>
+          <text x="688" y="28" font-size="11" font-weight="600" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">Paste</text>
         </g>
       </g>
 
@@ -112,81 +140,33 @@
       <g transform="translate(32, 228)">
         <text font-size="11" font-weight="600" letter-spacing="1.2" fill="#656a8a">AMOUNT</text>
         <g transform="translate(0, 18)">
-          <rect width="616" height="80" rx="10" fill="#1a1d2e" stroke="#353a5a"/>
+          <rect width="704" height="80" rx="10" fill="#1a1d2e" stroke="#353a5a"/>
           <text x="16" y="44" font-size="28" font-weight="700" font-family="JetBrains Mono, monospace" fill="#f1f3f9" dominant-baseline="middle">100</text>
-          <!-- Max button -->
-          <g transform="translate(516, 24)">
+          <g transform="translate(604, 24)">
             <rect width="40" height="24" rx="6" fill="#232640" stroke="#353a5a"/>
             <text x="20" y="12" font-size="11" font-weight="600" fill="#f1f3f9" text-anchor="middle" dominant-baseline="middle">MAX</text>
           </g>
-          <text x="600" y="36" font-size="13" font-weight="600" fill="#f1f3f9" text-anchor="end" dominant-baseline="middle">DEMO</text>
+          <text x="688" y="40" font-size="13" font-weight="600" fill="#f1f3f9" text-anchor="end" dominant-baseline="middle">DEMO</text>
         </g>
       </g>
 
-      <!-- Fee/info row -->
+      <!-- Info row (gas + signing hint) -->
       <g transform="translate(32, 348)">
-        <rect width="616" height="40" rx="10" fill="#12141f" stroke="#252840"/>
+        <rect width="704" height="40" rx="10" fill="#12141f" stroke="#252840"/>
         <g transform="translate(16, 12)" stroke="#a1a6c4" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="8" cy="8" r="7"/><path d="M8 4 V9 M8 11 V12"/>
         </g>
-        <text x="40" y="20" font-size="12" fill="#a1a6c4" dominant-baseline="middle">Gas-free on Canton Network. Settlement is instant once signed.</text>
+        <text x="40" y="20" font-size="12" fill="#a1a6c4" dominant-baseline="middle">
+          <tspan>Gas-free on Canton · Settles in ~2–4s · You'll sign </tspan>
+          <tspan font-weight="600" fill="#f1f3f9">twice</tspan>
+          <tspan> (MetaMask + Snap)</tspan>
+        </text>
       </g>
 
-      <!-- Primary CTA -->
+      <!-- CTA -->
       <g transform="translate(32, 416)">
-        <rect width="616" height="52" rx="12" fill="url(#ctaFill)"/>
-        <text x="308" y="26" font-size="15" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Continue — sign in MetaMask &amp; Snap</text>
-      </g>
-    </g>
-
-    <!-- Summary card -->
-    <g transform="translate(712, 64)">
-      <rect width="408" height="288" rx="16" fill="url(#cardBg)" stroke="#252840"/>
-
-      <g transform="translate(24, 28)">
-        <text font-size="14" font-weight="700" fill="#f1f3f9">Summary</text>
-        <g transform="translate(280, -6)">
-          <rect width="104" height="22" rx="11" fill="#00d4a4" fill-opacity="0.12" stroke="#00d4a4" stroke-opacity="0.3"/>
-          <text x="52" y="11" font-size="10" font-weight="600" letter-spacing="0.6" fill="#00d4a4" text-anchor="middle" dominant-baseline="middle">NON-CUSTODIAL</text>
-        </g>
-      </g>
-
-      <g transform="translate(24, 68)" font-size="12">
-        <g>
-          <text fill="#656a8a">You send</text>
-          <text x="360" fill="#f1f3f9" font-weight="600" text-anchor="end" font-family="JetBrains Mono, monospace">100.00 DEMO</text>
-        </g>
-        <g transform="translate(0, 24)">
-          <text fill="#656a8a">Recipient</text>
-          <text x="360" fill="#f1f3f9" font-weight="600" text-anchor="end" font-family="JetBrains Mono, monospace">0xabcd…1234</text>
-        </g>
-        <g transform="translate(0, 48)">
-          <text fill="#656a8a">Network fee</text>
-          <text x="360" fill="#34d399" font-weight="600" text-anchor="end">Free</text>
-        </g>
-        <g transform="translate(0, 72)">
-          <text fill="#656a8a">Settlement</text>
-          <text x="360" fill="#f1f3f9" font-weight="600" text-anchor="end">~2–4 seconds</text>
-        </g>
-      </g>
-
-      <line x1="24" y1="172" x2="384" y2="172" stroke="#252840"/>
-
-      <!-- Signing steps -->
-      <g transform="translate(24, 192)">
-        <text font-size="11" font-weight="600" letter-spacing="1" fill="#656a8a">SIGNING STEPS</text>
-        <g transform="translate(0, 20)">
-          <g>
-            <circle cx="8" cy="8" r="8" fill="#00d4a4" fill-opacity="0.15" stroke="#00d4a4"/>
-            <text x="8" y="8" font-size="9" font-weight="700" fill="#00d4a4" text-anchor="middle" dominant-baseline="middle">1</text>
-            <text x="24" y="8" font-size="12" fill="#f1f3f9" dominant-baseline="middle">MetaMask — authenticate request</text>
-          </g>
-          <g transform="translate(0, 22)">
-            <circle cx="8" cy="8" r="8" fill="#00d4a4" fill-opacity="0.15" stroke="#00d4a4"/>
-            <text x="8" y="8" font-size="9" font-weight="700" fill="#00d4a4" text-anchor="middle" dominant-baseline="middle">2</text>
-            <text x="24" y="8" font-size="12" fill="#f1f3f9" dominant-baseline="middle">Canton Snap — sign transaction hash</text>
-          </g>
-        </g>
+        <rect width="704" height="52" rx="12" fill="url(#ctaFill)"/>
+        <text x="352" y="26" font-size="15" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Continue</text>
       </g>
     </g>
   </g>
