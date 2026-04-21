@@ -15,6 +15,7 @@ The dApp's purpose (per [epic #8](https://github.com/ChainSafe/canton-snap/issue
 | [`05-noncustodial-flow.svg`](./05-noncustodial-flow.svg) | Non-custodial 4-step progress | `/register` → Use Non-Custodial |
 | [`06-success.svg`](./06-success.svg) | Registered — party ID + fingerprint | shared by both flows after completion |
 | [`07-network-switcher.svg`](./07-network-switcher.svg) | Network switcher — Mainnet / Devnet / Local | click network pill (top right) |
+| [`08-dashboard.svg`](./08-dashboard.svg) | Dashboard — identity, balances, activity | `/dashboard` |
 | _(next)_ | Dashboard — balances + transfers | `/dashboard` |
 
 ## Design principles
@@ -56,12 +57,17 @@ The dApp's purpose (per [epic #8](https://github.com/ChainSafe/canton-snap/issue
 ## Flow
 
 ```
-Landing ─► Registration ─► {Custodial | Non-Custodial} ─► Success ─► Dashboard
-   │             │                                           │
-   │             └─ Wallet menu (disconnect / copy addr)     │
+Landing ─► Registration ─► {Custodial | Non-Custodial} ─► Success ─► Dashboard ─► {Send | Bridge}
+   │             │                                           │            │
+   │             └─ Wallet menu (disconnect / copy addr)     │            └─ Manage Snap
    │                                                          │
    └─ If already connected & registered ──────────────────────┴─► Dashboard
 ```
+
+**Dashboard sections** (top to bottom):
+1. **Identity card** — party ID, fingerprint, key-mode tag (NON-CUSTODIAL / CUSTODIAL), Send + Bridge CTAs, Snap status strip (visible only for non-custodial)
+2. **Balances** — USDCx / DEMO / PROMPT rows with amount, USD equivalent (where applicable), and row-level menu
+3. **Recent activity** — received / sent / registered rows with timestamp
 
 **Custodial** — one MetaMask signature → POST `/register`. The middleware generates and holds the Canton key.
 
