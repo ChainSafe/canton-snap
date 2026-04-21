@@ -48,8 +48,7 @@ Files are grouped by flow, with decade-prefixed numbers so they sort into clear 
 | [`41-bridge-deposit-confirm.svg`](./41-bridge-deposit-confirm.svg) | EVM → Canton | 2 · Confirm |
 | [`42-bridge-withdraw-details.svg`](./42-bridge-withdraw-details.svg) | Canton → EVM | 1 · Details |
 | [`43-bridge-withdraw-confirm.svg`](./43-bridge-withdraw-confirm.svg) | Canton → EVM | 2 · Confirm |
-
-_Bridge Done state reuses the receipt pattern from `32-transfer-done.svg`._
+| [`44-bridge-done.svg`](./44-bridge-done.svg) | _shared_ | 3 · Done (receipt) |
 
 ## Design principles
 
@@ -124,6 +123,8 @@ Maps to the canton-middleware API: `POST /api/v2/transfer/prepare` → `canton_s
   1. FROM = Canton Devnet + Canton token (USDCx)
   2. TO = Ethereum Mainnet + EVM token (USDC) — destination is the connected EVM address
   3. Confirm: one Canton Snap signature + relayer release on Ethereum (~20–40s)
+
+Both directions land on `44-bridge-done.svg` once settled: glowing check, a route line showing `500 USDC → 500 USDCx` with colour-coded chain dots, the source-chain tx hash, the destination party/address, and the settlement time. Headline flips between "Deposit complete" and "Withdrawal complete" depending on direction.
 
 Destination is auto-derived in both directions (the fingerprint links the Canton party and the EVM address 1:1), so the user doesn't type an address — just picks amount + token.
 
