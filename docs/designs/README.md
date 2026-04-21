@@ -32,7 +32,7 @@ Files are grouped by flow, with decade-prefixed numbers so they sort into clear 
 | [`20-dashboard-profile.svg`](./20-dashboard-profile.svg) | Profile — identity + quick actions | `/dashboard` (default) |
 | [`21-dashboard-balances.svg`](./21-dashboard-balances.svg) | Balances — full token list | `/dashboard/balances` |
 
-### 30–32 · Transfer wizard
+### 30–32 · Transfer wizard — **non-custodial**
 
 | File | Step |
 |---|---|
@@ -40,7 +40,7 @@ Files are grouped by flow, with decade-prefixed numbers so they sort into clear 
 | [`31-transfer-sign.svg`](./31-transfer-sign.svg) | 2 · Sign (Canton Snap) |
 | [`32-transfer-done.svg`](./32-transfer-done.svg) | 3 · Done (receipt) |
 
-### 40–43 · Bridge wizard
+### 40–44 · Bridge wizard — **non-custodial**
 
 | File | Direction | Step |
 |---|---|---|
@@ -49,6 +49,26 @@ Files are grouped by flow, with decade-prefixed numbers so they sort into clear 
 | [`42-bridge-withdraw-details.svg`](./42-bridge-withdraw-details.svg) | Canton → EVM | 1 · Details |
 | [`43-bridge-withdraw-confirm.svg`](./43-bridge-withdraw-confirm.svg) | Canton → EVM | 2 · Confirm |
 | [`44-bridge-done.svg`](./44-bridge-done.svg) | _shared_ | 3 · Done (receipt) |
+
+### 50–52 · Transfer wizard — **custodial**
+
+| File | Step |
+|---|---|
+| [`50-transfer-custodial-details.svg`](./50-transfer-custodial-details.svg) | 1 · Details (form) |
+| [`51-transfer-custodial-sign.svg`](./51-transfer-custodial-sign.svg) | 2 · Sign (single MetaMask popup via `/eth` RPC) |
+| [`52-transfer-custodial-done.svg`](./52-transfer-custodial-done.svg) | 3 · Done (receipt) |
+
+### 60–64 · Bridge wizard — **custodial**
+
+| File | Direction | Step |
+|---|---|---|
+| [`60-bridge-custodial-deposit-details.svg`](./60-bridge-custodial-deposit-details.svg) | EVM → Canton | 1 · Details |
+| [`61-bridge-custodial-deposit-confirm.svg`](./61-bridge-custodial-deposit-confirm.svg) | EVM → Canton | 2 · Confirm (same as 41 — still 2 EVM sigs) |
+| [`62-bridge-custodial-withdraw-details.svg`](./62-bridge-custodial-withdraw-details.svg) | Canton → EVM | 1 · Details |
+| [`63-bridge-custodial-withdraw-confirm.svg`](./63-bridge-custodial-withdraw-confirm.svg) | Canton → EVM | 2 · Confirm (single EIP-191 popup, server signs Canton) |
+| [`64-bridge-custodial-done.svg`](./64-bridge-custodial-done.svg) | _shared_ | 3 · Done (receipt) |
+
+Custodial and non-custodial screens share the same wizard pattern and are 1:1 with their non-custodial counterparts — the visible differences are the mode tag (violet `CUSTODIAL` vs teal `NON-CUSTODIAL`) and, on the Sign/Confirm steps, what the user actually signs (single MetaMask popup for custodial vs snap-signed DER for non-custodial).
 
 ## Design principles
 
@@ -110,7 +130,7 @@ Landing ─► Registration ─► {Custodial | Non-Custodial} ─► Done ─�
 
 Maps to the canton-middleware API: `POST /api/v2/transfer/prepare` → `canton_signHash` in the snap → `POST /api/v2/transfer/execute`.
 
-**Custodial transfers** have no dedicated endpoint in the middleware — custodial users transact via the `/eth` JSON-RPC with a plain ERC20 `transfer()` call. That's a standard EVM flow (one MetaMask popup) and doesn't need the progress bar.
+**Custodial transfers** (`50-52`) — the same 3-step wizard, but the Sign step is a single MetaMask popup for an ERC20 `transfer()` call via the middleware's `/eth` JSON-RPC. Middleware co-signs the Canton side invisibly. No snap required.
 
 **Bridge tab** — same 3-step wizard pattern as Transfer (`Details → Confirm → Done`) plus a **direction toggle** pinned under the title.
 
@@ -125,6 +145,8 @@ Maps to the canton-middleware API: `POST /api/v2/transfer/prepare` → `canton_s
   3. Confirm: one Canton Snap signature + relayer release on Ethereum (~20–40s)
 
 Both directions land on `44-bridge-done.svg` once settled: glowing check, a route line showing `500 USDC → 500 USDCx` with colour-coded chain dots, the source-chain tx hash, the destination party/address, and the settlement time. Headline flips between "Deposit complete" and "Withdrawal complete" depending on direction.
+
+**Custodial bridge** (`60-64`) — the same screens but mode tag is violet `CUSTODIAL`. Deposit is identical (two MetaMask signatures — approve + deposit — regardless of mode). Withdraw is simpler: `63-bridge-custodial-withdraw-confirm.svg` replaces the snap-signing focus card with a single EIP-191 MetaMask popup; the server operator signs `InitiateWithdrawal` on Canton invisibly, then the relayer releases on Ethereum.
 
 Destination is auto-derived in both directions (the fingerprint links the Canton party and the EVM address 1:1), so the user doesn't type an address — just picks amount + token.
 

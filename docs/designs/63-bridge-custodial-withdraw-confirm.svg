@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" font-family="Inter, system-ui, sans-serif">
+  <defs>
+    <radialGradient id="orbBrand" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00d4a4" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#00d4a4" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cardBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1d2e"/>
+      <stop offset="100%" stop-color="#12141f"/>
+    </linearGradient>
+    <linearGradient id="cardBgActive" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e2238"/>
+      <stop offset="100%" stop-color="#141729"/>
+    </linearGradient>
+    <linearGradient id="ctaFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00f0b8"/>
+      <stop offset="100%" stop-color="#00d4a4"/>
+    </linearGradient>
+
+    <symbol id="icoProfile" viewBox="0 0 20 20"><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M3 17 C3 13 6 11 10 11 C14 11 17 13 17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="icoBalances" viewBox="0 0 20 20"><rect x="2" y="5" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M2 9 H18" stroke="currentColor" stroke-width="1.6"/><circle cx="14" cy="13" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="icoTransfer" viewBox="0 0 20 20"><path d="M4 10 H15 M10 5 L15 10 L10 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="icoBridge" viewBox="0 0 20 20"><path d="M3 8 H15 M12 5 L15 8 L12 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M17 12 H5 M8 15 L5 12 L8 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="icoActivity" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M10 6 V10 L13 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></symbol>
+  </defs>
+
+  <rect width="1440" height="900" fill="#0a0b14"/>
+  <circle cx="960" cy="300" r="440" fill="url(#orbBrand)"/>
+
+  <g>
+    <rect width="240" height="900" fill="#0d0f19"/>
+    <line x1="240" y1="0" x2="240" y2="900" stroke="#252840"/>
+
+    <g transform="translate(24, 28)">
+      <rect width="32" height="32" rx="8" fill="url(#ctaFill)"/>
+      <path d="M10 16 L14 20 L22 12" stroke="#0a0b14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <text x="48" y="16" font-size="14" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">Canton dApp</text>
+    </g>
+    <line x1="24" y1="80" x2="216" y2="80" stroke="#252840"/>
+
+    <g font-size="13" font-weight="500" transform="translate(0, 104)">
+      <g transform="translate(16, 0)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoProfile" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Profile</text></g>
+      <g transform="translate(16, 48)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoBalances" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Balances</text></g>
+      <g transform="translate(16, 96)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoTransfer" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Transfer</text></g>
+
+      <g transform="translate(16, 144)">
+        <rect width="208" height="40" rx="10" fill="#00d4a4" fill-opacity="0.1"/>
+        <rect width="3" height="22" y="9" rx="1.5" fill="#00d4a4"/>
+        <g transform="translate(16, 10)" color="#00d4a4"><use href="#icoBridge" width="20" height="20"/></g>
+        <text x="48" y="20" fill="#00d4a4" font-weight="600" dominant-baseline="middle">Bridge</text>
+      </g>
+
+      <g transform="translate(16, 192)"><g transform="translate(16, 10)" color="#a1a6c4"><use href="#icoActivity" width="20" height="20"/></g><text x="48" y="20" fill="#a1a6c4" dominant-baseline="middle">Activity</text></g>
+    </g>
+  </g>
+
+  <g transform="translate(1056, 40)">
+    <rect width="140" height="32" rx="8" fill="#1a1d2e" stroke="#353a5a"/>
+    <circle cx="14" cy="16" r="5" fill="#ffb84d"/>
+    <text x="28" y="16" font-size="12" font-weight="500" fill="#f1f3f9" dominant-baseline="middle">Canton Devnet</text>
+    <path d="M116 13 L120 17 L124 13" stroke="#a1a6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  <g transform="translate(1204, 40)">
+    <rect width="140" height="32" rx="8" fill="#1a1d2e" stroke="#353a5a"/>
+    <circle cx="14" cy="16" r="4" fill="#34d399"/>
+    <text x="26" y="16" font-size="12" font-family="JetBrains Mono, monospace" fill="#f1f3f9" dominant-baseline="middle">0x742d…4B9e</text>
+    <path d="M116 13 L120 17 L124 13" stroke="#a1a6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <g transform="translate(280, 104)">
+    <g>
+      <text font-size="28" font-weight="700" fill="#f1f3f9" letter-spacing="-0.4">Bridge</text>
+      <g transform="translate(102, -21)">
+        <rect width="128" height="24" rx="12" fill="#8b7cff" fill-opacity="0.12" stroke="#8b7cff" stroke-opacity="0.3"/>
+        <text x="64" y="12" font-size="11" font-weight="600" letter-spacing="0.6" fill="#8b7cff" text-anchor="middle" dominant-baseline="middle">CUSTODIAL</text>
+      </g>
+    </g>
+    <text y="28" font-size="13" fill="#a1a6c4">
+      <tspan>Withdrawing </tspan>
+      <tspan font-weight="600" fill="#f1f3f9" font-family="JetBrains Mono, monospace">500 USDCx</tspan>
+      <tspan> from </tspan>
+      <tspan font-weight="600" fill="#f1f3f9">Canton</tspan>
+      <tspan> to </tspan>
+      <tspan font-weight="600" fill="#f1f3f9">Ethereum</tspan>
+      <tspan>.</tspan>
+    </text>
+
+    <!-- Direction toggle (informative) -->
+    <g transform="translate(362, 64)" opacity="0.6">
+      <rect width="396" height="40" rx="10" fill="#12141f" stroke="#252840"/>
+      <text x="101" y="20" font-size="12" font-weight="500" fill="#a1a6c4" text-anchor="middle" dominant-baseline="middle">EVM → Canton</text>
+      <rect x="198" y="4" width="194" height="32" rx="8" fill="#1a1d2e" stroke="#353a5a"/>
+      <text x="295" y="20" font-size="12" font-weight="600" fill="#f1f3f9" text-anchor="middle" dominant-baseline="middle">Canton → EVM</text>
+    </g>
+
+    <!-- Steps bar -->
+    <g transform="translate(290, 116)">
+      <line x1="28" y1="18" x2="238" y2="18" stroke="#00d4a4" stroke-width="2"/>
+      <line x1="266" y1="18" x2="476" y2="18" stroke="#353a5a" stroke-width="2"/>
+
+      <g transform="translate(14, 18)">
+        <circle r="18" fill="#00d4a4" fill-opacity="0.18" stroke="#00d4a4" stroke-width="2"/>
+        <path d="M-6 0 L-1 5 L7 -4" stroke="#00d4a4" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <text y="44" font-size="12" font-weight="500" fill="#a1a6c4" text-anchor="middle">Details</text>
+      </g>
+      <g transform="translate(252, 18)">
+        <circle r="18" fill="#00d4a4"/>
+        <text y="0" font-size="13" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">2</text>
+        <text y="44" font-size="12" font-weight="600" fill="#f1f3f9" text-anchor="middle">Confirm</text>
+      </g>
+      <g transform="translate(490, 18)">
+        <circle r="18" fill="#1a1d2e" stroke="#353a5a" stroke-width="2"/>
+        <text y="0" font-size="13" font-weight="700" fill="#656a8a" text-anchor="middle" dominant-baseline="middle">3</text>
+        <text y="44" font-size="12" fill="#656a8a" text-anchor="middle">Done</text>
+      </g>
+    </g>
+
+    <!-- ═══ Confirm card — MetaMask auth then processing ═══ -->
+    <g transform="translate(176, 200)">
+      <rect width="768" height="480" rx="16" fill="url(#cardBgActive)" stroke="#00d4a4" stroke-opacity="0.4" stroke-width="1.5"/>
+
+      <!-- MetaMask-ish icon -->
+      <g transform="translate(352, 48)">
+        <circle cx="32" cy="32" r="32" fill="#f6851b" fill-opacity="0.15"/>
+        <circle cx="32" cy="32" r="28" stroke="#252840" stroke-width="3" fill="none"/>
+        <path d="M60 32 A28 28 0 0 0 32 4" stroke="#f6851b" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <g transform="translate(20, 20)">
+          <path d="M12 2 L22 8 L22 16 L12 22 L2 16 L2 8 Z" fill="#f6851b" fill-opacity="0.25" stroke="#f6851b" stroke-width="1.5" stroke-linejoin="round"/>
+        </g>
+      </g>
+
+      <text x="384" y="164" font-size="22" font-weight="700" fill="#f1f3f9" text-anchor="middle">Authenticate in MetaMask</text>
+      <text x="384" y="196" font-size="14" fill="#a1a6c4" text-anchor="middle">Sign the request so the server can process the withdrawal on your behalf.</text>
+
+      <!-- Message preview -->
+      <g transform="translate(96, 232)">
+        <rect width="576" height="60" rx="10" fill="#0a0b14" stroke="#252840"/>
+        <text x="20" y="22" font-size="10" font-weight="600" letter-spacing="1" fill="#656a8a">MESSAGE (EIP-191)</text>
+        <text x="20" y="42" font-size="12" font-family="JetBrains Mono, monospace" fill="#f1f3f9">transfer:1713800000</text>
+        <text x="556" y="42" font-size="10" fill="#656a8a" text-anchor="end">replay-protected · 5 min</text>
+      </g>
+
+      <!-- CTA -->
+      <g transform="translate(96, 316)">
+        <rect width="576" height="52" rx="12" fill="url(#ctaFill)"/>
+        <text x="288" y="26" font-size="15" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Open MetaMask</text>
+      </g>
+
+      <!-- Sub-status row: authenticated → processing → releasing -->
+      <g transform="translate(96, 404)" font-size="11">
+        <g>
+          <!-- Active dot (authenticating) -->
+          <circle cx="6" cy="6" r="6" fill="#00d4a4"/>
+          <text x="20" y="6" fill="#f1f3f9" font-weight="600" dominant-baseline="middle">Authenticating</text>
+        </g>
+        <g transform="translate(160, 0)">
+          <circle cx="6" cy="6" r="6" fill="#1a1d2e" stroke="#353a5a" stroke-width="1.5"/>
+          <text x="20" y="6" fill="#656a8a" dominant-baseline="middle">Server signs Canton</text>
+        </g>
+        <g transform="translate(336, 0)">
+          <circle cx="6" cy="6" r="6" fill="#1a1d2e" stroke="#353a5a" stroke-width="1.5"/>
+          <text x="20" y="6" fill="#656a8a" dominant-baseline="middle">Relayer release (~20–40s)</text>
+        </g>
+        <text x="576" y="6" font-size="12" font-weight="500" fill="#a1a6c4" text-anchor="end" dominant-baseline="middle">Cancel</text>
+      </g>
+    </g>
+  </g>
+</svg>
