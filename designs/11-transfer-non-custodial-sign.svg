@@ -118,7 +118,7 @@
     </g>
 
     <!-- ═══ Sign card (centered, focused on current action) ═══ -->
-    <g transform="translate(176, 200)">
+    <g transform="translate(176, 164)">
       <rect width="768" height="480" rx="16" fill="url(#cardBgActive)" stroke="#00d4a4" stroke-opacity="0.4" stroke-width="1.5"/>
 
       <!-- Animated snap icon at top -->

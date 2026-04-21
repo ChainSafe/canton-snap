@@ -72,30 +72,30 @@
     <g>
       <text font-size="28" font-weight="700" fill="#f1f3f9" letter-spacing="-0.4">Bridge</text>
       <g transform="translate(102, -21)">
-        <rect width="128" height="24" rx="12" fill="#8b7cff" fill-opacity="0.12" stroke="#8b7cff" stroke-opacity="0.3"/>
-        <text x="64" y="12" font-size="11" font-weight="600" letter-spacing="0.6" fill="#8b7cff" text-anchor="middle" dominant-baseline="middle">CUSTODIAL</text>
+        <rect width="128" height="24" rx="12" fill="#00d4a4" fill-opacity="0.12" stroke="#00d4a4" stroke-opacity="0.3"/>
+        <text x="64" y="12" font-size="11" font-weight="600" letter-spacing="0.6" fill="#00d4a4" text-anchor="middle" dominant-baseline="middle">NON-CUSTODIAL</text>
       </g>
     </g>
     <text y="28" font-size="13" fill="#a1a6c4">
-      <tspan>Depositing </tspan>
-      <tspan font-weight="600" fill="#f1f3f9" font-family="JetBrains Mono, monospace">500 USDC</tspan>
+      <tspan>Withdrawing </tspan>
+      <tspan font-weight="600" fill="#f1f3f9" font-family="JetBrains Mono, monospace">500 USDCx</tspan>
       <tspan> from </tspan>
-      <tspan font-weight="600" fill="#f1f3f9">Ethereum</tspan>
-      <tspan> to </tspan>
       <tspan font-weight="600" fill="#f1f3f9">Canton</tspan>
+      <tspan> to </tspan>
+      <tspan font-weight="600" fill="#f1f3f9">Ethereum</tspan>
       <tspan>.</tspan>
     </text>
 
-    <!-- Direction toggle (informative only) -->
+    <!-- Direction toggle (informative) -->
     <g transform="translate(362, 64)" opacity="0.6">
       <rect width="396" height="40" rx="10" fill="#12141f" stroke="#252840"/>
-      <rect x="4" y="4" width="194" height="32" rx="8" fill="#1a1d2e" stroke="#353a5a"/>
-      <text x="101" y="20" font-size="12" font-weight="600" fill="#f1f3f9" text-anchor="middle" dominant-baseline="middle">EVM → Canton</text>
-      <text x="299" y="20" font-size="12" font-weight="500" fill="#a1a6c4" text-anchor="middle" dominant-baseline="middle">Canton → EVM</text>
+      <text x="101" y="20" font-size="12" font-weight="500" fill="#a1a6c4" text-anchor="middle" dominant-baseline="middle">EVM → Canton</text>
+      <rect x="198" y="4" width="194" height="32" rx="8" fill="#1a1d2e" stroke="#353a5a"/>
+      <text x="295" y="20" font-size="12" font-weight="600" fill="#f1f3f9" text-anchor="middle" dominant-baseline="middle">Canton → EVM</text>
     </g>
 
     <!-- Steps bar — Confirm active -->
-    <g transform="translate(290, 136)">
+    <g transform="translate(290, 116)">
       <line x1="28" y1="18" x2="238" y2="18" stroke="#00d4a4" stroke-width="2"/>
       <line x1="266" y1="18" x2="476" y2="18" stroke="#353a5a" stroke-width="2"/>
 
@@ -116,53 +116,53 @@
       </g>
     </g>
 
-    <!-- ═══ Focus card — current action: Deposit ═══ -->
-    <g transform="translate(176, 256)">
+    <!-- ═══ Focus card — Snap signing ═══ -->
+    <g transform="translate(176, 200)">
       <rect width="768" height="460" rx="16" fill="url(#cardBgActive)" stroke="#00d4a4" stroke-opacity="0.4" stroke-width="1.5"/>
 
-      <!-- Animated icon: MetaMask fox-ish hex -->
+      <!-- Animated snap icon -->
       <g transform="translate(352, 44)">
-        <circle cx="32" cy="32" r="32" fill="#f6851b" fill-opacity="0.15"/>
+        <circle cx="32" cy="32" r="32" fill="#00d4a4" fill-opacity="0.1"/>
         <circle cx="32" cy="32" r="28" stroke="#252840" stroke-width="3" fill="none"/>
-        <path d="M60 32 A28 28 0 0 0 32 4" stroke="#f6851b" stroke-width="3" stroke-linecap="round" fill="none"/>
-        <g transform="translate(20, 20)">
-          <path d="M12 2 L22 8 L22 16 L12 22 L2 16 L2 8 Z" fill="#f6851b" fill-opacity="0.25" stroke="#f6851b" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M60 32 A28 28 0 0 0 32 4" stroke="#00d4a4" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <g transform="translate(22, 22)" stroke="#00d4a4" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 2 L3 5 V11 C3 15 6 18 10 19 C14 18 17 15 17 11 V5 Z"/>
+          <path d="M7 11 L9 13 L13 8"/>
         </g>
       </g>
 
-      <text x="384" y="156" font-size="22" font-weight="700" fill="#f1f3f9" text-anchor="middle">Confirm deposit in MetaMask</text>
-      <text x="384" y="188" font-size="14" fill="#a1a6c4" text-anchor="middle">Sign the bridge contract call to lock 500 USDC on Ethereum.</text>
-      <text x="384" y="208" font-size="14" fill="#a1a6c4" text-anchor="middle">Canton will mint 500 USDCx to your party once the relayer sees it.</text>
+      <text x="384" y="156" font-size="22" font-weight="700" fill="#f1f3f9" text-anchor="middle">Sign withdrawal in Canton Snap</text>
+      <text x="384" y="188" font-size="14" fill="#a1a6c4" text-anchor="middle">The snap will show the withdrawal hash and destination.</text>
+      <text x="384" y="208" font-size="14" fill="#a1a6c4" text-anchor="middle">After signing, the relayer releases 500 USDC on Ethereum.</text>
 
-      <!-- Tx preview -->
+      <!-- Hash preview -->
       <g transform="translate(96, 244)">
         <rect width="576" height="60" rx="10" fill="#0a0b14" stroke="#252840"/>
-        <text x="20" y="22" font-size="10" font-weight="600" letter-spacing="1" fill="#656a8a">CONTRACT CALL</text>
-        <text x="20" y="42" font-size="12" font-family="JetBrains Mono, monospace" fill="#f1f3f9">bridge.depositToCanton(500000000, 0xfingerprint…)</text>
-        <text x="556" y="42" font-size="10" fill="#656a8a" text-anchor="end">Ethereum</text>
+        <text x="20" y="22" font-size="10" font-weight="600" letter-spacing="1" fill="#656a8a">WITHDRAWAL HASH</text>
+        <text x="20" y="42" font-size="12" font-family="JetBrains Mono, monospace" fill="#f1f3f9">b4d8e9f2c1a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1…3a7c9e2f</text>
+        <text x="556" y="42" font-size="10" fill="#656a8a" text-anchor="end">32B</text>
       </g>
 
       <!-- CTA -->
       <g transform="translate(96, 328)">
         <rect width="576" height="52" rx="12" fill="url(#ctaFill)"/>
-        <text x="288" y="26" font-size="15" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Open MetaMask</text>
+        <text x="288" y="26" font-size="15" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Open snap dialog</text>
       </g>
 
-      <!-- Sub-status row — what's done / pending -->
+      <!-- Sub-status row -->
       <g transform="translate(96, 404)" font-size="11">
         <g>
           <circle cx="6" cy="6" r="6" fill="#00d4a4" fill-opacity="0.2" stroke="#00d4a4"/>
           <path d="M3 6 L5 8 L9 3" stroke="#00d4a4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <text x="20" y="6" fill="#a1a6c4" dominant-baseline="middle">USDC approved</text>
+          <text x="20" y="6" fill="#a1a6c4" dominant-baseline="middle">Withdrawal prepared</text>
         </g>
-        <g transform="translate(160, 0)">
-          <!-- Active dot -->
+        <g transform="translate(180, 0)">
           <circle cx="6" cy="6" r="6" fill="#00d4a4"/>
-          <text x="20" y="6" fill="#f1f3f9" font-weight="600" dominant-baseline="middle">Deposit signing</text>
+          <text x="20" y="6" fill="#f1f3f9" font-weight="600" dominant-baseline="middle">Snap signing</text>
         </g>
         <g transform="translate(340, 0)">
           <circle cx="6" cy="6" r="6" fill="#1a1d2e" stroke="#353a5a" stroke-width="1.5"/>
-          <text x="20" y="6" fill="#656a8a" dominant-baseline="middle">Relayer settlement (~15–30s)</text>
+          <text x="20" y="6" fill="#656a8a" dominant-baseline="middle">Relayer release (~20–40s)</text>
         </g>
         <text x="576" y="6" font-size="12" font-weight="500" fill="#a1a6c4" text-anchor="end" dominant-baseline="middle">Cancel</text>
       </g>

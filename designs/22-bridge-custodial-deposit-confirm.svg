@@ -72,8 +72,8 @@
     <g>
       <text font-size="28" font-weight="700" fill="#f1f3f9" letter-spacing="-0.4">Bridge</text>
       <g transform="translate(102, -21)">
-        <rect width="128" height="24" rx="12" fill="#00d4a4" fill-opacity="0.12" stroke="#00d4a4" stroke-opacity="0.3"/>
-        <text x="64" y="12" font-size="11" font-weight="600" letter-spacing="0.6" fill="#00d4a4" text-anchor="middle" dominant-baseline="middle">NON-CUSTODIAL</text>
+        <rect width="128" height="24" rx="12" fill="#8b7cff" fill-opacity="0.12" stroke="#8b7cff" stroke-opacity="0.3"/>
+        <text x="64" y="12" font-size="11" font-weight="600" letter-spacing="0.6" fill="#8b7cff" text-anchor="middle" dominant-baseline="middle">CUSTODIAL</text>
       </g>
     </g>
     <text y="28" font-size="13" fill="#a1a6c4">
@@ -95,7 +95,7 @@
     </g>
 
     <!-- Steps bar — Confirm active -->
-    <g transform="translate(290, 136)">
+    <g transform="translate(290, 116)">
       <line x1="28" y1="18" x2="238" y2="18" stroke="#00d4a4" stroke-width="2"/>
       <line x1="266" y1="18" x2="476" y2="18" stroke="#353a5a" stroke-width="2"/>
 
@@ -117,7 +117,7 @@
     </g>
 
     <!-- ═══ Focus card — current action: Deposit ═══ -->
-    <g transform="translate(176, 256)">
+    <g transform="translate(176, 200)">
       <rect width="768" height="460" rx="16" fill="url(#cardBgActive)" stroke="#00d4a4" stroke-opacity="0.4" stroke-width="1.5"/>
 
       <!-- Animated icon: MetaMask fox-ish hex -->

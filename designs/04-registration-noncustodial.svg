@@ -56,40 +56,31 @@
 
   <g transform="translate(0, 176)">
     <text x="720" y="0" font-size="32" font-weight="700" fill="#f1f3f9" text-anchor="middle" letter-spacing="-0.5">Register non-custodially</text>
-    <text x="720" y="32" font-size="14" fill="#a1a6c4" text-anchor="middle">4 steps · each confirmed in MetaMask or the Canton snap.</text>
+    <text x="720" y="32" font-size="14" fill="#a1a6c4" text-anchor="middle">Two steps — install the snap, then sign. Registration submits automatically.</text>
 
     <!-- Progress bar -->
     <g transform="translate(570, 56)">
       <rect width="300" height="4" rx="2" fill="#252840"/>
       <rect width="150" height="4" rx="2" fill="url(#ctaFill)"/>
-      <text x="150" y="22" font-size="11" fill="#a1a6c4" text-anchor="middle">2 of 4 complete</text>
+      <text x="150" y="22" font-size="11" fill="#a1a6c4" text-anchor="middle">1 of 2 complete</text>
     </g>
   </g>
 
   <!-- ═══ Steps list ═══ -->
-  <g transform="translate(360, 300)">
+  <g transform="translate(360, 360)">
 
-    <!-- Step 1 — done -->
+    <!-- Step 1 — Install Canton Snap (DONE) -->
     <g>
       <rect width="720" height="72" rx="12" fill="url(#cardBg)" stroke="#252840"/>
       <use href="#checkDone" x="24" y="24" width="24" height="24"/>
-      <text x="68" y="32" font-size="15" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">Export Canton public key</text>
-      <text x="68" y="52" font-size="12" fill="#656a8a" dominant-baseline="middle">Snap returned your secp256k1 public key and fingerprint.</text>
+      <text x="68" y="32" font-size="15" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">Install Canton Snap</text>
+      <text x="68" y="52" font-size="12" fill="#656a8a" dominant-baseline="middle">MetaMask installed the Canton Snap and granted this dApp permission.</text>
       <text x="696" y="36" font-size="11" font-weight="600" letter-spacing="0.5" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">DONE</text>
     </g>
 
-    <!-- Step 2 — done -->
+    <!-- Step 2 — Sign (ACTIVE) -->
     <g transform="translate(0, 88)">
-      <rect width="720" height="72" rx="12" fill="url(#cardBg)" stroke="#252840"/>
-      <use href="#checkDone" x="24" y="24" width="24" height="24"/>
-      <text x="68" y="32" font-size="15" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">Prove wallet ownership</text>
-      <text x="68" y="52" font-size="12" fill="#656a8a" dominant-baseline="middle">Signed register:1713800000 with MetaMask (EIP-191).</text>
-      <text x="696" y="36" font-size="11" font-weight="600" letter-spacing="0.5" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">DONE</text>
-    </g>
-
-    <!-- Step 3 — active -->
-    <g transform="translate(0, 176)">
-      <rect width="720" height="112" rx="12" fill="url(#cardBgActive)" stroke="#00d4a4" stroke-opacity="0.45"/>
+      <rect width="720" height="132" rx="12" fill="url(#cardBgActive)" stroke="#00d4a4" stroke-opacity="0.45"/>
 
       <!-- Active step indicator (spinner) -->
       <g transform="translate(24, 24)">
@@ -97,31 +88,20 @@
         <path d="M23 12 A11 11 0 0 0 12 1" stroke="#00d4a4" stroke-width="2.4" stroke-linecap="round" fill="none"/>
       </g>
 
-      <text x="68" y="32" font-size="15" font-weight="700" fill="#f1f3f9" dominant-baseline="middle">Sign topology hash</text>
-      <text x="68" y="52" font-size="12" fill="#a1a6c4" dominant-baseline="middle">Canton snap will show the multihash. Review and approve the signature.</text>
+      <text x="68" y="32" font-size="15" font-weight="700" fill="#f1f3f9" dominant-baseline="middle">Sign</text>
+      <text x="68" y="52" font-size="12" fill="#a1a6c4" dominant-baseline="middle">Approve in MetaMask (wallet proof) and the Canton snap (topology hash).</text>
+      <text x="68" y="70" font-size="12" fill="#656a8a" dominant-baseline="middle">Your registration is submitted automatically once both signatures are in.</text>
 
       <!-- Action -->
-      <g transform="translate(68, 68)">
+      <g transform="translate(68, 88)">
         <rect width="170" height="32" rx="8" fill="url(#ctaFill)"/>
-        <text x="85" y="16" font-size="12" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Open snap dialog</text>
+        <text x="85" y="16" font-size="12" font-weight="700" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Start signing</text>
       </g>
 
       <text x="696" y="36" font-size="11" font-weight="600" letter-spacing="0.5" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">IN PROGRESS</text>
     </g>
-
-    <!-- Step 4 — locked -->
-    <g transform="translate(0, 304)" opacity="0.5">
-      <rect width="720" height="72" rx="12" fill="url(#cardBg)" stroke="#252840"/>
-      <g transform="translate(24, 24)">
-        <circle cx="12" cy="12" r="12" fill="#232640"/>
-        <text x="12" y="12" font-size="11" font-weight="700" fill="#656a8a" text-anchor="middle" dominant-baseline="middle">4</text>
-      </g>
-      <text x="68" y="32" font-size="15" font-weight="600" fill="#a1a6c4" dominant-baseline="middle">Submit registration</text>
-      <text x="68" y="52" font-size="12" fill="#656a8a" dominant-baseline="middle">POST to middleware with all collected signatures.</text>
-      <text x="696" y="36" font-size="11" font-weight="600" letter-spacing="0.5" fill="#656a8a" text-anchor="end" dominant-baseline="middle">LOCKED</text>
-    </g>
   </g>
 
   <!-- Helper -->
-  <text x="720" y="752" font-size="12" fill="#656a8a" text-anchor="middle">Each step requires a confirmation. You can cancel at any time without registering.</text>
+  <text x="720" y="612" font-size="12" fill="#656a8a" text-anchor="middle">Each step requires a confirmation. You can cancel at any time without registering.</text>
 </svg>
