@@ -19,6 +19,7 @@ The dApp's purpose (per [epic #8](https://github.com/ChainSafe/canton-snap/issue
 | [`09-dashboard-balances.svg`](./09-dashboard-balances.svg) | Dashboard → Balances (full token list) | `/dashboard/balances` |
 | [`10-dashboard-transfer.svg`](./10-dashboard-transfer.svg) | Dashboard → Transfer (send form) | `/dashboard/transfer` |
 | [`11-dashboard-bridge.svg`](./11-dashboard-bridge.svg) | Dashboard → Bridge (cross-chain, placeholder) | `/dashboard/bridge` |
+| [`12-transfer-flow-noncustodial.svg`](./12-transfer-flow-noncustodial.svg) | Non-custodial transfer — 4-step progress | Submit on Transfer tab (key_mode=external) |
 | _(next)_ | Dashboard — balances + transfers | `/dashboard` |
 
 ## Design principles
@@ -73,7 +74,9 @@ Landing ─► Registration ─► {Custodial | Non-Custodial} ─► Success �
 
 **Balances tab** — total-value header card + sortable token list with ASSET / BALANCE / VALUE / ACTIONS columns. Per-row "Send →" link jumps straight to the Transfer tab pre-filled.
 
-**Transfer tab** — two-column form: left is the form (token selector, recipient, amount with MAX button, fee hint, submit), right is a live Summary card + bridge hint callout.
+**Transfer tab** — two-column form: left is the form (token selector, recipient, amount with MAX button, fee hint, submit), right is a live Summary card with `NON-CUSTODIAL` tag and a `SIGNING STEPS` mini-list (MetaMask + Snap). On submit:
+- **Non-custodial** (key_mode=`external`): opens the 4-step progress screen (`12-transfer-flow-noncustodial.svg`) — `personal_sign` → `/prepare` → `canton_signHash` in the snap → `/execute`. Matches the `POST /api/v2/transfer/{prepare,execute}` endpoints in canton-middleware.
+- **Custodial** (key_mode=`custodial`): no dedicated endpoint — the dApp submits a plain ERC20 `transfer()` via the middleware's EVM JSON-RPC. Single MetaMask popup; reuses the existing wallet sign flow (no dedicated mockup needed).
 
 **Bridge tab** — FROM / TO network cards with a swap-direction button between them, amount + token selector per side, destination address, fee/time summary. CTA is gated ("coming soon") since bridging is a Phase 3 concern.
 
