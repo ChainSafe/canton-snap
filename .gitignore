@@ -1,4 +1,5 @@
 node_modules/
 dist/
 *.tsbuildinfo
-packages/snap/.DS_Store
+.DS_Store
+.env.local
