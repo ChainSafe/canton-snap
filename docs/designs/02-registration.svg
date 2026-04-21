@@ -71,7 +71,7 @@
       </g>
       <g transform="translate(0, 26)">
         <circle cx="3" cy="0" r="2.5" fill="#a1a6c4"/>
-        <text x="16" y="0" dominant-baseline="middle">No MetaMask Flask needed</text>
+        <text x="16" y="0" dominant-baseline="middle">No snap installation required</text>
       </g>
       <g transform="translate(0, 52)">
         <circle cx="3" cy="0" r="2.5" fill="#a1a6c4"/>
@@ -114,7 +114,7 @@
       </g>
       <g transform="translate(0, 26)">
         <circle cx="3" cy="0" r="2.5" fill="#a1a6c4"/>
-        <text x="16" y="0" dominant-baseline="middle">Requires MetaMask Flask + Canton Snap</text>
+        <text x="16" y="0" dominant-baseline="middle">Requires the Canton MetaMask Snap</text>
       </g>
       <g transform="translate(0, 52)">
         <circle cx="3" cy="0" r="2.5" fill="#a1a6c4"/>
