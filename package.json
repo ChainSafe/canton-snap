@@ -2,10 +2,12 @@
   "name": "@chainsafe/canton-snap-workspace",
   "version": "0.2.0",
   "private": true,
+  "type": "module",
   "description": "MetaMask Snap for non-custodial Canton Network signing",
   "license": "MIT",
   "workspaces": [
-    "packages/*"
+    "packages/snap",
+    "packages/test-dapp"
   ],
   "scripts": {
     "build": "npm -w packages/snap run build",
@@ -13,9 +15,19 @@
     "serve:dapp": "npx serve packages/test-dapp -p 3000 --no-clipboard",
     "serve": "concurrently -n snap,dapp -c cyan,magenta \"npm run serve:snap\" \"npm run serve:dapp\"",
     "test": "npm -w packages/snap run test:crypto",
-    "test:snap": "npm -w packages/snap run test"
+    "test:snap": "npm -w packages/snap run test",
+    "lint": "eslint packages/snap/src packages/dapp/src",
+    "lint:fix": "eslint packages/snap/src packages/dapp/src --fix",
+    "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\""
   },
   "devDependencies": {
-    "concurrently": "^9.0.0"
+    "@eslint/js": "^9.0.0",
+    "concurrently": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0"
   }
 }
