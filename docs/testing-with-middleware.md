@@ -42,7 +42,9 @@ node --version   # v18 or higher
 
 ### 3. Middleware running
 
-The middleware repo is at `../canton-middleware`. Start it manually (Canton ledger + PostgreSQL + API server). Verify:
+Clone and start the [canton-middleware](https://github.com/ChainSafe/canton-middleware) repo (Canton ledger + PostgreSQL + API server). Refer to its README for setup instructions.
+
+Once running, verify:
 
 ```bash
 curl http://localhost:8081/health
