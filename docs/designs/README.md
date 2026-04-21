@@ -10,10 +10,11 @@ The dApp's purpose (per [epic #8](https://github.com/ChainSafe/canton-snap/issue
 |---|---|---|
 | [`01-landing.svg`](./01-landing.svg) | Connect MetaMask | `/` |
 | [`02-registration.svg`](./02-registration.svg) | Custodial vs non-custodial choice | `/register` |
-| [`03-wallet-menu.svg`](./03-wallet-menu.svg) | Wallet dropdown (copy / disconnect) | click wallet chip (top right) |
+| [`03-wallet-menu.svg`](./03-wallet-menu.svg) | Wallet dropdown — address + network + disconnect | click wallet chip (top right) |
 | [`04-custodial-flow.svg`](./04-custodial-flow.svg) | Custodial signing state | `/register` → Use Custodial |
 | [`05-noncustodial-flow.svg`](./05-noncustodial-flow.svg) | Non-custodial 4-step progress | `/register` → Use Non-Custodial |
 | [`06-success.svg`](./06-success.svg) | Registered — party ID + fingerprint | shared by both flows after completion |
+| [`07-network-switcher.svg`](./07-network-switcher.svg) | Network switcher — Mainnet / Devnet / Local | click network pill (top right) |
 | _(next)_ | Dashboard — balances + transfers | `/dashboard` |
 
 ## Design principles
@@ -70,4 +71,13 @@ Landing ─► Registration ─► {Custodial | Non-Custodial} ─► Success �
 3. `canton_signTopology` (snap dialog)
 4. POST `/register` with all signatures
 
-**Wallet menu** — overlay popover anchored to the wallet chip; surfaces full address, Etherscan link, and disconnect.
+**Wallet menu** — overlay popover anchored to the wallet chip; surfaces full address, current network, and disconnect.
+
+**Network switcher** — overlay popover anchored to the network pill; lists Canton Mainnet / Devnet / Local with a coloured indicator per network (green / amber / blue). Always visible in the header so the user knows which network they're on.
+
+**Header pills** (all signed-in screens show two):
+
+```
+[● Canton Devnet ▾]  [● 0x742d…4B9e ▾]
+  network pill          wallet chip
+```

@@ -27,38 +27,42 @@
 
   <!-- ═══ Dimmed backdrop (registration page peeking through) ═══ -->
   <g opacity="0.35">
-    <!-- Logo -->
     <g transform="translate(96, 40)">
       <rect width="32" height="32" rx="8" fill="url(#ctaFill)"/>
       <path d="M10 16 L14 20 L22 12" stroke="#0a0b14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       <text x="48" y="16" font-size="14" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">Canton dApp</text>
     </g>
 
-    <!-- Page title behind -->
     <text x="720" y="180" font-size="36" font-weight="700" fill="#f1f3f9" text-anchor="middle" letter-spacing="-0.6">Choose how to manage your Canton key</text>
     <text x="720" y="216" font-size="15" fill="#a1a6c4" text-anchor="middle">Same custodial vs self-custody choice you know from EVM.</text>
 
-    <!-- Two cards faded -->
     <rect x="240" y="300" width="460" height="360" rx="16" fill="url(#cardBg)" stroke="#252840"/>
     <rect x="740" y="300" width="460" height="360" rx="16" fill="url(#cardBg)" stroke="#252840"/>
   </g>
 
-  <!-- ═══ Foreground: wallet chip (active) + dropdown ═══ -->
+  <!-- ═══ Foreground: header pills ═══ -->
 
-  <!-- Chip (highlighted / active) -->
-  <g transform="translate(1200, 40)">
-    <rect width="144" height="32" rx="8" fill="#1a1d2e" stroke="#00d4a4" stroke-opacity="0.5"/>
-    <circle cx="16" cy="16" r="4" fill="#34d399"/>
-    <text x="30" y="16" font-size="12" font-family="JetBrains Mono, monospace" fill="#f1f3f9" dominant-baseline="middle">0x742d…4B9e</text>
-    <!-- Caret open -->
-    <path d="M120 13 L124 17 L128 13" stroke="#a1a6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Network pill (inactive) -->
+  <g transform="translate(1056, 40)">
+    <rect width="140" height="32" rx="8" fill="#1a1d2e" stroke="#353a5a"/>
+    <circle cx="14" cy="16" r="5" fill="#ffb84d"/>
+    <text x="28" y="16" font-size="12" font-weight="500" fill="#f1f3f9" dominant-baseline="middle">Canton Devnet</text>
+    <path d="M116 13 L120 17 L124 13" stroke="#a1a6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
   </g>
 
-  <!-- Dropdown panel -->
-  <g transform="translate(1040, 92)" filter="url(#menuShadow)">
-    <rect width="304" height="248" rx="14" fill="#12141f" stroke="#353a5a"/>
+  <!-- Wallet chip (ACTIVE — teal border) -->
+  <g transform="translate(1204, 40)">
+    <rect width="140" height="32" rx="8" fill="#1a1d2e" stroke="#00d4a4" stroke-opacity="0.55"/>
+    <circle cx="14" cy="16" r="4" fill="#34d399"/>
+    <text x="26" y="16" font-size="12" font-family="JetBrains Mono, monospace" fill="#f1f3f9" dominant-baseline="middle">0x742d…4B9e</text>
+    <path d="M116 15 L120 11 L124 15" stroke="#a1a6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
 
-    <!-- Section: Address -->
+  <!-- ═══ Wallet menu dropdown ═══ -->
+  <g transform="translate(1040, 84)" filter="url(#menuShadow)">
+    <rect width="304" height="240" rx="14" fill="#12141f" stroke="#353a5a"/>
+
+    <!-- CONNECTED WALLET section -->
     <g transform="translate(20, 20)">
       <text font-size="11" font-weight="600" letter-spacing="1.2" fill="#656a8a">CONNECTED WALLET</text>
       <g transform="translate(0, 18)">
@@ -76,32 +80,27 @@
       </g>
     </g>
 
-    <!-- Divider -->
-    <line x1="20" y1="108" x2="284" y2="108" stroke="#252840"/>
-
-    <!-- Actions list -->
-    <g transform="translate(20, 122)" font-size="13" fill="#f1f3f9">
-      <!-- View on Etherscan -->
-      <g>
-        <rect y="-10" width="264" height="36" rx="8" fill="transparent"/>
-        <g transform="translate(8, 2)" stroke="#a1a6c4" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 12 H14 M10 4 H16 V10 M16 4 L8 12"/>
-        </g>
-        <text x="36" y="8" dominant-baseline="middle">View on Etherscan</text>
-      </g>
-
-      <!-- Disconnect -->
-      <g transform="translate(0, 44)">
-        <rect y="-10" width="264" height="36" rx="8" fill="#ff6b6b" fill-opacity="0.06"/>
-        <g transform="translate(8, 2)" stroke="#ff6b6b" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M7 4 H4 Q2 4 2 6 V14 Q2 16 4 16 H7"/>
-          <path d="M11 6 L16 10 L11 14 M16 10 H6"/>
-        </g>
-        <text x="36" y="8" fill="#ff6b6b" font-weight="500" dominant-baseline="middle">Disconnect wallet</text>
+    <!-- NETWORK section (inline display, switcher lives on the pill) -->
+    <g transform="translate(20, 104)">
+      <text font-size="11" font-weight="600" letter-spacing="1.2" fill="#656a8a">NETWORK</text>
+      <g transform="translate(0, 18)">
+        <rect width="264" height="40" rx="10" fill="#1a1d2e" stroke="#252840"/>
+        <circle cx="18" cy="20" r="5" fill="#ffb84d"/>
+        <text x="34" y="16" font-size="13" font-weight="500" fill="#f1f3f9" dominant-baseline="middle">Canton Devnet</text>
+        <text x="34" y="30" font-size="10" fill="#656a8a" dominant-baseline="middle">https://devnet.middleware.canton</text>
+        <!-- switch → -->
+        <text x="246" y="20" font-size="11" font-weight="600" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">Switch</text>
       </g>
     </g>
 
-    <!-- Tiny footer -->
-    <text x="152" y="220" font-size="10" fill="#656a8a" text-anchor="middle">Chain ID 1 · Ethereum Mainnet</text>
+    <!-- Disconnect row -->
+    <g transform="translate(20, 184)">
+      <rect width="264" height="36" rx="8" fill="#ff6b6b" fill-opacity="0.08"/>
+      <g transform="translate(12, 10)" stroke="#ff6b6b" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 4 H4 Q2 4 2 6 V14 Q2 16 4 16 H7"/>
+        <path d="M11 6 L16 10 L11 14 M16 10 H6"/>
+      </g>
+      <text x="40" y="18" fill="#ff6b6b" font-size="13" font-weight="500" dominant-baseline="middle">Disconnect wallet</text>
+    </g>
   </g>
 </svg>
