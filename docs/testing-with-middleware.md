@@ -60,8 +60,8 @@ curl http://localhost:8081/health
 npm install
 cp .env.example .env          # snap port config (default: 8080)
 
-# Build snap bundle
-npm run build:snap
+# Build snap + dApp
+npm run build
 
 # Start snap server (port 8080) + dApp (port 3000) together
 npm run serve
@@ -73,7 +73,7 @@ npm run dev:dapp     # dApp only  — http://localhost:3000 (auto-increments if 
 
 > **Port conflicts:** The dApp Vite server auto-increments past any busy port (3000 → 3002 → …). The snap server uses the port from your `.env` (`VITE_SNAP_PORT`, default `8080`); if you change it, update `.env` — both snap and dApp read from the same file.
 
-Open the dApp at **http://localhost:3000** (not `file://` — MetaMask won't inject into file:// pages).
+Open the dApp at **http://localhost:3000**
 
 ---
 
