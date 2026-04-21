@@ -8,6 +8,7 @@
  */
 
 import { Box, Heading, Text, Divider, Copyable } from "@metamask/snaps-sdk/jsx";
+import type { JSXElement } from "@metamask/snaps-sdk/jsx";
 import type { SignHashMetadata } from "./types";
 
 /**
@@ -31,7 +32,7 @@ export function exportPublicKeyDialog(fingerprint: string) {
  * Dialog for signing a Canton transaction (transfer, mint, etc.).
  */
 export function signTransactionDialog(hash: string, metadata?: SignHashMetadata) {
-  const children: any[] = [Heading({ children: "Sign Canton Transaction" }), Divider({})];
+  const children: JSXElement[] = [Heading({ children: "Sign Canton Transaction" }), Divider({})];
 
   if (metadata) {
     children.push(Text({ children: `Operation: ${metadata.operation}` }));
