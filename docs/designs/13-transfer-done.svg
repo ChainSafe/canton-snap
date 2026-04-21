@@ -129,34 +129,28 @@
         <!-- Amount -->
         <g transform="translate(24, 28)" font-size="12">
           <text fill="#656a8a">Amount</text>
-          <g transform="translate(552, 0)" text-anchor="end">
-            <text fill="#f1f3f9" font-weight="700" font-size="14" font-family="JetBrains Mono, monospace">100.00 DEMO</text>
-          </g>
+          <text x="528" fill="#f1f3f9" font-weight="700" font-size="14" font-family="JetBrains Mono, monospace" text-anchor="end">100.00 DEMO</text>
         </g>
         <line x1="24" y1="48" x2="552" y2="48" stroke="#252840"/>
 
         <!-- Recipient -->
         <g transform="translate(24, 68)" font-size="12">
           <text fill="#656a8a">To</text>
-          <g transform="translate(552, 0)" text-anchor="end">
-            <text fill="#f1f3f9" font-weight="500" font-family="JetBrains Mono, monospace">0xabcd35Cc…Bc1234</text>
-          </g>
+          <text x="528" fill="#f1f3f9" font-weight="500" font-family="JetBrains Mono, monospace" text-anchor="end">0xabcd35Cc…Bc1234</text>
         </g>
         <line x1="24" y1="88" x2="552" y2="88" stroke="#252840"/>
 
         <!-- Transaction hash -->
         <g transform="translate(24, 108)" font-size="12">
           <text fill="#656a8a">Transaction</text>
-          <g transform="translate(552, 0)" text-anchor="end">
-            <text fill="#f1f3f9" font-weight="500" font-family="JetBrains Mono, monospace">a7f3c2b1…8e92f5d4</text>
-          </g>
+          <text x="528" fill="#f1f3f9" font-weight="500" font-family="JetBrains Mono, monospace" text-anchor="end">a7f3c2b1…8e92f5d4</text>
         </g>
         <line x1="24" y1="128" x2="552" y2="128" stroke="#252840"/>
 
         <!-- When -->
         <g transform="translate(24, 148)" font-size="12">
           <text fill="#656a8a">Completed</text>
-          <text x="552" fill="#f1f3f9" font-weight="500" text-anchor="end">Just now</text>
+          <text x="528" fill="#f1f3f9" font-weight="500" text-anchor="end">Just now</text>
         </g>
       </g>
 
