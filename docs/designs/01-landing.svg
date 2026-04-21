@@ -28,14 +28,14 @@
   <!-- ═══ Centered content ═══ -->
   <g transform="translate(420, 280)">
     <!-- Small eyebrow -->
-    <text x="300" y="0" font-size="12" font-weight="600" letter-spacing="2.5" fill="#00d4a4" text-anchor="middle">CANTON NETWORK</text>
+    <text x="300" y="0" font-size="12" font-weight="600" letter-spacing="2.5" fill="#00d4a4" text-anchor="middle">CANTON FOR EVM USERS</text>
 
     <!-- Title -->
-    <text x="300" y="64" font-size="44" font-weight="700" fill="#f1f3f9" text-anchor="middle" letter-spacing="-0.8">Register your Canton party</text>
+    <text x="300" y="64" font-size="44" font-weight="700" fill="#f1f3f9" text-anchor="middle" letter-spacing="-0.8">Use Canton like Ethereum</text>
 
     <!-- Subtitle -->
-    <text x="300" y="110" font-size="16" fill="#a1a6c4" text-anchor="middle">Connect your MetaMask wallet to register, view balances,</text>
-    <text x="300" y="134" font-size="16" fill="#a1a6c4" text-anchor="middle">and transfer tokens on Canton Network.</text>
+    <text x="300" y="110" font-size="16" fill="#a1a6c4" text-anchor="middle">Register a Canton party, hold tokens, and transfer —</text>
+    <text x="300" y="134" font-size="16" fill="#a1a6c4" text-anchor="middle">all with the MetaMask wallet you already have.</text>
 
     <!-- CTA button -->
     <g transform="translate(90, 190)">
@@ -56,7 +56,7 @@
 
   <!-- ═══ Thin footer ═══ -->
   <g transform="translate(96, 836)" font-size="12" fill="#656a8a">
-    <text y="14" dominant-baseline="middle">Non-custodial signing powered by MetaMask Snap.</text>
+    <text y="14" dominant-baseline="middle">Your EVM wallet, on Canton Network.</text>
     <g transform="translate(1184, 0)" text-anchor="end">
       <text x="248" y="14" dominant-baseline="middle">
         <tspan fill="#a1a6c4">Docs</tspan>
