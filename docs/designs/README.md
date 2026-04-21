@@ -15,7 +15,10 @@ The dApp's purpose (per [epic #8](https://github.com/ChainSafe/canton-snap/issue
 | [`05-noncustodial-flow.svg`](./05-noncustodial-flow.svg) | Non-custodial 4-step progress | `/register` → Use Non-Custodial |
 | [`06-success.svg`](./06-success.svg) | Registered — party ID + fingerprint | shared by both flows after completion |
 | [`07-network-switcher.svg`](./07-network-switcher.svg) | Network switcher — Mainnet / Devnet / Local | click network pill (top right) |
-| [`08-dashboard.svg`](./08-dashboard.svg) | Dashboard — identity, balances, activity | `/dashboard` |
+| [`08-dashboard-profile.svg`](./08-dashboard-profile.svg) | Dashboard → Profile (identity + quick actions) | `/dashboard` (default) |
+| [`09-dashboard-balances.svg`](./09-dashboard-balances.svg) | Dashboard → Balances (full token list) | `/dashboard/balances` |
+| [`10-dashboard-transfer.svg`](./10-dashboard-transfer.svg) | Dashboard → Transfer (send form) | `/dashboard/transfer` |
+| [`11-dashboard-bridge.svg`](./11-dashboard-bridge.svg) | Dashboard → Bridge (cross-chain, placeholder) | `/dashboard/bridge` |
 | _(next)_ | Dashboard — balances + transfers | `/dashboard` |
 
 ## Design principles
@@ -64,10 +67,17 @@ Landing ─► Registration ─► {Custodial | Non-Custodial} ─► Success �
    └─ If already connected & registered ──────────────────────┴─► Dashboard
 ```
 
-**Dashboard sections** (top to bottom):
-1. **Identity card** — party ID, fingerprint, key-mode tag (NON-CUSTODIAL / CUSTODIAL), Send + Bridge CTAs, Snap status strip (visible only for non-custodial)
-2. **Balances** — USDCx / DEMO / PROMPT rows with amount, USD equivalent (where applicable), and row-level menu
-3. **Recent activity** — received / sent / registered rows with timestamp
+**Dashboard layout** — persistent 240px left sidebar with 5 nav items (Profile / Balances / Transfer / Bridge / Activity) plus a snap-status chip pinned to the bottom. Top bar (network pill + wallet chip) stays at the same absolute position across all tabs for consistency.
+
+**Profile tab** — identity card (party ID, fingerprint, key-mode tag) on the left, quick-action buttons (Send → Transfer tab, Bridge → Bridge tab) on the right. Below: a 3-column Connection card (MetaMask, Canton Snap, Middleware).
+
+**Balances tab** — total-value header card + sortable token list with ASSET / BALANCE / VALUE / ACTIONS columns. Per-row "Send →" link jumps straight to the Transfer tab pre-filled.
+
+**Transfer tab** — two-column form: left is the form (token selector, recipient, amount with MAX button, fee hint, submit), right is a live Summary card + bridge hint callout.
+
+**Bridge tab** — FROM / TO network cards with a swap-direction button between them, amount + token selector per side, destination address, fee/time summary. CTA is gated ("coming soon") since bridging is a Phase 3 concern.
+
+**Activity tab** — _(no mockup yet)_ full history list, same row pattern as the old in-profile activity section.
 
 **Custodial** — one MetaMask signature → POST `/register`. The middleware generates and holds the Canton key.
 
