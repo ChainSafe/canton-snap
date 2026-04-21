@@ -22,7 +22,7 @@
   <g transform="translate(96, 40)">
     <rect width="32" height="32" rx="8" fill="url(#ctaFill)"/>
     <path d="M10 16 L14 20 L22 12" stroke="#0a0b14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    <text x="48" y="16" font-size="14" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">Canton Snap</text>
+    <text x="48" y="16" font-size="14" font-weight="600" fill="#f1f3f9" dominant-baseline="middle">Canton dApp</text>
   </g>
 
   <!-- ═══ Centered content ═══ -->
