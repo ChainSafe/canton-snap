@@ -54,18 +54,24 @@ curl http://localhost:8081/health
 ## Starting the Dev Servers
 
 ```bash
-# Install dependencies (first time only)
+# First-time setup
 npm install
+cp .env.example .env          # snap port config (default: 8080)
 
-# Start snap server (port 4001) + dApp server (port 3000) together
+# Build snap bundle
+npm run build:snap
+
+# Start snap server (port 8080) + dApp (port 3000) together
 npm run serve
 
 # Or start individually:
-npm run serve:snap   # snap only — http://localhost:4001
-npm run serve:dapp   # dApp only — http://localhost:3000
+npm run serve:snap   # snap only  — http://localhost:8080
+npm run dev:dapp     # dApp only  — http://localhost:3000 (auto-increments if busy)
 ```
 
-Open the test dApp at **http://localhost:3000** (not `file://` — MetaMask won't inject into file:// pages).
+> **Port conflicts:** The dApp Vite server auto-increments past any busy port (3000 → 3002 → …). The snap server uses the port from your `.env` (`VITE_SNAP_PORT`, default `8080`); if you change it, update `.env` — both snap and dApp read from the same file.
+
+Open the dApp at **http://localhost:3000** (not `file://` — MetaMask won't inject into file:// pages).
 
 ---
 
@@ -75,7 +81,7 @@ Open the test dApp at **http://localhost:3000** (not `file://` — MetaMask won'
 2. Click **"Install / Connect Snap"**.
 3. MetaMask Flask prompts to add the Canton Network Snap — review permissions and click **Install**.
 
-The snap ID is `local:http://localhost:4001`. If you previously installed the snap at a different port, go to MetaMask Flask → Settings → Snaps → Remove it first, then reinstall.
+The snap ID is `local:http://localhost:8080` (or whatever port is in your `.env`). If you previously installed the snap at a different port, go to MetaMask Flask → Settings → Snaps → Remove it first, then reinstall.
 
 ---
 
@@ -160,16 +166,15 @@ These are useful for verifying the snap's crypto output in isolation — e.g. fe
 ## Running Snap Unit Tests
 
 ```bash
-npm test
-# 28 cross-validation tests against Go-generated test vectors
-# Verifies: key derivation, SPKI DER, fingerprint, DER signatures
+npm test           # crypto unit tests (vitest)
+npm run test:snap  # full snap integration tests (jest + @metamask/snaps-jest)
 ```
 
 ---
 
 ## Current Limitations
 
-**Cannot install in regular MetaMask** — The snap is not published to npm. It only works via `local:http://localhost:4001` in MetaMask Flask. Publishing requires an npm release and MetaMask's snap review process.
+**Cannot install in regular MetaMask** — The snap is not published to npm. It only works via `local:http://localhost:8080` in MetaMask Flask. Publishing requires an npm release and MetaMask's snap review process.
 
 **MetaMask Flask only** — Flask cannot coexist with regular MetaMask in the same browser profile. Use a dedicated profile.
 
@@ -201,11 +206,24 @@ The following flows are **not yet implemented** in the test dApp (tracked in [is
 
 | | |
 |---|---|
-| Test dApp | http://localhost:3000 |
-| Snap server | http://localhost:4001 |
-| Snap ID | `local:http://localhost:4001` |
+| dApp | http://localhost:3000 |
+| Snap server | http://localhost:8080 (set via `VITE_SNAP_PORT` in `.env`) |
+| Snap ID | `local:http://localhost:8080` |
 | Middleware API | http://localhost:8081 |
 | Middleware health | `GET http://localhost:8081/health` |
+
+| Command | Purpose |
+|---|---|
+| `npm run serve` | Start snap + dApp together |
+| `npm run serve:snap` | Snap server only |
+| `npm run dev:dapp` | dApp dev server only |
+| `npm run build` | Build snap + dApp |
+| `npm run build:snap` | Build snap bundle only |
+| `npm run watch:snap` | Snap hot-reload during development |
+| `npm test` | Crypto unit tests |
+| `npm run test:snap` | Full snap integration tests |
+| `npm run lint` | Lint all packages |
+| `npm run format` | Format all packages |
 
 | Middleware endpoint | Purpose |
 |---|---|
