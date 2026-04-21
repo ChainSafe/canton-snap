@@ -60,7 +60,7 @@
 
   <!-- ═══ Wallet menu dropdown ═══ -->
   <g transform="translate(1040, 84)" filter="url(#menuShadow)">
-    <rect width="304" height="240" rx="14" fill="#12141f" stroke="#353a5a"/>
+    <rect width="304" height="160" rx="14" fill="#12141f" stroke="#353a5a"/>
 
     <!-- CONNECTED WALLET section -->
     <g transform="translate(20, 20)">
@@ -80,21 +80,8 @@
       </g>
     </g>
 
-    <!-- NETWORK section (inline display, switcher lives on the pill) -->
-    <g transform="translate(20, 104)">
-      <text font-size="11" font-weight="600" letter-spacing="1.2" fill="#656a8a">NETWORK</text>
-      <g transform="translate(0, 18)">
-        <rect width="264" height="40" rx="10" fill="#1a1d2e" stroke="#252840"/>
-        <circle cx="18" cy="20" r="5" fill="#ffb84d"/>
-        <text x="34" y="16" font-size="13" font-weight="500" fill="#f1f3f9" dominant-baseline="middle">Canton Devnet</text>
-        <text x="34" y="30" font-size="10" fill="#656a8a" dominant-baseline="middle">https://devnet.middleware.canton</text>
-        <!-- switch → -->
-        <text x="246" y="20" font-size="11" font-weight="600" fill="#00d4a4" text-anchor="end" dominant-baseline="middle">Switch</text>
-      </g>
-    </g>
-
     <!-- Disconnect row -->
-    <g transform="translate(20, 184)">
+    <g transform="translate(20, 108)">
       <rect width="264" height="36" rx="8" fill="#ff6b6b" fill-opacity="0.08"/>
       <g transform="translate(12, 10)" stroke="#ff6b6b" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
         <path d="M7 4 H4 Q2 4 2 6 V14 Q2 16 4 16 H7"/>
