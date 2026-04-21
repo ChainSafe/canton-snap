@@ -38,7 +38,7 @@
   <!-- ═══ Page header ═══ -->
   <g transform="translate(0, 180)">
     <text x="720" y="0" font-size="36" font-weight="700" fill="#f1f3f9" text-anchor="middle" letter-spacing="-0.6">Choose how to manage your Canton key</text>
-    <text x="720" y="36" font-size="15" fill="#a1a6c4" text-anchor="middle">Same custodial vs self-custody choice you know from EVM. You can switch later.</text>
+    <text x="720" y="36" font-size="15" fill="#a1a6c4" text-anchor="middle">Same custodial vs self-custody choice you know from EVM.</text>
   </g>
 
   <!-- ═══ Two minimal cards side by side ═══ -->
@@ -129,6 +129,4 @@
     </g>
   </g>
 
-  <!-- Small footer note -->
-  <text x="720" y="712" font-size="12" fill="#656a8a" text-anchor="middle">You can re-register with the other mode using a different wallet address.</text>
 </svg>
