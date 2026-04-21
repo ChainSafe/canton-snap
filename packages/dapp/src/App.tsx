@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-const SNAP_ID = "local:http://localhost:4001";
+const SNAP_ID = `local:http://localhost:${import.meta.env.VITE_SNAP_PORT}`;
 
 interface RegState {
   compressedPubKey?: string;
