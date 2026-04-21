@@ -40,14 +40,10 @@
     <!-- CTA button -->
     <g transform="translate(90, 190)">
       <rect width="420" height="52" rx="12" fill="url(#ctaFill)"/>
-      <g transform="translate(170, 14)">
-        <path d="M6 10 L12 6 L22 12 L20 18 L12 16 Z" fill="#0a0b14"/>
-      </g>
       <text x="210" y="26" font-size="15" font-weight="600" fill="#0a0b14" text-anchor="middle" dominant-baseline="middle">Connect MetaMask</text>
     </g>
 
     <!-- Tiny helper line -->
-    <text x="300" y="280" font-size="12" fill="#656a8a" text-anchor="middle">Don't have MetaMask?</text>
     <text x="300" y="280" font-size="12" fill="#656a8a" text-anchor="middle">
       <tspan>Don't have MetaMask? </tspan>
       <tspan fill="#00d4a4" font-weight="600">Install it →</tspan>
