@@ -6,10 +6,14 @@ The dApp's purpose (per [epic #8](https://github.com/ChainSafe/canton-snap/issue
 
 ## Files
 
-| File | Page | Route |
+| File | Screen | Route / trigger |
 |---|---|---|
 | [`01-landing.svg`](./01-landing.svg) | Connect MetaMask | `/` |
 | [`02-registration.svg`](./02-registration.svg) | Custodial vs non-custodial choice | `/register` |
+| [`03-wallet-menu.svg`](./03-wallet-menu.svg) | Wallet dropdown (copy / disconnect) | click wallet chip (top right) |
+| [`04-custodial-flow.svg`](./04-custodial-flow.svg) | Custodial signing state | `/register` → Use Custodial |
+| [`05-noncustodial-flow.svg`](./05-noncustodial-flow.svg) | Non-custodial 4-step progress | `/register` → Use Non-Custodial |
+| [`06-success.svg`](./06-success.svg) | Registered — party ID + fingerprint | shared by both flows after completion |
 | _(next)_ | Dashboard — balances + transfers | `/dashboard` |
 
 ## Design principles
@@ -51,10 +55,19 @@ The dApp's purpose (per [epic #8](https://github.com/ChainSafe/canton-snap/issue
 ## Flow
 
 ```
-Landing ─► Registration ─► Dashboard
-   │             │
-   │             ├─► Custodial:     POST /register (EIP-191)
-   │             └─► Non-Custodial: snap_getEntropy → prepare-topology → sign-topology → /register
-   │
-   └─ If already connected & registered → skip to Dashboard
+Landing ─► Registration ─► {Custodial | Non-Custodial} ─► Success ─► Dashboard
+   │             │                                           │
+   │             └─ Wallet menu (disconnect / copy addr)     │
+   │                                                          │
+   └─ If already connected & registered ──────────────────────┴─► Dashboard
 ```
+
+**Custodial** — one MetaMask signature → POST `/register`. The middleware generates and holds the Canton key.
+
+**Non-custodial** — four sequential confirmations:
+1. `canton_getPublicKey` (snap dialog)
+2. `personal_sign(register:<ts>)` (MetaMask)
+3. `canton_signTopology` (snap dialog)
+4. POST `/register` with all signatures
+
+**Wallet menu** — overlay popover anchored to the wallet chip; surfaces full address, Etherscan link, and disconnect.
