@@ -18,9 +18,12 @@ The dApp's purpose (per [epic #8](https://github.com/ChainSafe/canton-snap/issue
 | [`08-dashboard-profile.svg`](./08-dashboard-profile.svg) | Dashboard → Profile (identity + quick actions) | `/dashboard` (default) |
 | [`09-dashboard-balances.svg`](./09-dashboard-balances.svg) | Dashboard → Balances (full token list) | `/dashboard/balances` |
 | [`10-dashboard-transfer.svg`](./10-dashboard-transfer.svg) | Dashboard → Transfer (send form) | `/dashboard/transfer` |
-| [`11-dashboard-bridge.svg`](./11-dashboard-bridge.svg) | Dashboard → Bridge (cross-chain, placeholder) | `/dashboard/bridge` |
+| [`11-dashboard-bridge.svg`](./11-dashboard-bridge.svg) | Dashboard → Bridge, EVM → Canton form | `/dashboard/bridge` (default direction) |
 | [`12-transfer-flow-noncustodial.svg`](./12-transfer-flow-noncustodial.svg) | Transfer wizard — Sign step | step 2 of the transfer wizard |
 | [`13-transfer-done.svg`](./13-transfer-done.svg) | Transfer wizard — Done (receipt) | step 3 of the transfer wizard |
+| [`14-dashboard-bridge-withdraw.svg`](./14-dashboard-bridge-withdraw.svg) | Dashboard → Bridge, Canton → EVM form | toggle direction on Bridge tab |
+| [`15-bridge-flow-deposit.svg`](./15-bridge-flow-deposit.svg) | Bridge wizard — Confirm (deposit) | step 2, EVM → Canton |
+| [`16-bridge-flow-withdraw.svg`](./16-bridge-flow-withdraw.svg) | Bridge wizard — Confirm (withdraw) | step 2, Canton → EVM |
 | _(next)_ | Dashboard — balances + transfers | `/dashboard` |
 
 ## Design principles
@@ -85,7 +88,19 @@ This maps onto the canton-middleware API — `POST /api/v2/transfer/prepare` (au
 
 **Custodial transfers** have no dedicated endpoint in the middleware — custodial users transact via the `/eth` JSON-RPC with a plain ERC20 `transfer()` call. That's a standard EVM flow (one MetaMask popup) and doesn't need the progress bar; the Transfer form still applies but on submit it skips straight to MetaMask instead of the 3-step wizard.
 
-**Bridge tab** — FROM / TO network cards with a swap-direction button between them, amount + token selector per side, destination address, fee/time summary. CTA is gated ("coming soon") since bridging is a Phase 3 concern.
+**Bridge tab** — same 3-step wizard pattern as Transfer (`Details → Confirm → Done`) plus a **direction toggle** pinned under the title. Two directions, each with its own flow based on the canton-middleware bridge e2e tests:
+
+- **EVM → Canton** (deposit — `11-dashboard-bridge.svg`):
+  1. FROM card = Ethereum Mainnet + source token (USDC / etc.)
+  2. TO card = Canton Devnet + mirrored token (USDCx) — auto-derives recipient from the user's fingerprint, no manual address needed
+  3. Confirm step (`15-bridge-flow-deposit.svg`): two MetaMask signatures — `token.approve(bridge, amount)` then `bridge.depositToCanton(amount, fingerprint)` — followed by a relayer that watches the `Deposit` event and creates the Canton `CIP56Holding`. Settlement ~15–30s.
+
+- **Canton → EVM** (withdraw — `14-dashboard-bridge-withdraw.svg`):
+  1. FROM card = Canton Devnet + Canton token (USDCx)
+  2. TO card = Ethereum Mainnet + EVM token (USDC) — destination is the user's connected EVM address
+  3. Confirm step (`16-bridge-flow-withdraw.svg`): one Canton Snap signature over the withdrawal hash; middleware creates the `WithdrawalRequest`, relayer releases tokens on Ethereum. Settlement ~20–40s.
+
+Destination is auto-derived in both directions (the fingerprint links the Canton party and the EVM address 1:1), so the user doesn't type an address — just picks amount + token.
 
 **Activity tab** — _(no mockup yet)_ full history list, same row pattern as the old in-profile activity section.
 
