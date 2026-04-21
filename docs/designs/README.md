@@ -19,7 +19,8 @@ The dApp's purpose (per [epic #8](https://github.com/ChainSafe/canton-snap/issue
 | [`09-dashboard-balances.svg`](./09-dashboard-balances.svg) | Dashboard → Balances (full token list) | `/dashboard/balances` |
 | [`10-dashboard-transfer.svg`](./10-dashboard-transfer.svg) | Dashboard → Transfer (send form) | `/dashboard/transfer` |
 | [`11-dashboard-bridge.svg`](./11-dashboard-bridge.svg) | Dashboard → Bridge (cross-chain, placeholder) | `/dashboard/bridge` |
-| [`12-transfer-flow-noncustodial.svg`](./12-transfer-flow-noncustodial.svg) | Non-custodial transfer — 4-step progress | Submit on Transfer tab (key_mode=external) |
+| [`12-transfer-flow-noncustodial.svg`](./12-transfer-flow-noncustodial.svg) | Transfer wizard — Sign step | step 2 of the transfer wizard |
+| [`13-transfer-done.svg`](./13-transfer-done.svg) | Transfer wizard — Done (receipt) | step 3 of the transfer wizard |
 | _(next)_ | Dashboard — balances + transfers | `/dashboard` |
 
 ## Design principles
@@ -78,7 +79,7 @@ Landing ─► Registration ─► {Custodial | Non-Custodial} ─► Success �
 
 - **Step 1 — Details** (`10-dashboard-transfer.svg`): centered form (token / recipient / amount + MAX) with an info row noting "You'll sign twice (MetaMask + Snap)" and a single **Continue** CTA. No side-summary card — the form *is* the summary.
 - **Step 2 — Sign** (`12-transfer-flow-noncustodial.svg`): teal-bordered focus card showing the current action (snap signing with a spinner + hash preview + **Open snap dialog** button). Two small check pills beneath the CTA confirm the automatic background steps ("Authenticated with MetaMask", "Transaction prepared") so users know the two API round-trips (`/prepare`, `/execute`) are handled.
-- **Step 3 — Done**: _(not yet mocked — will reuse the `06-success.svg` pattern, just scoped to the transfer)_.
+- **Step 3 — Done** (`13-transfer-done.svg`): success card with glowing check, amount/recipient/tx-hash/timestamp receipt, and two CTAs — **Send another** (resets to step 1) and **View in Activity →** (jumps to the Activity tab).
 
 This maps onto the canton-middleware API — `POST /api/v2/transfer/prepare` (auth + prepare) → `canton_signHash` in the snap → `POST /api/v2/transfer/execute`. The two explicit user actions (MetaMask auth, Snap signing) are the only things the step bar exposes; the API round-trips happen between them automatically.
 
