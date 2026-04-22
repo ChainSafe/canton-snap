@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import prettierConfig from "eslint-config-prettier";
+import reactHooks from "eslint-plugin-react-hooks";
 
 export default tseslint.config(
   js.configs.recommended,
@@ -21,6 +22,11 @@ export default tseslint.config(
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/no-explicit-any": "warn",
     },
+  },
+  {
+    files: ["packages/dapp/src/**/*.{ts,tsx}"],
+    plugins: { "react-hooks": reactHooks },
+    rules: { ...reactHooks.configs.recommended.rules },
   },
   {
     ignores: [
