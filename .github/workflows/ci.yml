@@ -18,8 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm run lint
 
   format:
@@ -30,8 +29,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm run format:check
 
   test:
@@ -42,8 +40,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
+      - run: npm install
       - run: cp .env.example .env
       - run: npm run build
       - run: npm test
