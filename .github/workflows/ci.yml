@@ -34,8 +34,8 @@ jobs:
       - run: npm ci
       - run: npm run format:check
 
-  test-crypto:
-    name: Test (crypto unit)
+  test-snap-unit:
+    name: Test (snap unit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,9 +44,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm test
+      - run: npm run test:snap:unit
 
-  test-snap:
+  test-snap-integration:
     name: Test (snap integration)
     runs-on: ubuntu-latest
     steps:
@@ -56,4 +56,4 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run test:snap
+      - run: npm run test:snap:integration
