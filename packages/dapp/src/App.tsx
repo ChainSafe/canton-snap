@@ -44,14 +44,19 @@ function getEthereum() {
 }
 
 function toHex(str: string) {
-  return "0x" + Array.from(new TextEncoder().encode(str))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return (
+    "0x" +
+    Array.from(new TextEncoder().encode(str))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+  );
 }
 
 function ResultBox({ result }: { result: Result | null }) {
   if (!result) return null;
-  const text = result.error ?? (typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2));
+  const text =
+    result.error ??
+    (typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2));
   return <div className={`result ${result.error ? "error" : "success"}`}>{text}</div>;
 }
 
@@ -131,7 +136,10 @@ export default function App() {
       const data = await mwFetch("/register", { signature, message });
       setResult("custReg", data);
     } catch (e) {
-      if (e instanceof AlreadyRegisteredError) { setCustAlreadyRegistered(e.details); return; }
+      if (e instanceof AlreadyRegisteredError) {
+        setCustAlreadyRegistered(e.details);
+        return;
+      }
       setResult("custReg", null, (e as Error).message);
     }
   }
@@ -140,8 +148,14 @@ export default function App() {
 
   async function regStep1() {
     try {
-      const result = (await invokeSnap("canton_getPublicKey", { keyIndex: globalKeyIndex })) as RegState;
-      setReg({ compressedPubKey: result.compressedPubKey, spkiDer: result.spkiDer, fingerprint: result.fingerprint });
+      const result = (await invokeSnap("canton_getPublicKey", {
+        keyIndex: globalKeyIndex,
+      })) as RegState;
+      setReg({
+        compressedPubKey: result.compressedPubKey,
+        spkiDer: result.spkiDer,
+        fingerprint: result.fingerprint,
+      });
       setResult("reg1", result);
       setStep2Enabled(true);
     } catch (e) {
@@ -174,7 +188,10 @@ export default function App() {
       setResult("reg2", data);
       setStep3Enabled(true);
     } catch (e) {
-      if (e instanceof AlreadyRegisteredError) { setRegAlreadyRegistered(e.details); return; }
+      if (e instanceof AlreadyRegisteredError) {
+        setRegAlreadyRegistered(e.details);
+        return;
+      }
       setResult("reg2", null, (e as Error).message);
     }
   }
@@ -204,7 +221,10 @@ export default function App() {
       });
       setResult("reg4", data);
     } catch (e) {
-      if (e instanceof AlreadyRegisteredError) { setRegAlreadyRegistered(e.details); return; }
+      if (e instanceof AlreadyRegisteredError) {
+        setRegAlreadyRegistered(e.details);
+        return;
+      }
       setResult("reg4", null, (e as Error).message);
     }
   }
@@ -221,7 +241,10 @@ export default function App() {
 
   async function getFingerprint() {
     try {
-      setResult("getFingerprint", await invokeSnap("canton_getFingerprint", { keyIndex: getFpIndex }));
+      setResult(
+        "getFingerprint",
+        await invokeSnap("canton_getFingerprint", { keyIndex: getFpIndex }),
+      );
     } catch (e) {
       setResult("getFingerprint", null, (e as Error).message);
     }
@@ -249,16 +272,19 @@ export default function App() {
       {!metamaskDetected && (
         <div className="banner banner-error">
           <strong>MetaMask not detected.</strong>
-          <br /><br />
+          <br />
+          <br />
           Two common causes:
           <ol>
             <li>
               You opened this as <code>file://</code> — MetaMask does not inject into file:// pages.
-              <br />Fix: run <code>npm run dev:dapp</code> and open <code>http://localhost:3000</code>
+              <br />
+              Fix: run <code>npm run dev:dapp</code> and open <code>http://localhost:3000</code>
             </li>
             <li>
               MetaMask Flask is not installed.
-              <br />Fix: Install{" "}
+              <br />
+              Fix: Install{" "}
               <a href="https://metamask.io/flask/" target="_blank" rel="noreferrer">
                 MetaMask Flask
               </a>{" "}
@@ -294,7 +320,9 @@ export default function App() {
 
       {/* ── Custodial Registration ─────────────────────────────────── */}
       <h2>Custodial Registration</h2>
-      <p className="hint">Middleware generates and stores the Canton key on your behalf. Single step.</p>
+      <p className="hint">
+        Middleware generates and stores the Canton key on your behalf. Single step.
+      </p>
       {custAlreadyRegistered && (
         <div className="banner banner-success">
           <strong>Already registered.</strong> This address already has a custodial Canton party.
@@ -311,7 +339,8 @@ export default function App() {
       <p className="hint">Run steps 1–4 in order. Each step unlocks the next.</p>
       {regAlreadyRegistered ? (
         <div className="banner banner-success">
-          <strong>Already registered.</strong> This address has an active Canton party — no need to re-register.
+          <strong>Already registered.</strong> This address has an active Canton party — no need to
+          re-register.
           <div className="banner-details">{regAlreadyRegistered}</div>
         </div>
       ) : (
@@ -322,7 +351,9 @@ export default function App() {
             <ResultBox result={results["reg1"] ?? null} />
           </div>
           <div className="step">
-            <div className="step-label">Step 2 — Sign registration message &amp; prepare topology on middleware</div>
+            <div className="step-label">
+              Step 2 — Sign registration message &amp; prepare topology on middleware
+            </div>
             <button onClick={regStep2} disabled={!step2Enabled}>
               2. Prepare Topology
             </button>
@@ -396,7 +427,11 @@ export default function App() {
       </label>
       <label>
         Recipient:{" "}
-        <input value={signRecipient} onChange={(e) => setSignRecipient(e.target.value)} placeholder="0x..." />
+        <input
+          value={signRecipient}
+          onChange={(e) => setSignRecipient(e.target.value)}
+          placeholder="0x..."
+        />
       </label>
       <button onClick={signHash}>Sign Hash</button>
       <ResultBox result={results["signHash"] ?? null} />

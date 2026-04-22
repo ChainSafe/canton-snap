@@ -10,11 +10,24 @@ import { secp256k1 } from "@noble/curves/secp256k1";
 // ASN.1 OIDs (DER-encoded)
 // SEQUENCE { OID 1.2.840.10045.2.1, OID 1.3.132.0.10 }
 const ALGORITHM_IDENTIFIER = new Uint8Array([
-  0x30, 0x10, // SEQUENCE, 16 bytes
-  0x06, 0x07, // OID, 7 bytes
-  0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, // 1.2.840.10045.2.1 (ecPublicKey)
-  0x06, 0x05, // OID, 5 bytes
-  0x2b, 0x81, 0x04, 0x00, 0x0a, // 1.3.132.0.10 (secp256k1)
+  0x30,
+  0x10, // SEQUENCE, 16 bytes
+  0x06,
+  0x07, // OID, 7 bytes
+  0x2a,
+  0x86,
+  0x48,
+  0xce,
+  0x3d,
+  0x02,
+  0x01, // 1.2.840.10045.2.1 (ecPublicKey)
+  0x06,
+  0x05, // OID, 5 bytes
+  0x2b,
+  0x81,
+  0x04,
+  0x00,
+  0x0a, // 1.3.132.0.10 (secp256k1)
 ]);
 
 /**
