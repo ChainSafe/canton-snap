@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { installSnap, isSnapInstalled, invokeSnap } from '../lib/ethereum';
+import { useState, useEffect, useCallback } from "react";
+import { installSnap, isSnapInstalled, invokeSnap } from "../lib/ethereum";
 
 export interface SnapPublicKey {
   compressedPubKey: string;
@@ -49,11 +49,11 @@ export function useSnap(): SnapState {
   }, []);
 
   const getPublicKey = useCallback(async (keyIndex = 0): Promise<SnapPublicKey> => {
-    return invokeSnap<SnapPublicKey>('canton_getPublicKey', { keyIndex });
+    return invokeSnap<SnapPublicKey>("canton_getPublicKey", { keyIndex });
   }, []);
 
   const signTopology = useCallback(async (hash: string): Promise<string> => {
-    const result = await invokeSnap<{ derSignature: string }>('canton_signTopology', { hash });
+    const result = await invokeSnap<{ derSignature: string }>("canton_signTopology", { hash });
     return result.derSignature;
   }, []);
 

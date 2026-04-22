@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { TopBar } from '../components/TopBar';
-import { AmbientOrb } from '../components/AmbientOrb';
-import { Spinner } from '../components/Spinner';
-import { Button } from '../components/Button';
-import { cn } from '../lib/cn';
-import { type NetworkId } from '../lib/config';
-import styles from './CustodialRegistrationPage.module.css';
+import { useEffect, useState } from "react";
+import { TopBar } from "../components/TopBar";
+import { AmbientOrb } from "../components/AmbientOrb";
+import { Spinner } from "../components/Spinner";
+import { Button } from "../components/Button";
+import { cn } from "../lib/cn";
+import { type NetworkId } from "../lib/config";
+import styles from "./CustodialRegistrationPage.module.css";
 
 interface Props {
   address: string;
@@ -32,7 +32,16 @@ function StatusIcon({ pending: _pending, error }: { pending: boolean; error: str
   return <Spinner size={64} />;
 }
 
-export function CustodialRegistrationPage({ address, network, onNetworkChange, pending, error, onBack, onRegister, onDisconnect }: Props) {
+export function CustodialRegistrationPage({
+  address,
+  network,
+  onNetworkChange,
+  pending,
+  error,
+  onBack,
+  onRegister,
+  onDisconnect,
+}: Props) {
   useEffect(() => {
     void onRegister();
   }, [onRegister]);
@@ -42,15 +51,22 @@ export function CustodialRegistrationPage({ address, network, onNetworkChange, p
   return (
     <div className="page">
       <AmbientOrb opacity={0.14} size={840} y="62%" />
-      <TopBar address={address} network={network} onNetworkChange={onNetworkChange} onDisconnect={onDisconnect} />
+      <TopBar
+        address={address}
+        network={network}
+        onNetworkChange={onNetworkChange}
+        onDisconnect={onDisconnect}
+      />
 
       <div className={styles.backBar}>
-        <button className="back-link" onClick={onBack}>← Back to registration</button>
+        <button className="back-link" onClick={onBack}>
+          ← Back to registration
+        </button>
       </div>
 
       <main className={styles.main}>
-        <div className={cn('card', styles.card)}>
-          <div className={cn('mode-tag', 'mode-tag-custodial', styles.modeTag)}>CUSTODIAL</div>
+        <div className={cn("card", styles.card)}>
+          <div className={cn("mode-tag", "mode-tag-custodial", styles.modeTag)}>CUSTODIAL</div>
 
           <div className={styles.spinnerWrap}>
             <StatusIcon pending={pending} error={error} />
@@ -59,8 +75,10 @@ export function CustodialRegistrationPage({ address, network, onNetworkChange, p
           <h2 className={styles.title}>Confirm in MetaMask</h2>
 
           <p className={styles.description}>
-            Sign the registration message to prove you<br />
-            own this wallet. The middleware will then<br />
+            Sign the registration message to prove you
+            <br />
+            own this wallet. The middleware will then
+            <br />
             allocate a Canton party for you.
           </p>
 
@@ -73,18 +91,22 @@ export function CustodialRegistrationPage({ address, network, onNetworkChange, p
           </div>
 
           {error && (
-            <div className={cn('error-banner', styles.errorSection)}>
+            <div className={cn("error-banner", styles.errorSection)}>
               {error}
               <div className={styles.retryWrap}>
-                <Button variant="ghost" onClick={onRegister}>Try again</Button>
+                <Button variant="ghost" onClick={onRegister}>
+                  Try again
+                </Button>
               </div>
             </div>
           )}
 
           {!error && (
             <p className={styles.waitingText}>
-              Waiting for signature…{' '}
-              <Button variant="ghost" onClick={onBack}>Cancel</Button>
+              Waiting for signature…{" "}
+              <Button variant="ghost" onClick={onBack}>
+                Cancel
+              </Button>
             </p>
           )}
         </div>

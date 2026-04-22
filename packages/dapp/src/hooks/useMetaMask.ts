@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { requestAccounts } from '../lib/ethereum';
+import { useState, useCallback } from "react";
+import { requestAccounts } from "../lib/ethereum";
 
 export interface MetaMaskState {
   detected: boolean;

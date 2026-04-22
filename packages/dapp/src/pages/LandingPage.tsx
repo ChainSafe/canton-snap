@@ -1,7 +1,7 @@
-import { TopBar } from '../components/TopBar';
-import { AmbientOrb } from '../components/AmbientOrb';
-import { Button } from '../components/Button';
-import styles from './LandingPage.module.css';
+import { TopBar } from "../components/TopBar";
+import { AmbientOrb } from "../components/AmbientOrb";
+import { Button } from "../components/Button";
+import styles from "./LandingPage.module.css";
 
 interface Props {
   connecting: boolean;
@@ -28,7 +28,7 @@ export function LandingPage({ connecting, error, detected, onConnect }: Props) {
         </p>
 
         {!detected && (
-          <div className="error-banner" style={{ marginTop: 32, maxWidth: 420, textAlign: 'left' }}>
+          <div className="error-banner" style={{ marginTop: 32, maxWidth: 420, textAlign: "left" }}>
             MetaMask not detected. Open this page over HTTP and ensure MetaMask is installed.
           </div>
         )}
@@ -40,12 +40,17 @@ export function LandingPage({ connecting, error, detected, onConnect }: Props) {
         )}
 
         <Button className={styles.cta} onClick={onConnect} disabled={!detected || connecting}>
-          {connecting ? 'Connecting…' : 'Connect MetaMask'}
+          {connecting ? "Connecting…" : "Connect MetaMask"}
         </Button>
 
         <p className={styles.installHint}>
-          Don't have MetaMask?{' '}
-          <a href="https://metamask.io/flask/" target="_blank" rel="noreferrer" className={styles.installLink}>
+          Don't have MetaMask?{" "}
+          <a
+            href="https://metamask.io/"
+            target="_blank"
+            rel="noreferrer"
+            className={styles.installLink}
+          >
             Install it →
           </a>
         </p>
@@ -54,8 +59,14 @@ export function LandingPage({ connecting, error, detected, onConnect }: Props) {
       <footer className="footer">
         <span>Your EVM wallet, on Canton Network.</span>
         <div className={styles.footerLinks}>
-          <a href="#" className={styles.footerLink}>Docs</a>
-          <a href="#" className={styles.footerLink}>GitHub</a>
+          <a
+            href="https://github.com/chain-safe/canton-snap"
+            target="_blank"
+            rel="noreferrer"
+            className={styles.footerLink}
+          >
+            GitHub
+          </a>
         </div>
       </footer>
     </div>
