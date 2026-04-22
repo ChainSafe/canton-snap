@@ -45,6 +45,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: cp .env.example .env
-      - run: npm run build:snap
+      - run: npm run build
       - run: npm test
     
