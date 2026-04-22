@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint
@@ -30,8 +34,8 @@ jobs:
       - run: npm ci
       - run: npm run format:check
 
-  test:
-    name: Test
+  test-crypto:
+    name: Test (crypto unit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,3 +45,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+
+  test-snap:
+    name: Test (snap integration)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:snap
