@@ -1,0 +1,4 @@
+**/dist
+**/node_modules
+**/snap.manifest.json
+package-lock.json
