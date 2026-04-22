@@ -44,6 +44,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: cp .env.example .env
+      - run: npm run build:snap
       - run: npm test
 
   build:
