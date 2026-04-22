@@ -6,6 +6,7 @@
  */
 
 import type { OnRpcRequestHandler } from "@metamask/snaps-sdk";
+import { sha256 } from "@noble/hashes/sha256";
 import { deriveCantonKey } from "./keyDerivation";
 import { compressedPubKeyToSPKIDer } from "./spki";
 import { fingerprintFromSPKI } from "./fingerprint";
@@ -95,10 +96,14 @@ async function handleSignTopology(params: SignTopologyParams): Promise<SignRespo
   }
 
   const hash = stripHexPrefix(params.hash);
-  const hashBytes = hexToBytes(hash);
-  if (hashBytes.length === 0) {
+  const multiHashBytes = hexToBytes(hash);
+  if (multiHashBytes.length === 0) {
     throw new Error("hash must not be empty");
   }
+
+  // Canton's EC_DSA_SHA_256 algorithm: the signer hashes the raw MultiHash
+  // before signing, matching CantonKeyPair.SignDER() in the Go SDK.
+  const hashBytes = sha256(multiHashBytes);
 
   const { privateKey, compressedPubKey } = await deriveCantonKey(params.keyIndex ?? 0);
 
