@@ -1,0 +1,103 @@
+.main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 60px;
+}
+
+.title {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.6px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.cards {
+  display: flex;
+  gap: 24px;
+  margin-top: 48px;
+  padding: 0 24px;
+  max-width: 1000px;
+  width: 100%;
+}
+
+.card {
+  flex: 1;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardTeal {
+  border-color: rgba(0, 212, 164, 0.2);
+}
+
+.iconWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.iconCustodial {
+  background: rgba(139, 124, 255, 0.12);
+}
+
+.iconNonCustodial {
+  background: rgba(0, 212, 164, 0.15);
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.cardDescription {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.bullets {
+  flex: 1;
+  padding: 16px 0;
+}
+
+.bullet {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bulletDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.bulletText {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.cardCta {
+  width: 100%;
+}
