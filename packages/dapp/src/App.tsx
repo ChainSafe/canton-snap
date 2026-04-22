@@ -1,60 +1,60 @@
-import { useState, useCallback } from 'react';
-import { useMetaMask } from './hooks/useMetaMask';
-import { useRegistration } from './hooks/useRegistration';
-import { DEFAULT_NETWORK, getNetwork, type NetworkId } from './lib/config';
-import { LandingPage } from './pages/LandingPage';
-import { RegistrationChoicePage } from './pages/RegistrationChoicePage';
-import { CustodialRegistrationPage } from './pages/CustodialRegistrationPage';
-import { NonCustodialRegistrationPage } from './pages/NonCustodialRegistrationPage';
-import { RegistrationDonePage } from './pages/RegistrationDonePage';
+import { useState, useCallback } from "react";
+import { useMetaMask } from "./hooks/useMetaMask";
+import { useRegistration } from "./hooks/useRegistration";
+import { DEFAULT_NETWORK, getNetwork, type NetworkId } from "./lib/config";
+import { LandingPage } from "./pages/LandingPage";
+import { RegistrationChoicePage } from "./pages/RegistrationChoicePage";
+import { CustodialRegistrationPage } from "./pages/CustodialRegistrationPage";
+import { NonCustodialRegistrationPage } from "./pages/NonCustodialRegistrationPage";
+import { RegistrationDonePage } from "./pages/RegistrationDonePage";
 
 type Page =
-  | 'landing'
-  | 'registration-choice'
-  | 'custodial-pending'
-  | 'noncustodial-install'
-  | 'noncustodial-sign'
-  | 'registration-done'
-  | 'dashboard';
+  | "landing"
+  | "registration-choice"
+  | "custodial-pending"
+  | "noncustodial-install"
+  | "noncustodial-sign"
+  | "registration-done"
+  | "dashboard";
 
 export default function App() {
-  const [page, setPage]       = useState<Page>('landing');
-  const [mode, setMode]       = useState<'custodial' | 'noncustodial'>('custodial');
+  const [page, setPage] = useState<Page>("landing");
+  const [mode, setMode] = useState<"custodial" | "noncustodial">("custodial");
   const [network, setNetwork] = useState<NetworkId>(DEFAULT_NETWORK);
 
-  const mm  = useMetaMask();
+  const mm = useMetaMask();
   const reg = useRegistration(getNetwork(network).middlewareUrl);
   const { registerCustodial, sign } = reg;
 
   const handleRegisterCustodial = useCallback(async () => {
-    const done = await registerCustodial(mm.address ?? '');
-    if (done) setPage('registration-done');
+    const done = await registerCustodial(mm.address ?? "");
+    if (done) setPage("registration-done");
   }, [registerCustodial, mm.address]);
 
   const handleSign = useCallback(async () => {
-    const done = await sign(mm.address ?? '');
-    if (done) setPage('registration-done');
+    const done = await sign(mm.address ?? "");
+    if (done) setPage("registration-done");
   }, [sign, mm.address]);
 
   function handleDisconnect() {
     mm.disconnect();
-    setPage('landing');
+    setPage("landing");
   }
 
   function handleCustodial() {
-    setMode('custodial');
-    setPage('custodial-pending');
+    setMode("custodial");
+    setPage("custodial-pending");
   }
 
   function handleNonCustodial() {
-    setMode('noncustodial');
-    setPage(reg.snap.alreadyInstalled ? 'noncustodial-sign' : 'noncustodial-install');
+    setMode("noncustodial");
+    setPage(reg.snap.alreadyInstalled ? "noncustodial-sign" : "noncustodial-install");
   }
 
-  const address    = mm.address ?? '';
-  const netProps   = { network, onNetworkChange: setNetwork };
+  const address = mm.address ?? "";
+  const netProps = { network, onNetworkChange: setNetwork };
 
-  if (page === 'landing') {
+  if (page === "landing") {
     return (
       <LandingPage
         detected={mm.detected}
@@ -62,13 +62,13 @@ export default function App() {
         error={mm.error}
         onConnect={async () => {
           await mm.connect();
-          setPage('registration-choice');
+          setPage("registration-choice");
         }}
       />
     );
   }
 
-  if (page === 'registration-choice') {
+  if (page === "registration-choice") {
     return (
       <RegistrationChoicePage
         address={address}
@@ -80,21 +80,21 @@ export default function App() {
     );
   }
 
-  if (page === 'custodial-pending') {
+  if (page === "custodial-pending") {
     return (
       <CustodialRegistrationPage
         address={address}
         {...netProps}
         pending={reg.pending}
         error={reg.error}
-        onBack={() => setPage('registration-choice')}
+        onBack={() => setPage("registration-choice")}
         onRegister={handleRegisterCustodial}
         onDisconnect={handleDisconnect}
       />
     );
   }
 
-  if (page === 'noncustodial-install') {
+  if (page === "noncustodial-install") {
     return (
       <NonCustodialRegistrationPage
         address={address}
@@ -105,10 +105,10 @@ export default function App() {
         snapError={reg.snap.error}
         signError={null}
         snapAlreadyInstalled={reg.snap.alreadyInstalled}
-        onBack={() => setPage('registration-choice')}
+        onBack={() => setPage("registration-choice")}
         onInstall={async () => {
           const ok = await reg.snap.install();
-          if (ok) setPage('noncustodial-sign');
+          if (ok) setPage("noncustodial-sign");
         }}
         onSign={() => {}}
         onDisconnect={handleDisconnect}
@@ -116,7 +116,7 @@ export default function App() {
     );
   }
 
-  if (page === 'noncustodial-sign') {
+  if (page === "noncustodial-sign") {
     return (
       <NonCustodialRegistrationPage
         address={address}
@@ -127,7 +127,7 @@ export default function App() {
         snapAlreadyInstalled={reg.snap.alreadyInstalled}
         snapError={null}
         signError={reg.error}
-        onBack={() => setPage('registration-choice')}
+        onBack={() => setPage("registration-choice")}
         onInstall={() => {}}
         onSign={handleSign}
         onDisconnect={handleDisconnect}
@@ -135,38 +135,51 @@ export default function App() {
     );
   }
 
-  if (page === 'registration-done') {
+  if (page === "registration-done") {
     const done = reg.result ?? reg.alreadyRegistered;
     return (
       <RegistrationDonePage
         address={address}
         {...netProps}
-        cantonPartyId={done?.cantonPartyId ?? ''}
-        fingerprint={done?.fingerprint ?? ''}
-        snapInstalled={mode === 'noncustodial' && reg.snap.installed}
+        cantonPartyId={done?.cantonPartyId ?? ""}
+        fingerprint={done?.fingerprint ?? ""}
+        snapInstalled={mode === "noncustodial" && reg.snap.installed}
         wasAlreadyRegistered={reg.wasAlreadyRegistered}
-        onDashboard={() => setPage('dashboard')}
+        onDashboard={() => setPage("dashboard")}
         onDisconnect={handleDisconnect}
       />
     );
   }
 
-  if (page === 'dashboard') {
+  if (page === "dashboard") {
     return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', flexDirection: 'column', gap: 16,
-        color: 'var(--text-secondary)', fontSize: 15,
-      }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: 16,
+          color: "var(--text-secondary)",
+          fontSize: 15,
+        }}
+      >
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <rect width="48" height="48" rx="12" fill="rgba(0,212,164,0.1)"/>
-          <path d="M14 28 L20 20 L26 24 L32 16" stroke="#00d4a4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <rect width="48" height="48" rx="12" fill="rgba(0,212,164,0.1)" />
+          <path
+            d="M14 28 L20 20 L26 24 L32 16"
+            stroke="#00d4a4"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
         <p>Dashboard coming soon</p>
         <button
           className="btn btn-secondary"
-          style={{ fontSize: 13, padding: '8px 20px' }}
-          onClick={() => setPage('registration-choice')}
+          style={{ fontSize: 13, padding: "8px 20px" }}
+          onClick={() => setPage("registration-choice")}
         >
           ← Back
         </button>

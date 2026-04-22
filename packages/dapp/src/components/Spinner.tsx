@@ -3,7 +3,7 @@ interface SpinnerProps {
   color?: string;
 }
 
-export function Spinner({ size = 64, color = '#00d4a4' }: SpinnerProps) {
+export function Spinner({ size = 64, color = "#00d4a4" }: SpinnerProps) {
   const r = size * 0.4375; // ~28 for size=64
   const cx = size / 2;
 

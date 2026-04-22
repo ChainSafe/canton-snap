@@ -1,15 +1,15 @@
 export class AlreadyRegisteredError extends Error {
   readonly details: string;
   constructor(details: string) {
-    super('already_registered');
+    super("already_registered");
     this.details = details;
   }
 }
 
 async function post<T>(baseUrl: string, path: string, body: unknown): Promise<T> {
   const res = await fetch(`${baseUrl}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const text = await res.text();
@@ -23,10 +23,10 @@ function friendlyError(status: number, body: string): string {
     try {
       const parsed = JSON.parse(body);
       if (
-        typeof parsed.error === 'string' &&
-        parsed.error.toLowerCase().includes('not whitelisted')
+        typeof parsed.error === "string" &&
+        parsed.error.toLowerCase().includes("not whitelisted")
       ) {
-        return 'Your address is not whitelisted for registration. Ask your Canton administrator to whitelist this address on the middleware.';
+        return "Your address is not whitelisted for registration. Ask your Canton administrator to whitelist this address on the middleware.";
       }
     } catch {
       // body wasn't JSON — fall through
@@ -45,7 +45,7 @@ export async function registerCustodial(
   signature: string,
   message: string,
 ): Promise<RegisterResult> {
-  return post(baseUrl, '/register', { signature, message });
+  return post(baseUrl, "/register", { signature, message });
 }
 
 export interface PrepareTopologyResult {
@@ -59,7 +59,7 @@ export async function prepareTopology(
   message: string,
   canton_public_key: string,
 ): Promise<PrepareTopologyResult> {
-  return post(baseUrl, '/register/prepare-topology', { signature, message, canton_public_key });
+  return post(baseUrl, "/register/prepare-topology", { signature, message, canton_public_key });
 }
 
 export async function registerNonCustodial(
@@ -72,5 +72,5 @@ export async function registerNonCustodial(
     topology_signature: string;
   },
 ): Promise<RegisterResult> {
-  return post(baseUrl, '/register', { ...body, key_mode: 'external' });
+  return post(baseUrl, "/register", { ...body, key_mode: "external" });
 }

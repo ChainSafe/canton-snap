@@ -18,7 +18,9 @@ export function exportPublicKeyDialog(fingerprint: string) {
   return Box({
     children: [
       Heading({ children: "Export Canton Public Key" }),
-      Text({ children: "A dApp is requesting your Canton Network public key for party registration." }),
+      Text({
+        children: "A dApp is requesting your Canton Network public key for party registration.",
+      }),
       Divider({}),
       Text({ children: "Fingerprint:" }),
       Copyable({ value: fingerprint }),

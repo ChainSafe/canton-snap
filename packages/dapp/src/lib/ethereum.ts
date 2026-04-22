@@ -9,37 +9,43 @@ declare global {
 }
 
 export function getEthereum() {
-  if (!window.ethereum) throw new Error('MetaMask not found. Install MetaMask.');
+  if (!window.ethereum) throw new Error("MetaMask not found. Install MetaMask.");
   return window.ethereum;
 }
 
 export function toHex(str: string) {
-  return '0x' + Array.from(new TextEncoder().encode(str))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  return (
+    "0x" +
+    Array.from(new TextEncoder().encode(str))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+  );
 }
 
 export async function requestAccounts(): Promise<string[]> {
-  return getEthereum().request({ method: 'eth_requestAccounts' }) as Promise<string[]>;
+  return getEthereum().request({ method: "eth_requestAccounts" }) as Promise<string[]>;
 }
 
 export async function personalSign(message: string, address: string): Promise<string> {
   return getEthereum().request({
-    method: 'personal_sign',
+    method: "personal_sign",
     params: [toHex(message), address],
   }) as Promise<string>;
 }
 
 export async function installSnap(): Promise<void> {
   await getEthereum().request({
-    method: 'wallet_requestSnaps',
+    method: "wallet_requestSnaps",
     params: { [SNAP_ID]: {} },
   });
 }
 
 export async function isSnapInstalled(): Promise<boolean> {
   try {
-    const snaps = await getEthereum().request({ method: 'wallet_getSnaps' }) as Record<string, unknown>;
+    const snaps = (await getEthereum().request({ method: "wallet_getSnaps" })) as Record<
+      string,
+      unknown
+    >;
     return SNAP_ID in snaps;
   } catch {
     return false;
@@ -48,7 +54,7 @@ export async function isSnapInstalled(): Promise<boolean> {
 
 export async function invokeSnap<T>(method: string, params: unknown): Promise<T> {
   return getEthereum().request({
-    method: 'wallet_invokeSnap',
+    method: "wallet_invokeSnap",
     params: { snapId: SNAP_ID, request: { method, params } },
   }) as Promise<T>;
 }
