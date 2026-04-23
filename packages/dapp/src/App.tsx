@@ -12,6 +12,8 @@ import { CustodialRegistrationPage } from "./pages/CustodialRegistrationPage";
 import { NonCustodialRegistrationPage } from "./pages/NonCustodialRegistrationPage";
 import { RegistrationDonePage } from "./pages/RegistrationDonePage";
 import { DashboardProfilePage } from "./pages/DashboardProfilePage";
+import { DashboardBalancesPage } from "./pages/DashboardBalancesPage";
+import type { DashboardTab } from "./components/DashboardLayout";
 
 type Page =
   | "landing"
@@ -29,6 +31,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>("profile");
 
   const mm = useMetaMask();
   const reg = useRegistration(getNetwork(network).middlewareUrl);
@@ -80,6 +83,7 @@ export default function App() {
     mm.disconnect();
     setProfile(null);
     clearAllSessions();
+    setDashboardTab("profile");
     setPage("landing");
   }
 
@@ -296,16 +300,26 @@ export default function App() {
         })
         .catch(() => {});
     };
+    const sharedProps = {
+      address,
+      network,
+      onNetworkChange: handleNetworkChange,
+      activeTab: dashboardTab,
+      onTabChange: setDashboardTab,
+      onDisconnect: handleDisconnect,
+    };
+
+    if (dashboardTab === "balances") {
+      return <DashboardBalancesPage {...sharedProps} />;
+    }
+
     return (
       <DashboardProfilePage
-        address={address}
-        network={network}
-        onNetworkChange={handleNetworkChange}
+        {...sharedProps}
         profile={profile}
         snapInstalled={snapInstalled}
         snapVersion={snapVersion}
         onInstallSnap={reg.snap.install}
-        onDisconnect={handleDisconnect}
       />
     );
   }

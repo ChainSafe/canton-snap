@@ -1,3 +1,17 @@
+export interface TokenConfig {
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+}
+
+export async function getTokens(baseUrl: string): Promise<TokenConfig[]> {
+  const res = await fetch(`${baseUrl}/tokens`);
+  if (!res.ok) throw new Error(`Failed to fetch tokens: ${res.status}`);
+  const data = await res.json();
+  return data.tokens as TokenConfig[];
+}
+
 export interface UserProfile {
   cantonPartyId: string;
   fingerprint: string;
