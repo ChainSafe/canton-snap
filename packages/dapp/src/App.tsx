@@ -1,12 +1,16 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useMetaMask } from "./hooks/useMetaMask";
 import { useRegistration } from "./hooks/useRegistration";
 import { DEFAULT_NETWORK, getNetwork, type NetworkId } from "./lib/config";
+import { personalSign } from "./lib/ethereum";
+import { getUser, type UserProfile } from "./lib/middleware";
+import { getSession, storeSession, clearAllSessions } from "./lib/session";
 import { LandingPage } from "./pages/LandingPage";
 import { RegistrationChoicePage } from "./pages/RegistrationChoicePage";
 import { CustodialRegistrationPage } from "./pages/CustodialRegistrationPage";
 import { NonCustodialRegistrationPage } from "./pages/NonCustodialRegistrationPage";
 import { RegistrationDonePage } from "./pages/RegistrationDonePage";
+import { DashboardProfilePage } from "./pages/DashboardProfilePage";
 
 type Page =
   | "landing"
@@ -21,10 +25,34 @@ export default function App() {
   const [page, setPage] = useState<Page>("landing");
   const [mode, setMode] = useState<"custodial" | "noncustodial">("custodial");
   const [network, setNetwork] = useState<NetworkId>(DEFAULT_NETWORK);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const autoConnectAttempted = useRef(false);
 
   const mm = useMetaMask();
   const reg = useRegistration(getNetwork(network).middlewareUrl);
   const { registerCustodial, sign } = reg;
+
+  // Auto-reconnect on refresh: if MetaMask already has an account and we have a
+  // cached session signature, skip the landing page and go straight to dashboard.
+  useEffect(() => {
+    if (mm.autoConnecting) return;
+    if (autoConnectAttempted.current) return;
+    autoConnectAttempted.current = true;
+
+    if (!mm.address) return;
+
+    const session = getSession(mm.address);
+    if (!session) return;
+
+    getUser(getNetwork(network).middlewareUrl, mm.address, session.signature, session.message).then(
+      (existing) => {
+        if (existing) {
+          setProfile(existing);
+          setPage("dashboard");
+        }
+      },
+    );
+  }, [mm.autoConnecting, mm.address, network]);
 
   const handleRegisterCustodial = useCallback(async () => {
     const done = await registerCustodial(mm.address ?? "");
@@ -38,6 +66,8 @@ export default function App() {
 
   function handleDisconnect() {
     mm.disconnect();
+    setProfile(null);
+    clearAllSessions();
     setPage("landing");
   }
 
@@ -53,6 +83,7 @@ export default function App() {
 
   const address = mm.address ?? "";
   const netProps = { network, onNetworkChange: setNetwork };
+  const snapInstalled = reg.snap.installed || reg.snap.alreadyInstalled;
 
   if (page === "landing") {
     return (
@@ -61,8 +92,35 @@ export default function App() {
         connecting={mm.connecting}
         error={mm.error}
         onConnect={async () => {
-          await mm.connect();
-          setPage("registration-choice");
+          const addr = await mm.connect();
+          if (!addr) return;
+
+          // Get or create a session signature for authenticating GET /user.
+          let session = getSession(addr);
+          if (!session) {
+            const message = `login:${addr.toLowerCase()}`;
+            try {
+              const signature = await personalSign(message, addr);
+              storeSession(addr, message, signature);
+              session = { message, signature };
+            } catch {
+              // User rejected signing — stay on landing so they can try again.
+              return;
+            }
+          }
+
+          const existing = await getUser(
+            getNetwork(network).middlewareUrl,
+            addr,
+            session.signature,
+            session.message,
+          );
+          if (existing) {
+            setProfile(existing);
+            setPage("dashboard");
+          } else {
+            setPage("registration-choice");
+          }
         }}
       />
     );
@@ -145,45 +203,30 @@ export default function App() {
         fingerprint={done?.fingerprint ?? ""}
         snapInstalled={mode === "noncustodial" && reg.snap.installed}
         wasAlreadyRegistered={reg.wasAlreadyRegistered}
-        onDashboard={() => setPage("dashboard")}
+        onDashboard={() => {
+          if (done) {
+            setProfile({
+              cantonPartyId: done.cantonPartyId,
+              fingerprint: done.fingerprint,
+              keyMode: mode === "noncustodial" ? "external" : "custodial",
+            });
+          }
+          setPage("dashboard");
+        }}
         onDisconnect={handleDisconnect}
       />
     );
   }
 
-  if (page === "dashboard") {
+  if (page === "dashboard" && profile) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          gap: 16,
-          color: "var(--text-secondary)",
-          fontSize: 15,
-        }}
-      >
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <rect width="48" height="48" rx="12" fill="rgba(0,212,164,0.1)" />
-          <path
-            d="M14 28 L20 20 L26 24 L32 16"
-            stroke="#00d4a4"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <p>Dashboard coming soon</p>
-        <button
-          className="btn btn-secondary"
-          style={{ fontSize: 13, padding: "8px 20px" }}
-          onClick={() => setPage("registration-choice")}
-        >
-          ← Back
-        </button>
-      </div>
+      <DashboardProfilePage
+        address={address}
+        {...netProps}
+        profile={profile}
+        snapInstalled={snapInstalled}
+        onDisconnect={handleDisconnect}
+      />
     );
   }
 

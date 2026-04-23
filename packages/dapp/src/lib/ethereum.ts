@@ -26,6 +26,10 @@ export async function requestAccounts(): Promise<string[]> {
   return getEthereum().request({ method: "eth_requestAccounts" }) as Promise<string[]>;
 }
 
+export async function getAccounts(): Promise<string[]> {
+  return getEthereum().request({ method: "eth_accounts" }) as Promise<string[]>;
+}
+
 export async function personalSign(message: string, address: string): Promise<string> {
   return getEthereum().request({
     method: "personal_sign",

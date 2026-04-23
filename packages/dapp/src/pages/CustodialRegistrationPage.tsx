@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TopBar } from "../components/TopBar";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { Spinner } from "../components/Spinner";
@@ -42,7 +42,10 @@ export function CustodialRegistrationPage({
   onRegister,
   onDisconnect,
 }: Props) {
+  const triggered = useRef(false);
   useEffect(() => {
+    if (triggered.current) return;
+    triggered.current = true;
     void onRegister();
   }, [onRegister]);
 

@@ -41,7 +41,7 @@ export function useRegistration(middlewareUrl: string): UseRegistrationReturn {
         const message = `register:${Math.floor(Date.now() / 1000)}`;
         const signature = await personalSign(message, address);
         const data = await apiRegisterCustodial(middlewareUrl, signature, message);
-        setResult({ cantonPartyId: data.canton_party_id, fingerprint: data.fingerprint });
+        setResult({ cantonPartyId: data.party, fingerprint: data.fingerprint });
         return true;
       } catch (e) {
         if (e instanceof AlreadyRegisteredError) {
@@ -80,7 +80,7 @@ export function useRegistration(middlewareUrl: string): UseRegistrationReturn {
           registration_token,
           topology_signature: topologySignature,
         });
-        setResult({ cantonPartyId: data.canton_party_id, fingerprint: data.fingerprint });
+        setResult({ cantonPartyId: data.party, fingerprint: data.fingerprint });
         return true;
       } catch (e) {
         if (e instanceof AlreadyRegisteredError) {

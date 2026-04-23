@@ -1,3 +1,31 @@
+export interface UserProfile {
+  cantonPartyId: string;
+  fingerprint: string;
+  keyMode: "custodial" | "external";
+}
+
+export async function getUser(
+  baseUrl: string,
+  address: string,
+  signature: string,
+  message: string,
+): Promise<UserProfile | null> {
+  try {
+    const params = new URLSearchParams({ address, signature, message });
+    const res = await fetch(`${baseUrl}/user?${params.toString()}`);
+    if (res.status === 404) return null;
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+      cantonPartyId: data.canton_party ?? data.party,
+      fingerprint: data.fingerprint,
+      keyMode: data.key_mode === "external" ? "external" : "custodial",
+    };
+  } catch {
+    return null;
+  }
+}
+
 export class AlreadyRegisteredError extends Error {
   readonly details: string;
   constructor(details: string) {
@@ -36,7 +64,7 @@ function friendlyError(status: number, body: string): string {
 }
 
 export interface RegisterResult {
-  canton_party_id: string;
+  party: string;
   fingerprint: string;
 }
 
