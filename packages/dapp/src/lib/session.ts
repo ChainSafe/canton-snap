@@ -22,6 +22,10 @@ export function getSession(address: string): Session | null {
   }
 }
 
+export function clearSession(address: string): void {
+  sessionStorage.removeItem(SESSION_PREFIX + address.toLowerCase());
+}
+
 export function clearAllSessions(): void {
   for (const key of Object.keys(sessionStorage)) {
     if (key.startsWith(SESSION_PREFIX)) sessionStorage.removeItem(key);

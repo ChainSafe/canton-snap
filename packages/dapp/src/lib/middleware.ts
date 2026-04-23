@@ -4,25 +4,41 @@ export interface UserProfile {
   keyMode: "custodial" | "external";
 }
 
+export class SessionExpiredError extends Error {
+  constructor() {
+    super("Session expired — please reconnect");
+  }
+}
+
 export async function getUser(
   baseUrl: string,
   address: string,
   signature: string,
   message: string,
 ): Promise<UserProfile | null> {
+  const res = await fetch(`${baseUrl}/user?address=${encodeURIComponent(address)}`, {
+    headers: { "X-Signature": signature, "X-Message": message },
+  });
+  if (res.status === 404) return null;
+  if (res.status === 401) throw new SessionExpiredError();
+  if (!res.ok) throw new Error(`Middleware error ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return {
+    cantonPartyId: data.canton_party,
+    fingerprint: data.fingerprint,
+    keyMode: data.key_mode === "external" ? "external" : "custodial",
+  };
+}
+
+export async function checkMiddlewareHealth(baseUrl: string): Promise<boolean> {
   try {
-    const params = new URLSearchParams({ address, signature, message });
-    const res = await fetch(`${baseUrl}/user?${params.toString()}`);
-    if (res.status === 404) return null;
-    if (!res.ok) return null;
-    const data = await res.json();
-    return {
-      cantonPartyId: data.canton_party ?? data.party,
-      fingerprint: data.fingerprint,
-      keyMode: data.key_mode === "external" ? "external" : "custodial",
-    };
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 3000);
+    await fetch(`${baseUrl}/health`, { signal: controller.signal });
+    clearTimeout(id);
+    return true; // any HTTP response means the server is reachable
   } catch {
-    return null;
+    return false;
   }
 }
 

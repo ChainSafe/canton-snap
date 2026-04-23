@@ -6,6 +6,7 @@ import { WalletMenu } from "../components/WalletMenu";
 import { shortenAddress } from "../lib/ethereum";
 import { getNetwork, type NetworkId } from "../lib/config";
 import { cn } from "../lib/cn";
+import { checkMiddlewareHealth } from "../lib/middleware";
 import type { UserProfile } from "../lib/middleware";
 import styles from "./DashboardProfilePage.module.css";
 
@@ -15,6 +16,7 @@ interface Props {
   onNetworkChange: (id: NetworkId) => void;
   profile: UserProfile;
   snapInstalled: boolean;
+  snapVersion: string | null;
   onDisconnect: () => void;
 }
 
@@ -32,15 +34,9 @@ function Caret({ open }: { open: boolean }) {
   );
 }
 
-function ProfileIcon({ active }: { active?: boolean }) {
+function ProfileIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      color={active ? "var(--teal)" : "currentColor"}
-    >
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
       <circle cx="10" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.6" />
       <path
         d="M3 17C3 13 6 11 10 11C14 11 17 13 17 17"
@@ -120,10 +116,12 @@ export function DashboardProfilePage({
   onNetworkChange,
   profile,
   snapInstalled,
+  snapVersion,
   onDisconnect,
 }: Props) {
   const [walletOpen, setWalletOpen] = useState(false);
   const [networkOpen, setNetworkOpen] = useState(false);
+  const [middlewareHealthy, setMiddlewareHealthy] = useState<boolean | null>(null);
   const walletRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<HTMLDivElement>(null);
 
@@ -133,12 +131,27 @@ export function DashboardProfilePage({
       if (networkRef.current && !networkRef.current.contains(e.target as Node))
         setNetworkOpen(false);
     }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setWalletOpen(false);
+        setNetworkOpen(false);
+      }
+    }
     document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   const currentNet = getNetwork(network);
   const isNonCustodial = profile.keyMode === "external";
+
+  useEffect(() => {
+    setMiddlewareHealthy(null);
+    checkMiddlewareHealth(currentNet.middlewareUrl).then(setMiddlewareHealthy);
+  }, [currentNet.middlewareUrl]);
 
   return (
     <div className={styles.layout}>
@@ -153,10 +166,15 @@ export function DashboardProfilePage({
         <div className={styles.sidebarDivider} />
         <nav className={styles.sidebarNav}>
           {NAV.map(({ id, label, Icon }) => (
-            <div key={id} className={cn(styles.navItem, id === "profile" && styles.navItemActive)}>
-              <Icon active={id === "profile"} />
+            <button
+              key={id}
+              className={cn(styles.navItem, id === "profile" && styles.navItemActive)}
+              disabled={id !== "profile"}
+              aria-current={id === "profile" ? "page" : undefined}
+            >
+              <Icon />
               <span>{label}</span>
-            </div>
+            </button>
           ))}
         </nav>
       </aside>
@@ -223,15 +241,23 @@ export function DashboardProfilePage({
             <p className={styles.sectionLabel}>CANTON PARTY</p>
             <div className={styles.partyIdRow}>
               <div style={{ minWidth: 0 }}>
-                <p className={styles.partyId}>{profile.cantonPartyId.slice(0, 36)}</p>
-                {profile.cantonPartyId.length > 36 && (
-                  <p className={styles.partyIdCont}>{profile.cantonPartyId.slice(36)}</p>
-                )}
+                {(() => {
+                  const sep = profile.cantonPartyId.indexOf("::");
+                  const head =
+                    sep >= 0 ? profile.cantonPartyId.slice(0, sep) : profile.cantonPartyId;
+                  const cont = sep >= 0 ? profile.cantonPartyId.slice(sep) : "";
+                  return (
+                    <>
+                      <p className={styles.partyId}>{head}</p>
+                      {cont && <p className={styles.partyIdCont}>{cont}</p>}
+                    </>
+                  );
+                })()}
               </div>
               <CopyButton text={profile.cantonPartyId} />
             </div>
 
-            <p className={cn(styles.sectionLabel)} style={{ marginTop: 4 }}>
+            <p className={styles.sectionLabel} style={{ marginTop: 4 }}>
               FINGERPRINT
             </p>
             <div className={styles.fingerprintRow}>
@@ -307,7 +333,9 @@ export function DashboardProfilePage({
                   )}
                 />
                 <span className={styles.connLabel}>
-                  {snapInstalled ? "Installed · v0.2.0" : "Not installed"}
+                  {snapInstalled
+                    ? `Installed${snapVersion ? ` · v${snapVersion}` : ""}`
+                    : "Not installed"}
                 </span>
               </div>
             </div>
@@ -315,8 +343,21 @@ export function DashboardProfilePage({
             <div>
               <p className={styles.sectionLabel}>MIDDLEWARE</p>
               <div className={styles.connStatus}>
-                <span className={cn(styles.connDot, styles.connDotAmber)} />
-                <span className={styles.connLabel}>{currentNet.name}</span>
+                {middlewareHealthy !== null && (
+                  <span
+                    className={cn(
+                      styles.connDot,
+                      middlewareHealthy ? styles.connDotGreen : styles.connDotAmber,
+                    )}
+                  />
+                )}
+                <span className={styles.connLabel}>
+                  {middlewareHealthy === null
+                    ? currentNet.name
+                    : middlewareHealthy
+                      ? `${currentNet.name} · Connected`
+                      : `${currentNet.name} · Unreachable`}
+                </span>
               </div>
               <p className={styles.connMeta}>{currentNet.host}</p>
             </div>

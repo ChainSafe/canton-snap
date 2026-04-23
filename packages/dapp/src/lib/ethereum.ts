@@ -44,15 +44,15 @@ export async function installSnap(): Promise<void> {
   });
 }
 
-export async function isSnapInstalled(): Promise<boolean> {
+export async function getInstalledSnap(): Promise<{ version: string } | null> {
   try {
     const snaps = (await getEthereum().request({ method: "wallet_getSnaps" })) as Record<
       string,
-      unknown
+      { version: string }
     >;
-    return SNAP_ID in snaps;
+    return snaps[SNAP_ID] ?? null;
   } catch {
-    return false;
+    return null;
   }
 }
 
