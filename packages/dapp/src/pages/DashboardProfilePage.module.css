@@ -276,3 +276,24 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+.reinstallBtn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--teal);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  letter-spacing: 0.3px;
+}
+
+.reinstallBtn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.reinstallBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

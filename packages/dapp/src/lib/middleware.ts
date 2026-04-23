@@ -20,7 +20,12 @@ export async function getUser(
     headers: { "X-Signature": signature, "X-Message": message },
   });
   if (res.status === 404) return null;
-  if (res.status === 401) throw new SessionExpiredError();
+  if (res.status === 401) {
+    const body = await res.json().catch(() => ({}) as Record<string, unknown>);
+    const msg = typeof body.error === "string" ? body.error : "";
+    if (msg.includes("expired")) throw new SessionExpiredError();
+    throw new Error(msg || "Unauthorized");
+  }
   if (!res.ok) throw new Error(`Middleware error ${res.status}: ${await res.text()}`);
   const data = await res.json();
   return {

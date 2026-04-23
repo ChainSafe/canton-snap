@@ -60,7 +60,7 @@ export function LandingPage({ connecting, error, detected, onConnect }: Props) {
         <span>Your EVM wallet, on Canton Network.</span>
         <div className={styles.footerLinks}>
           <a
-            href="https://github.com/chain-safe/canton-snap"
+            href="https://github.com/chainsafe/canton-snap"
             target="_blank"
             rel="noreferrer"
             className={styles.footerLink}

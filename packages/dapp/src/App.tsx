@@ -47,8 +47,12 @@ export default function App() {
     const session = getSession(addr);
     if (!session) return;
 
-    setReconnecting(true);
-    getUser(getNetwork(network).middlewareUrl, addr, session.signature, session.message)
+    // setReconnecting via .then() so it's in a callback, not the synchronous effect body.
+    Promise.resolve()
+      .then(() => setReconnecting(true))
+      .then(() =>
+        getUser(getNetwork(network).middlewareUrl, addr, session.signature, session.message),
+      )
       .then((existing) => {
         if (existing) {
           setProfile(existing);
@@ -61,13 +65,6 @@ export default function App() {
       })
       .finally(() => setReconnecting(false));
   }, [page, mm.autoConnecting, mm.address, network]);
-
-  // Guard: if we somehow reach the dashboard without a profile, reset to landing.
-  useEffect(() => {
-    if (page === "dashboard" && !profile) {
-      setPage("landing");
-    }
-  }, [page, profile]);
 
   const handleRegisterCustodial = useCallback(async () => {
     const done = await registerCustodial(mm.address ?? "");
@@ -266,7 +263,6 @@ export default function App() {
         {...netProps}
         cantonPartyId={done?.cantonPartyId ?? ""}
         fingerprint={done?.fingerprint ?? ""}
-        snapInstalled={mode === "noncustodial" && reg.snap.installed}
         wasAlreadyRegistered={reg.wasAlreadyRegistered}
         onDashboard={() => {
           if (done) {
@@ -308,6 +304,7 @@ export default function App() {
         profile={profile}
         snapInstalled={snapInstalled}
         snapVersion={snapVersion}
+        onInstallSnap={reg.snap.install}
         onDisconnect={handleDisconnect}
       />
     );

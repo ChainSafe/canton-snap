@@ -17,6 +17,7 @@ interface Props {
   profile: UserProfile;
   snapInstalled: boolean;
   snapVersion: string | null;
+  onInstallSnap: () => Promise<boolean>;
   onDisconnect: () => void;
 }
 
@@ -117,11 +118,13 @@ export function DashboardProfilePage({
   profile,
   snapInstalled,
   snapVersion,
+  onInstallSnap,
   onDisconnect,
 }: Props) {
   const [walletOpen, setWalletOpen] = useState(false);
   const [networkOpen, setNetworkOpen] = useState(false);
-  const [middlewareHealthy, setMiddlewareHealthy] = useState<boolean | null>(null);
+  const [reinstalling, setReinstalling] = useState(false);
+  const [healthCache, setHealthCache] = useState<{ url: string; healthy: boolean } | null>(null);
   const walletRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<HTMLDivElement>(null);
 
@@ -147,10 +150,18 @@ export function DashboardProfilePage({
 
   const currentNet = getNetwork(network);
   const isNonCustodial = profile.keyMode === "external";
+  // null while a check is in flight (URL doesn't match cached result yet)
+  const middlewareHealthy =
+    healthCache?.url === currentNet.middlewareUrl ? healthCache.healthy : null;
 
   useEffect(() => {
-    setMiddlewareHealthy(null);
-    checkMiddlewareHealth(currentNet.middlewareUrl).then(setMiddlewareHealthy);
+    let cancelled = false;
+    checkMiddlewareHealth(currentNet.middlewareUrl).then((healthy) => {
+      if (!cancelled) setHealthCache({ url: currentNet.middlewareUrl, healthy });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [currentNet.middlewareUrl]);
 
   return (
@@ -221,7 +232,6 @@ export function DashboardProfilePage({
             {walletOpen && (
               <WalletMenu
                 address={address}
-                snapInstalled={snapInstalled}
                 onDisconnect={() => {
                   setWalletOpen(false);
                   onDisconnect();
@@ -338,6 +348,22 @@ export function DashboardProfilePage({
                     : "Not installed"}
                 </span>
               </div>
+              {!snapInstalled && isNonCustodial && (
+                <button
+                  className={styles.reinstallBtn}
+                  disabled={reinstalling}
+                  onClick={async () => {
+                    setReinstalling(true);
+                    try {
+                      await onInstallSnap();
+                    } finally {
+                      setReinstalling(false);
+                    }
+                  }}
+                >
+                  {reinstalling ? "Installing…" : "Re-install snap →"}
+                </button>
+              )}
             </div>
 
             <div>

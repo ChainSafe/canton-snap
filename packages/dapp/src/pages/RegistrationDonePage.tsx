@@ -12,7 +12,6 @@ interface Props {
   onNetworkChange: (id: NetworkId) => void;
   cantonPartyId: string;
   fingerprint: string;
-  snapInstalled?: boolean;
   wasAlreadyRegistered?: boolean;
   onDashboard: () => void;
   onDisconnect: () => void;
@@ -24,7 +23,6 @@ export function RegistrationDonePage({
   onNetworkChange,
   cantonPartyId,
   fingerprint,
-  snapInstalled,
   wasAlreadyRegistered,
   onDashboard,
   onDisconnect,
@@ -34,7 +32,6 @@ export function RegistrationDonePage({
       <AmbientOrb opacity={0.22} size={920} y="58%" />
       <TopBar
         address={address}
-        snapInstalled={snapInstalled}
         network={network}
         onNetworkChange={onNetworkChange}
         onDisconnect={onDisconnect}
