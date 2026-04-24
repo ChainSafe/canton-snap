@@ -172,22 +172,18 @@ export function DashboardActivityPage({
     };
   }, [currentNet.middlewareUrl, address]);
 
-  const allRows = fetchState?.rows ?? [];
-
   const filtered = useMemo(() => {
-    let rows = allRows;
+    const rows = fetchState?.rows ?? [];
     const q = search.trim().toLowerCase();
-    if (q) {
-      rows = rows.filter(
-        (r) =>
-          r.txHash.toLowerCase().includes(q) ||
-          r.from.toLowerCase().includes(q) ||
-          r.to.toLowerCase().includes(q) ||
-          r.token.symbol.toLowerCase().includes(q),
-      );
-    }
-    return rows;
-  }, [allRows, search, filterTab]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        r.txHash.toLowerCase().includes(q) ||
+        r.from.toLowerCase().includes(q) ||
+        r.to.toLowerCase().includes(q) ||
+        r.token.symbol.toLowerCase().includes(q),
+    );
+  }, [fetchState, search]);
 
   // Group rows by calendar day
   const groups = useMemo(() => {
@@ -220,13 +216,16 @@ export function DashboardActivityPage({
               Token transfers and bridge events for this wallet.
             </p>
           </div>
-          <label className={styles.searchBar}>
+          <label
+            className={`${styles.searchBar} ${filterTab === "bridge" ? styles.searchBarDisabled : ""}`}
+          >
             <SearchIcon />
             <input
               className={styles.searchInput}
               placeholder="Search by tx hash, address, or token…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              disabled={filterTab === "bridge"}
             />
           </label>
         </div>
@@ -267,7 +266,7 @@ export function DashboardActivityPage({
             </div>
           )}
 
-          {!loading && fetchState?.error && (
+          {!loading && filterTab === "transfers" && fetchState?.error && (
             <div className={styles.centred}>
               <p className={styles.errorText}>{fetchState.error}</p>
             </div>
@@ -281,7 +280,11 @@ export function DashboardActivityPage({
 
           {!loading && filterTab === "transfers" && fetchState?.rows && filtered.length === 0 && (
             <div className={styles.centred}>
-              <p className={styles.hint}>No transfers found for this address.</p>
+              <p className={styles.hint}>
+                {search.trim()
+                  ? "No transfers match your search."
+                  : "No transfers found for this address."}
+              </p>
             </div>
           )}
 
@@ -349,18 +352,12 @@ export function DashboardActivityPage({
 
                         {/* Date */}
                         <div className={styles.whenCell}>
-                          {row.timestamp >= MIN_REAL_TIMESTAMP ? (
-                            <>
-                              <span className={styles.whenRelative}>
-                                {relativeTime(row.timestamp)}
-                              </span>
-                              <span className={styles.whenAbsolute}>{timeUTC(row.timestamp)}</span>
-                            </>
-                          ) : (
-                            <span className={styles.whenAbsolute}>
-                              Block #{row.blockNumber}
-                            </span>
-                          )}
+                          <span className={styles.whenRelative}>{relativeTime(row.timestamp)}</span>
+                          <span className={styles.whenAbsolute}>
+                            {row.timestamp >= MIN_REAL_TIMESTAMP
+                              ? timeUTC(row.timestamp)
+                              : `Block #${row.blockNumber}`}
+                          </span>
                         </div>
                       </div>
                     </div>

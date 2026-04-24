@@ -1,7 +1,6 @@
 let _rpcId = 0;
 
-const ERC20_TRANSFER_TOPIC =
-  "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 function padAddress(address: string): string {
   return "0x000000000000000000000000" + address.replace(/^0x/i, "").toLowerCase();
@@ -65,6 +64,7 @@ interface RawLog {
   topics: string[];
   data: string;
   blockNumber: string;
+  blockTimestamp: string; // added by canton-middleware PR #241
   transactionHash: string;
   logIndex: string;
 }
@@ -94,31 +94,6 @@ async function ethGetLogs(rpcUrl: string, filter: unknown): Promise<RawLog[]> {
   const json = (await res.json()) as { result?: unknown; error?: { message: string } };
   if (json.error) throw new Error(json.error.message);
   return (json.result as RawLog[]) ?? [];
-}
-
-async function getBlockTimestamps(
-  rpcUrl: string,
-  blockNumbers: string[],
-): Promise<Map<string, number>> {
-  const unique = [...new Set(blockNumbers)];
-  const results = await Promise.all(
-    unique.map(async (bn) => {
-      const res = await fetch(rpcUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "eth_getBlockByNumber",
-          params: [bn, false],
-          id: ++_rpcId,
-        }),
-      });
-      const json = (await res.json()) as { result?: { timestamp: string } };
-      const ts = json.result?.timestamp ? parseInt(json.result.timestamp, 16) : 0;
-      return [bn, ts] as [string, number];
-    }),
-  );
-  return new Map(results);
 }
 
 async function ethBlockNumber(rpcUrl: string): Promise<string> {
@@ -175,22 +150,16 @@ export async function getTransferLogs(
     }),
   );
 
-  const flat = perToken.flat();
-  if (flat.length === 0) return [];
-
-  const timestamps = await getBlockTimestamps(
-    rpcUrl,
-    flat.map((l) => l.blockNumber),
-  );
-
-  return flat
+  return perToken
+    .flat()
+    .filter((l) => l.topics.length >= 3)
     .map((l) => ({
       txHash: l.transactionHash,
       blockNumber: parseInt(l.blockNumber, 16),
-      timestamp: timestamps.get(l.blockNumber) ?? 0,
+      timestamp: l.blockTimestamp ? parseInt(l.blockTimestamp, 16) : 0,
       direction: l.direction,
       tokenAddress: l.address.toLowerCase(),
-      amount: BigInt(l.data),
+      amount: l.data && l.data !== "0x" ? BigInt(l.data) : 0n,
       from: "0x" + l.topics[1].slice(26),
       to: "0x" + l.topics[2].slice(26),
     }))

@@ -54,6 +54,15 @@
   color: var(--text-muted);
 }
 
+.searchBarDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.searchBarDisabled .searchInput {
+  cursor: not-allowed;
+}
+
 /* ── Filter tabs ── */
 .filters {
   display: flex;
@@ -262,10 +271,6 @@
   font-weight: 700;
 }
 
-.amountNeutral {
-  color: var(--text-primary);
-}
-
 .amountSent {
   color: var(--text-primary);
 }
@@ -277,39 +282,6 @@
 .amountLabel {
   font-size: 11px;
   color: var(--text-muted);
-}
-
-/* Status cell */
-.statusCell {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.statusBadge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 22px;
-  padding: 0 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.statusDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.statusSettled {
-  background: rgba(52, 211, 153, 0.15);
-  color: #34d399;
-}
-
-.statusSettled .statusDot {
-  background: #34d399;
 }
 
 /* When cell */
