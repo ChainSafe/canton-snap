@@ -13,7 +13,12 @@ import {
   ethChainId,
 } from "../lib/ethrpc";
 import { prepareTransfer, executeTransfer, type PrepareResult } from "../lib/transfer";
-import { addEthChain, sendEthTransaction, shortenAddress, toChecksumAddress } from "../lib/ethereum";
+import {
+  addEthChain,
+  sendEthTransaction,
+  shortenAddress,
+  toChecksumAddress,
+} from "../lib/ethereum";
 import { TOKEN_COLORS } from "../lib/tokens";
 import { useSnap } from "../hooks/useSnap";
 import { cn } from "../lib/cn";
@@ -50,7 +55,13 @@ function TokenAvatar({ symbol }: { symbol: string }) {
 
 function ChevronDown() {
   return (
-    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className={styles.tokenDropdownChevron}>
+    <svg
+      width="10"
+      height="6"
+      viewBox="0 0 10 6"
+      fill="none"
+      className={styles.tokenDropdownChevron}
+    >
       <path d="M1 1L5 5L9 1" stroke="#a1a6c4" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
@@ -247,10 +258,12 @@ export function TransferPage({
   // Load token list then fetch all balances
   useEffect(() => {
     let cancelled = false;
-    setTokensLoading(true);
     const rpcUrl = `${currentNet.middlewareUrl}/eth`;
-    getTokens(currentNet.middlewareUrl)
-      .then(async (list) => {
+
+    async function load() {
+      setTokensLoading(true);
+      try {
+        const list = await getTokens(currentNet.middlewareUrl);
         if (cancelled) return;
         setTokens(list);
         if (list.length > 0) setSelectedToken(list[0]);
@@ -265,42 +278,48 @@ export function TransferPage({
           }),
         );
         if (!cancelled) setBalances(new Map(entries));
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setTokensLoading(false); });
+      } catch {
+        // token list fetch failed — leave empty state
+      } finally {
+        if (!cancelled) setTokensLoading(false);
+      }
+    }
+
+    void load();
     return () => { cancelled = true; };
   }, [currentNet.middlewareUrl, address]);
 
-  // Auto-run prepare when entering sign step (non-custodial only)
+  // Auto-run prepare when entering sign step (non-custodial only).
+  // Depends only on [step]: fires once on entry; form fields are captured via closure
+  // and must not cause re-runs mid-flight.
   useEffect(() => {
     if (step !== "sign" || !isNonCustodial || !selectedToken) return;
     let cancelled = false;
-    setSignPhase("preparing");
-    setPending(true);
-    setError(null);
 
-    prepareTransfer(currentNet.middlewareUrl, address, recipient, selectedToken.symbol, amount)
-      .then((result) => {
+    async function prepare() {
+      setSignPhase("preparing");
+      setPending(true);
+      setError(null);
+      try {
+        const result = await prepareTransfer(
+          currentNet.middlewareUrl, address, recipient, selectedToken.symbol, amount,
+        );
         if (cancelled) return;
         setPrepared(result);
         setSignPhase("awaiting-snap");
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (cancelled) return;
         setError((e as Error).message);
         setStep("details");
         setSignPhase("idle");
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setPending(false);
-      });
+      }
+    }
 
-    return () => {
-      cancelled = true;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // Intentionally depends only on [step]: prepare should fire once on entry to the sign
-  // step, not re-run when form fields (recipient, amount, selectedToken) change mid-flight.
+    void prepare();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   function validate(): string | null {
@@ -309,14 +328,18 @@ export function TransferPage({
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return "Enter a positive amount";
     const bal = balances.get(selectedToken.address);
     if (bal !== undefined) {
-      if (parseTokenAmount(amount, selectedToken.decimals) > bal) return "Amount exceeds your balance";
+      if (parseTokenAmount(amount, selectedToken.decimals) > bal)
+        return "Amount exceeds your balance";
     }
     return null;
   }
 
   function handleContinue() {
     const err = validate();
-    if (err) { setError(err); return; }
+    if (err) {
+      setError(err);
+      return;
+    }
     setError(null);
     setStep("sign");
   }
@@ -481,9 +504,7 @@ export function TransferPage({
                   Paste
                 </button>
               </div>
-              {recipientValid && (
-                <p className={styles.recipientHint}>✓ Valid EVM address</p>
-              )}
+              {recipientValid && <p className={styles.recipientHint}>✓ Valid EVM address</p>}
             </div>
 
             {/* Amount */}
@@ -496,13 +517,19 @@ export function TransferPage({
                   inputMode="decimal"
                   placeholder="0"
                   value={amount}
-                  onChange={(e) => { setAmount(e.target.value); setError(null); }}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setError(null);
+                  }}
                 />
                 {selectedBalance !== undefined && selectedToken && (
                   <button
                     className={styles.maxBtn}
                     type="button"
-                    onClick={() => { setAmount(formatTokenAmount(selectedBalance, selectedToken.decimals)); setError(null); }}
+                    onClick={() => {
+                      setAmount(formatTokenAmount(selectedBalance, selectedToken.decimals));
+                      setError(null);
+                    }}
                   >
                     MAX
                   </button>
@@ -530,13 +557,17 @@ export function TransferPage({
               ) : (
                 <span>
                   Gas-free on Canton · Settles in ~2–4s ·{" "}
-                  <strong style={{ color: "var(--text-primary)" }}>one MetaMask signature</strong>{" "}
-                  — server co-signs Canton side
+                  <strong style={{ color: "var(--text-primary)" }}>one MetaMask signature</strong> —
+                  server co-signs Canton side
                 </span>
               )}
             </div>
 
-            <button className={styles.btnContinue} onClick={handleContinue} disabled={tokensLoading}>
+            <button
+              className={styles.btnContinue}
+              onClick={handleContinue}
+              disabled={tokensLoading}
+            >
               Continue
             </button>
           </PageCard>
@@ -556,7 +587,13 @@ export function TransferPage({
                     strokeWidth="1.8"
                     strokeLinejoin="round"
                   />
-                  <path d="M9 14L12 17L19 11" stroke="#00d4a4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M9 14L12 17L19 11"
+                    stroke="#00d4a4"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               )}
             </div>
@@ -566,10 +603,10 @@ export function TransferPage({
               {signPhase === "preparing"
                 ? "Authenticating with MetaMask…"
                 : signPhase === "signing"
-                ? "Approve the request in the Canton Snap dialog…"
-                : signPhase === "executing"
-                ? "Submitting transaction to Canton…"
-                : "Review the transaction hash in the snap dialog and approve to send the transfer."}
+                  ? "Approve the request in the Canton Snap dialog…"
+                  : signPhase === "executing"
+                    ? "Submitting transaction to Canton…"
+                    : "Review the transaction hash in the snap dialog and approve to send the transfer."}
             </p>
 
             {prepared && (
@@ -587,8 +624,8 @@ export function TransferPage({
               {signPhase === "signing"
                 ? "Signing…"
                 : signPhase === "executing"
-                ? "Executing…"
-                : "Open snap dialog"}
+                  ? "Executing…"
+                  : "Open snap dialog"}
             </button>
 
             <div className={styles.signStatusRow}>
@@ -657,7 +694,11 @@ export function TransferPage({
               </span>
             </div>
 
-            <button className={styles.btnOpenDialog} onClick={handleMetaMaskSign} disabled={pending}>
+            <button
+              className={styles.btnOpenDialog}
+              onClick={handleMetaMaskSign}
+              disabled={pending}
+            >
               {pending ? "Waiting for MetaMask…" : "Open MetaMask"}
             </button>
 
@@ -721,10 +762,7 @@ export function TransferPage({
               <button className={styles.btnSendAnother} onClick={handleReset}>
                 Send another
               </button>
-              <button
-                className={styles.btnViewActivity}
-                onClick={() => onTabChange("balances")}
-              >
+              <button className={styles.btnViewActivity} onClick={() => onTabChange("balances")}>
                 View in Activity →
               </button>
             </div>
