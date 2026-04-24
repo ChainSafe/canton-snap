@@ -246,10 +246,12 @@ export function TransferPage({
 
   // Load token list then fetch all balances
   useEffect(() => {
+    let cancelled = false;
     setTokensLoading(true);
     const rpcUrl = `${currentNet.middlewareUrl}/eth`;
     getTokens(currentNet.middlewareUrl)
       .then(async (list) => {
+        if (cancelled) return;
         setTokens(list);
         if (list.length > 0) setSelectedToken(list[0]);
         const entries = await Promise.all(
@@ -262,10 +264,11 @@ export function TransferPage({
             }
           }),
         );
-        setBalances(new Map(entries));
+        if (!cancelled) setBalances(new Map(entries));
       })
       .catch(() => {})
-      .finally(() => setTokensLoading(false));
+      .finally(() => { if (!cancelled) setTokensLoading(false); });
+    return () => { cancelled = true; };
   }, [currentNet.middlewareUrl, address]);
 
   // Auto-run prepare when entering sign step (non-custodial only)
@@ -295,7 +298,10 @@ export function TransferPage({
     return () => {
       cancelled = true;
     };
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Intentionally depends only on [step]: prepare should fire once on entry to the sign
+  // step, not re-run when form fields (recipient, amount, selectedToken) change mid-flight.
+  }, [step]);
 
   function validate(): string | null {
     if (!selectedToken) return "Select a token";
@@ -317,6 +323,15 @@ export function TransferPage({
 
   async function handleSnapSign() {
     if (!prepared || !selectedToken) return;
+
+    if (new Date(prepared.expiresAt) <= new Date()) {
+      setError("Transfer preparation expired — please go back and try again.");
+      setPrepared(null);
+      setStep("details");
+      setSignPhase("idle");
+      return;
+    }
+
     setPending(true);
     setError(null);
     try {
@@ -443,6 +458,7 @@ export function TransferPage({
                   onSelect={(t) => {
                     setSelectedToken(t);
                     setAmount("");
+                    setError(null);
                   }}
                 />
               )}
@@ -466,7 +482,7 @@ export function TransferPage({
                 </button>
               </div>
               {recipientValid && (
-                <p className={styles.recipientHint}>✓ Registered Canton party</p>
+                <p className={styles.recipientHint}>✓ Valid EVM address</p>
               )}
             </div>
 
@@ -480,13 +496,13 @@ export function TransferPage({
                   inputMode="decimal"
                   placeholder="0"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => { setAmount(e.target.value); setError(null); }}
                 />
                 {selectedBalance !== undefined && selectedToken && (
                   <button
                     className={styles.maxBtn}
                     type="button"
-                    onClick={() => setAmount(formatTokenAmount(selectedBalance, selectedToken.decimals))}
+                    onClick={() => { setAmount(formatTokenAmount(selectedBalance, selectedToken.decimals)); setError(null); }}
                   >
                     MAX
                   </button>
@@ -520,7 +536,7 @@ export function TransferPage({
               )}
             </div>
 
-            <button className={styles.btnContinue} onClick={handleContinue}>
+            <button className={styles.btnContinue} onClick={handleContinue} disabled={tokensLoading}>
               Continue
             </button>
           </PageCard>
@@ -549,6 +565,10 @@ export function TransferPage({
             <p className={styles.signSubtitle}>
               {signPhase === "preparing"
                 ? "Authenticating with MetaMask…"
+                : signPhase === "signing"
+                ? "Approve the request in the Canton Snap dialog…"
+                : signPhase === "executing"
+                ? "Submitting transaction to Canton…"
                 : "Review the transaction hash in the snap dialog and approve to send the transfer."}
             </p>
 
@@ -564,7 +584,11 @@ export function TransferPage({
               onClick={handleSnapSign}
               disabled={pending || signPhase !== "awaiting-snap"}
             >
-              {pending && signPhase === "signing" ? "Signing…" : "Open snap dialog"}
+              {signPhase === "signing"
+                ? "Signing…"
+                : signPhase === "executing"
+                ? "Executing…"
+                : "Open snap dialog"}
             </button>
 
             <div className={styles.signStatusRow}>
