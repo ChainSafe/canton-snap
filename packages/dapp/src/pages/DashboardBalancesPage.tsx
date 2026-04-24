@@ -5,6 +5,7 @@ import { Spinner } from "../components/Spinner";
 import { getNetwork, type NetworkId } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
 import { getTokenBalance, formatTokenAmount } from "../lib/ethrpc";
+import { TOKEN_COLORS } from "../lib/tokens";
 import styles from "./DashboardBalancesPage.module.css";
 
 interface TokenRow {
@@ -13,8 +14,8 @@ interface TokenRow {
 }
 
 type FetchState =
-  | { url: string; rows: TokenRow[]; error: null }
-  | { url: string; rows: null; error: string };
+  | { url: string; address: string; rows: TokenRow[]; error: null }
+  | { url: string; address: string; rows: null; error: string };
 
 interface Props {
   address: string;
@@ -24,12 +25,6 @@ interface Props {
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
 }
-
-const TOKEN_COLORS: Record<string, { bg: string; text: string }> = {
-  DEMO: { bg: "#00d4a4", text: "#0a0b14" },
-  PROMPT: { bg: "#8b7cff", text: "#0a0b14" },
-  USDCX: { bg: "#2775ca", text: "#ffffff" },
-};
 
 function TokenIcon({ symbol }: { symbol: string }) {
   const colors = TOKEN_COLORS[symbol.toUpperCase()] ?? { bg: "#656a8a", text: "#ffffff" };
@@ -51,7 +46,7 @@ export function DashboardBalancesPage({
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
 
   const currentNet = getNetwork(network);
-  const loading = fetchState?.url !== currentNet.middlewareUrl;
+  const loading = fetchState?.url !== currentNet.middlewareUrl || fetchState?.address !== address;
 
   useEffect(() => {
     let cancelled = false;
@@ -67,12 +62,14 @@ export function DashboardBalancesPage({
         ),
       )
       .then((rows) => {
-        if (!cancelled) setFetchState({ url: currentNet.middlewareUrl, rows, error: null });
+        if (!cancelled)
+          setFetchState({ url: currentNet.middlewareUrl, address, rows, error: null });
       })
       .catch((e: unknown) => {
         if (!cancelled)
           setFetchState({
             url: currentNet.middlewareUrl,
+            address,
             rows: null,
             error: (e as Error).message,
           });
@@ -135,7 +132,13 @@ export function DashboardBalancesPage({
             </div>
           )}
 
-          {!loading && fetchState?.rows && (
+          {!loading && fetchState?.rows && fetchState.rows.length === 0 && (
+            <div className={styles.centred}>
+              <p className={styles.hint}>No tokens configured on this network.</p>
+            </div>
+          )}
+
+          {!loading && fetchState?.rows && fetchState.rows.length > 0 && (
             <>
               {fetchState.rows.map(({ token, balance }, i) => (
                 <div key={token.address}>

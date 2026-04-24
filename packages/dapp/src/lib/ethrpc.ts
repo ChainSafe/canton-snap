@@ -1,3 +1,5 @@
+let _rpcId = 0;
+
 function encodeBalanceOf(address: string): string {
   return "0x70a08231" + address.replace(/^0x/i, "").toLowerCase().padStart(64, "0");
 }
@@ -10,7 +12,7 @@ async function ethCall(rpcUrl: string, to: string, data: string): Promise<string
       jsonrpc: "2.0",
       method: "eth_call",
       params: [{ to, data }, "latest"],
-      id: 1,
+      id: ++_rpcId,
     }),
   });
   const json = await res.json();
@@ -24,6 +26,7 @@ export async function getTokenBalance(
   holderAddress: string,
 ): Promise<bigint> {
   const result = await ethCall(rpcUrl, tokenAddress, encodeBalanceOf(holderAddress));
+  if (!result || result === "0x") return 0n;
   return BigInt(result);
 }
 

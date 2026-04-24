@@ -167,7 +167,7 @@ export function DashboardLayout({
                 disabled={isDisabled}
                 aria-current={isActive ? "page" : undefined}
                 onClick={() => {
-                  if (!isDisabled && (id === "profile" || id === "balances")) onTabChange(id);
+                  if (id === "profile" || id === "balances") onTabChange(id);
                 }}
               >
                 <Icon />

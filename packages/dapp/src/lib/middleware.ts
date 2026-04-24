@@ -5,11 +5,37 @@ export interface TokenConfig {
   decimals: number;
 }
 
+function isTokenConfig(t: unknown): t is TokenConfig {
+  if (t === null || typeof t !== "object") return false;
+  const r = t as Record<string, unknown>;
+  return (
+    typeof r.address === "string" &&
+    typeof r.name === "string" &&
+    typeof r.symbol === "string" &&
+    typeof r.decimals === "number"
+  );
+}
+
+const TOKENS_PAGE_LIMIT = 50;
+
 export async function getTokens(baseUrl: string): Promise<TokenConfig[]> {
-  const res = await fetch(`${baseUrl}/tokens`);
-  if (!res.ok) throw new Error(`Failed to fetch tokens: ${res.status}`);
-  const data = await res.json();
-  return data.tokens as TokenConfig[];
+  const all: TokenConfig[] = [];
+  let page = 1;
+
+  while (true) {
+    const res = await fetch(`${baseUrl}/tokens?page=${page}&limit=${TOKENS_PAGE_LIMIT}`);
+    if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+
+    const data = (await res.json()) as { items: unknown[]; total: number };
+    if (!Array.isArray(data.items)) throw new Error("Unexpected tokens response shape");
+
+    all.push(...data.items.filter(isTokenConfig));
+
+    if (all.length >= data.total) break;
+    page++;
+  }
+
+  return all;
 }
 
 export interface UserProfile {

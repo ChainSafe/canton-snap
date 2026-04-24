@@ -79,6 +79,26 @@ export default function App() {
     if (done) setPage("registration-done");
   }, [sign, mm.address]);
 
+  const handleNetworkChange = useCallback(
+    (id: NetworkId) => {
+      setNetwork(id);
+      if (!mm.address) return;
+      const session = getSession(mm.address);
+      if (!session) return;
+      void getUser(getNetwork(id).middlewareUrl, mm.address, session.signature, session.message)
+        .then((updated) => {
+          if (updated) {
+            setProfile(updated);
+          } else {
+            setProfile(null);
+            setPage("registration-choice");
+          }
+        })
+        .catch(() => {});
+    },
+    [mm.address],
+  );
+
   function handleDisconnect() {
     mm.disconnect();
     setProfile(null);
@@ -284,22 +304,6 @@ export default function App() {
   }
 
   if (page === "dashboard" && profile) {
-    const handleNetworkChange = (id: NetworkId) => {
-      setNetwork(id);
-      if (!mm.address) return;
-      const session = getSession(mm.address);
-      if (!session) return;
-      void getUser(getNetwork(id).middlewareUrl, mm.address, session.signature, session.message)
-        .then((updated) => {
-          if (updated) {
-            setProfile(updated);
-          } else {
-            setProfile(null);
-            setPage("registration-choice");
-          }
-        })
-        .catch(() => {});
-    };
     const sharedProps = {
       address,
       network,

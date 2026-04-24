@@ -32,6 +32,10 @@
   margin-bottom: 14px;
 }
 
+.sectionLabelTop {
+  margin-top: 4px;
+}
+
 .partyIdRow {
   display: flex;
   align-items: flex-start;
