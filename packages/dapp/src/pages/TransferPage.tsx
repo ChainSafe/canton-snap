@@ -286,7 +286,9 @@ export function TransferPage({
     }
 
     void load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [currentNet.middlewareUrl, address]);
 
   // Auto-run prepare when entering sign step (non-custodial only).
@@ -302,7 +304,11 @@ export function TransferPage({
       setError(null);
       try {
         const result = await prepareTransfer(
-          currentNet.middlewareUrl, address, recipient, selectedToken.symbol, amount,
+          currentNet.middlewareUrl,
+          address,
+          recipient,
+          selectedToken.symbol,
+          amount,
         );
         if (cancelled) return;
         setPrepared(result);
@@ -318,7 +324,9 @@ export function TransferPage({
     }
 
     void prepare();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
