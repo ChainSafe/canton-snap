@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 32px;
+  margin-bottom: 6px;
 }
 
 .pageTitle {
@@ -13,18 +13,23 @@
   color: var(--text-primary);
 }
 
+.pageSubtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
 .modePill {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  padding: 4px 10px;
-  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  padding: 4px 12px;
+  border-radius: 12px;
   flex-shrink: 0;
-  align-self: center;
 }
 
 .modePillCustodial {
-  background: rgba(139, 124, 255, 0.15);
+  background: rgba(139, 124, 255, 0.12);
   color: #8b7cff;
   border: 1px solid rgba(139, 124, 255, 0.3);
 }
@@ -32,50 +37,59 @@
 .modePillNonCustodial {
   background: rgba(0, 212, 164, 0.12);
   color: #00d4a4;
-  border: 1px solid rgba(0, 212, 164, 0.25);
+  border: 1px solid rgba(0, 212, 164, 0.3);
 }
 
 /* ── Steps bar ── */
 .stepsBar {
   display: flex;
   align-items: center;
-  gap: 0;
   margin-bottom: 32px;
+}
+
+.stepSegment {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.stepSegment:last-child {
+  flex: 0;
 }
 
 .stepItem {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .stepDot {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
-  transition: background 0.2s, border-color 0.2s;
 }
 
 .stepDotPending {
   background: transparent;
-  border: 2px solid var(--border-muted);
-  color: var(--text-muted);
+  border: 2px solid #353a5a;
+  color: #656a8a;
 }
 
 .stepDotActive {
-  background: var(--teal-gradient);
-  border: 2px solid transparent;
+  background: #00d4a4;
+  border: 2px solid #00d4a4;
   color: #0a0b14;
 }
 
 .stepDotDone {
-  background: rgba(0, 212, 164, 0.15);
+  background: transparent;
   border: 2px solid #00d4a4;
   color: #00d4a4;
 }
@@ -83,12 +97,11 @@
 .stepLabel {
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.5px;
   white-space: nowrap;
 }
 
 .stepLabelPending {
-  color: var(--text-muted);
+  color: #656a8a;
 }
 
 .stepLabelActive {
@@ -96,15 +109,23 @@
 }
 
 .stepLabelDone {
-  color: #00d4a4;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .stepConnector {
   flex: 1;
-  height: 1px;
-  background: var(--border);
+  height: 2px;
   margin: 0 12px;
-  min-width: 32px;
+  min-width: 24px;
+}
+
+.stepConnectorPending {
+  background: #353a5a;
+}
+
+.stepConnectorDone {
+  background: #00d4a4;
 }
 
 /* ── Form card ── */
@@ -113,14 +134,14 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 32px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .fieldLabel {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 1.2px;
-  color: var(--text-muted);
+  color: #656a8a;
   margin-bottom: 10px;
 }
 
@@ -128,90 +149,198 @@
   margin-bottom: 24px;
 }
 
-.fieldGroup:last-child {
-  margin-bottom: 0;
+/* ── Token dropdown ── */
+.tokenDropdownWrapper {
+  position: relative;
 }
 
-/* Token selector */
-.tokenSelect {
+.tokenDropdownTrigger {
   width: 100%;
-  background: #0a0b14;
-  border: 1px solid var(--border-muted);
+  background: #1a1d2e;
+  border: 1px solid #353a5a;
   border-radius: 10px;
-  padding: 14px 16px;
-  color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
-  font-family: var(--font-sans);
+  padding: 0 16px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23656a8a' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
+  text-align: left;
+  font-family: var(--font-sans);
 }
 
-.tokenSelect:focus {
+.tokenDropdownTrigger:focus {
   outline: none;
   border-color: var(--teal);
 }
 
-/* Text inputs */
-.input {
-  width: 100%;
-  background: #0a0b14;
-  border: 1px solid var(--border-muted);
-  border-radius: 10px;
-  padding: 14px 16px;
-  color: var(--text-primary);
-  font-size: 15px;
-  font-family: var(--font-mono);
-  box-sizing: border-box;
+.tokenAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
-.input::placeholder {
-  color: var(--text-muted);
+.tokenDropdownInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.tokenDropdownName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+}
+
+.tokenDropdownBalance {
+  font-size: 11px;
+  color: #656a8a;
+  display: block;
+  margin-top: 2px;
+}
+
+.tokenDropdownChevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.tokenDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #1a1d2e;
+  border: 1px solid #353a5a;
+  border-radius: 10px;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.tokenDropdownItem {
+  width: 100%;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+}
+
+.tokenDropdownItem:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tokenDropdownItemName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+}
+
+.tokenDropdownItemBalance {
+  font-size: 11px;
+  color: #656a8a;
+  display: block;
+  margin-top: 1px;
+}
+
+/* ── Recipient input ── */
+.recipientWrapper {
+  background: #1a1d2e;
+  border: 1px solid #353a5a;
+  border-radius: 10px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+}
+
+.recipientWrapper:focus-within {
+  border-color: var(--teal);
+}
+
+.recipientInput {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 16px 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  min-width: 0;
+}
+
+.recipientInput:focus {
+  outline: none;
+}
+
+.recipientInput::placeholder {
+  color: #656a8a;
   font-family: var(--font-sans);
   font-size: 13px;
 }
 
-.input:focus {
-  outline: none;
-  border-color: var(--teal);
+.pasteBtn {
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--teal);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  padding: 0;
+  flex-shrink: 0;
 }
 
-.input.inputError {
-  border-color: var(--red);
+.pasteBtn:hover {
+  text-decoration: underline;
 }
 
-/* Amount row with MAX */
-.amountRow {
+.recipientHint {
+  font-size: 11px;
+  color: var(--green);
+  margin-top: 6px;
   display: flex;
   align-items: center;
-  gap: 0;
-  background: #0a0b14;
-  border: 1px solid var(--border-muted);
+  gap: 4px;
+}
+
+/* ── Amount input ── */
+.amountRow {
+  background: #1a1d2e;
+  border: 1px solid #353a5a;
   border-radius: 10px;
-  overflow: hidden;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 80px;
 }
 
 .amountRow:focus-within {
   border-color: var(--teal);
 }
 
-.amountRow.amountRowError {
-  border-color: var(--red);
-}
-
 .amountInput {
   flex: 1;
   background: none;
   border: none;
-  padding: 14px 16px;
   color: var(--text-primary);
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
   font-family: var(--font-mono);
   min-width: 0;
+  padding: 0;
 }
 
 .amountInput:focus {
@@ -219,33 +348,38 @@
 }
 
 .amountInput::placeholder {
-  color: var(--text-muted);
-  font-size: 15px;
-  font-weight: 400;
+  color: #353a5a;
+  font-size: 28px;
 }
 
 .maxBtn {
-  background: none;
-  border: none;
-  border-left: 1px solid var(--border);
-  padding: 0 18px;
-  height: 52px;
+  background: #232640;
+  border: 1px solid #353a5a;
+  border-radius: 6px;
+  padding: 4px 10px;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  color: var(--teal);
+  font-weight: 600;
+  color: var(--text-primary);
   cursor: pointer;
   font-family: var(--font-sans);
   flex-shrink: 0;
 }
 
 .maxBtn:hover {
-  background: rgba(0, 212, 164, 0.06);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.amountSymbol {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex-shrink: 0;
 }
 
 .balanceHint {
   font-size: 11px;
-  color: var(--text-muted);
+  color: #656a8a;
   margin-top: 8px;
 }
 
@@ -253,9 +387,9 @@
 .infoStrip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
+  gap: 10px;
+  background: #12141f;
+  border: 1px solid #252840;
   border-radius: 10px;
   padding: 12px 16px;
   font-size: 12px;
@@ -268,7 +402,27 @@
   color: var(--text-muted);
 }
 
-/* Error banner */
+/* Continue button — inside card, full width */
+.btnContinue {
+  width: 100%;
+  height: 52px;
+  border-radius: 12px;
+  border: none;
+  background: var(--teal-gradient);
+  color: #0a0b14;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  margin-top: 24px;
+}
+
+.btnContinue:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Error banner ── */
 .errorBanner {
   background: rgba(255, 107, 107, 0.08);
   border: 1px solid rgba(255, 107, 107, 0.3);
@@ -279,60 +433,19 @@
   margin-bottom: 16px;
 }
 
-/* ── Actions ── */
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.btnContinue {
-  height: 48px;
-  padding: 0 32px;
-  border-radius: 10px;
-  border: none;
-  background: var(--teal-gradient);
-  color: #0a0b14;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: var(--font-sans);
-  cursor: pointer;
-}
-
-.btnContinue:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.btnBack {
-  background: none;
-  border: none;
-  font-size: 13px;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  padding: 0;
-}
-
-.btnBack:hover {
-  color: var(--text-secondary);
-}
-
-/* ── Sign step ── */
+/* ── Sign card ── */
 .signCard {
-  background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
-  border: 1px solid var(--teal);
+  background: linear-gradient(180deg, #1e2238 0%, #141729 100%);
+  border: 1.5px solid rgba(0, 212, 164, 0.4);
   border-radius: 16px;
-  padding: 40px 32px;
-  margin-bottom: 16px;
+  padding: 48px 32px 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  box-shadow: 0 0 32px rgba(0, 212, 164, 0.08);
 }
 
-.signIcon {
+.signIconWrap {
   width: 64px;
   height: 64px;
   border-radius: 50%;
@@ -340,75 +453,109 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
+  position: relative;
 }
 
 .signIconSnap {
-  background: rgba(0, 212, 164, 0.12);
+  background: rgba(0, 212, 164, 0.1);
   border: 1px solid rgba(0, 212, 164, 0.25);
 }
 
 .signIconMetaMask {
-  background: rgba(255, 107, 0, 0.1);
-  border: 1px solid rgba(255, 107, 0, 0.25);
+  background: rgba(246, 133, 27, 0.1);
+  border: 1px solid rgba(246, 133, 27, 0.25);
 }
 
 .signTitle {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .signSubtitle {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
   margin-bottom: 24px;
-  max-width: 420px;
+  max-width: 460px;
 }
 
+/* Hash preview — two-row layout */
 .hashPreview {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 16px;
+  background: #0a0b14;
+  border: 1px solid #252840;
+  border-radius: 10px;
+  padding: 12px 20px 14px;
   margin-bottom: 24px;
-  word-break: break-all;
-  max-width: 100%;
-  text-align: left;
   width: 100%;
+  max-width: 576px;
   box-sizing: border-box;
+  text-align: left;
 }
 
-.contractPreview {
+.hashPreviewLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #656a8a;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.hashPreviewValue {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px 18px;
+  color: var(--text-primary);
+  word-break: break-all;
+  display: block;
+}
+
+/* Contract preview — two-row layout */
+.contractPreview {
+  background: #0a0b14;
+  border: 1px solid #252840;
+  border-radius: 10px;
+  padding: 12px 20px 14px;
   margin-bottom: 24px;
-  text-align: left;
   width: 100%;
+  max-width: 576px;
   box-sizing: border-box;
-  line-height: 1.6;
+  text-align: left;
+}
+
+.contractPreviewLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #656a8a;
+  display: block;
+  margin-bottom: 6px;
 }
 
 .contractCall {
-  color: var(--teal);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  word-break: break-all;
+  display: block;
+}
+
+.contractVia {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #656a8a;
+  float: right;
 }
 
 .btnOpenDialog {
-  height: 48px;
-  padding: 0 32px;
-  border-radius: 10px;
+  height: 52px;
+  width: 100%;
+  max-width: 576px;
+  border-radius: 12px;
   border: none;
   background: var(--teal-gradient);
   color: #0a0b14;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   font-family: var(--font-sans);
   cursor: pointer;
@@ -420,41 +567,59 @@
   cursor: not-allowed;
 }
 
-.signStatus {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  max-width: 320px;
-}
-
-.statusRow {
+/* Status row — horizontal */
+.signStatusRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--text-muted);
+  gap: 20px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  max-width: 576px;
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-.statusDot {
-  width: 8px;
-  height: 8px;
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusItemDot {
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.statusDotDone {
-  background: var(--green);
+.statusItemDotDone {
+  background: rgba(0, 212, 164, 0.2);
+  border: 1px solid #00d4a4;
 }
 
-.statusDotActive {
-  background: var(--teal);
-  box-shadow: 0 0 6px rgba(0, 212, 164, 0.6);
+.statusItemDotDone::after {
+  content: "";
+  display: block;
+  width: 5px;
+  height: 3px;
+  border-left: 1.5px solid #00d4a4;
+  border-bottom: 1.5px solid #00d4a4;
+  transform: rotate(-45deg) translate(0.5px, -0.5px);
+}
+
+.statusItemDotActive {
+  background: rgba(0, 212, 164, 0.15);
+  border: 1px solid #00d4a4;
   animation: pulse 1.4s ease-in-out infinite;
 }
 
-.statusDotPending {
-  background: var(--border-muted);
+.statusItemDotPending {
+  background: transparent;
+  border: 1px solid #353a5a;
 }
 
 @keyframes pulse {
@@ -462,32 +627,32 @@
   50% { opacity: 0.4; }
 }
 
-.statusDone {
-  color: var(--green);
+.statusItemDone {
+  color: var(--text-secondary);
 }
 
 .btnCancel {
   background: none;
   border: none;
   font-size: 12px;
-  color: var(--text-muted);
+  font-weight: 500;
+  color: var(--text-secondary);
   cursor: pointer;
   font-family: var(--font-sans);
-  margin-top: 8px;
   padding: 0;
+  margin-left: auto;
 }
 
 .btnCancel:hover {
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
-/* ── Done step ── */
+/* ── Done card ── */
 .doneCard {
   background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 48px 32px;
-  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -495,90 +660,83 @@
 }
 
 .checkCircle {
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  background: rgba(0, 212, 164, 0.12);
-  border: 2px solid #00d4a4;
+  background: var(--teal-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
-  box-shadow: 0 0 40px rgba(0, 212, 164, 0.2);
+  box-shadow: 0 0 48px rgba(0, 212, 164, 0.28);
 }
 
 .doneTitle {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 6px;
 }
 
 .doneSubtitle {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
   margin-bottom: 32px;
 }
 
 .receipt {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
+  background: #0a0b14;
+  border: 1px solid #252840;
   border-radius: 12px;
-  padding: 20px 24px;
   width: 100%;
-  box-sizing: border-box;
-  max-width: 420px;
+  max-width: 576px;
   margin-bottom: 32px;
-  text-align: left;
+  overflow: hidden;
 }
 
 .receiptRow {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  padding: 8px 0;
-  font-size: 13px;
+  align-items: center;
+  padding: 18px 24px;
 }
 
 .receiptRow + .receiptRow {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid #252840;
 }
 
 .receiptLabel {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.8px;
+  font-size: 12px;
+  color: #656a8a;
 }
 
 .receiptValue {
-  color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
   text-align: right;
-  max-width: 220px;
+  max-width: 320px;
   word-break: break-all;
 }
 
 .receiptAmount {
-  color: var(--teal);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
+  font-family: var(--font-mono);
 }
 
 .doneActions {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
+  gap: 16px;
 }
 
 .btnSendAnother {
+  width: 280px;
   height: 44px;
-  padding: 0 24px;
   border-radius: 10px;
-  border: 1px solid var(--border-muted);
-  background: transparent;
+  border: 1px solid #353a5a;
+  background: #232640;
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
@@ -589,4 +747,17 @@
 .btnSendAnother:hover {
   border-color: var(--teal);
   color: var(--teal);
+}
+
+.btnViewActivity {
+  width: 280px;
+  height: 44px;
+  border-radius: 10px;
+  border: none;
+  background: var(--teal-gradient);
+  color: #0a0b14;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
 }

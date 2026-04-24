@@ -1,12 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { Spinner } from "../components/Spinner";
 import { getNetwork, type NetworkId } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
-import { getTokenBalance, formatTokenAmount, encodeTransfer, parseTokenAmount, ethChainId } from "../lib/ethrpc";
+import {
+  getTokenBalance,
+  formatTokenAmount,
+  encodeTransfer,
+  parseTokenAmount,
+  ethChainId,
+} from "../lib/ethrpc";
 import { prepareTransfer, executeTransfer, type PrepareResult } from "../lib/transfer";
 import { addEthChain, sendEthTransaction, shortenAddress } from "../lib/ethereum";
+import { TOKEN_COLORS } from "../lib/tokens";
 import { useSnap } from "../hooks/useSnap";
 import { cn } from "../lib/cn";
 import styles from "./TransferPage.module.css";
@@ -31,30 +38,29 @@ interface Props {
   keyMode: "custodial" | "external";
 }
 
-function CheckIcon() {
+function TokenAvatar({ symbol }: { symbol: string }) {
+  const colors = TOKEN_COLORS[symbol.toUpperCase()] ?? { bg: "#656a8a", text: "#ffffff" };
   return (
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-      <path d="M8 16L13 21L24 11" stroke="#00d4a4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <div className={styles.tokenAvatar} style={{ background: colors.bg, color: colors.text }}>
+      {symbol.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function ChevronDown() {
+  return (
+    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className={styles.tokenDropdownChevron}>
+      <path d="M1 1L5 5L9 1" stroke="#a1a6c4" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
 
-function SnapIcon() {
+function InfoIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <path d="M14 4L24 9.5V18.5L14 24L4 18.5V9.5L14 4Z" stroke="#00d4a4" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M14 10V14L17 16" stroke="#00d4a4" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function MetaMaskIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <circle cx="14" cy="14" r="10" fill="rgba(255,107,0,0.15)" />
-      <path d="M9 10L14 7L19 10L14 13L9 10Z" fill="#ff6b00" opacity="0.8" />
-      <path d="M9 10V18L14 21V13L9 10Z" fill="#ff6b00" opacity="0.5" />
-      <path d="M19 10V18L14 21V13L19 10Z" fill="#ff6b00" opacity="0.7" />
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M7 6V10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="7" cy="4" r="0.7" fill="currentColor" />
     </svg>
   );
 }
@@ -62,7 +68,7 @@ function MetaMaskIcon() {
 type StepState = "pending" | "active" | "done";
 
 function StepsBar({ step }: { step: Step }) {
-  const steps: { id: Step; label: string }[] = [
+  const items: { id: Step; label: string }[] = [
     { id: "details", label: "Details" },
     { id: "sign", label: "Sign" },
     { id: "done", label: "Done" },
@@ -79,10 +85,11 @@ function StepsBar({ step }: { step: Step }) {
 
   return (
     <div className={styles.stepsBar}>
-      {steps.map(({ id, label }, i) => {
+      {items.map(({ id, label }, i) => {
         const st = state(id);
+        const connectorDone = i < current;
         return (
-          <div key={id} style={{ display: "flex", alignItems: "center", flex: i < steps.length - 1 ? 1 : undefined }}>
+          <div key={id} className={cn(styles.stepSegment, i === items.length - 1 ? "" : "")}>
             <div className={styles.stepItem}>
               <div
                 className={cn(
@@ -92,7 +99,19 @@ function StepsBar({ step }: { step: Step }) {
                   st === "pending" && styles.stepDotPending,
                 )}
               >
-                {st === "done" ? "✓" : i + 1}
+                {st === "done" ? (
+                  <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                    <path
+                      d="M1 5L5 9L13 1"
+                      stroke="#00d4a4"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  i + 1
+                )}
               </div>
               <span
                 className={cn(
@@ -105,10 +124,95 @@ function StepsBar({ step }: { step: Step }) {
                 {label}
               </span>
             </div>
-            {i < steps.length - 1 && <div className={styles.stepConnector} />}
+            {i < items.length - 1 && (
+              <div
+                className={cn(
+                  styles.stepConnector,
+                  connectorDone ? styles.stepConnectorDone : styles.stepConnectorPending,
+                )}
+              />
+            )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+interface TokenDropdownProps {
+  tokens: TokenConfig[];
+  selected: TokenConfig | null;
+  balances: Map<string, bigint>;
+  onSelect: (t: TokenConfig) => void;
+}
+
+function TokenDropdown({ tokens, selected, balances, onSelect }: TokenDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, []);
+
+  const bal = selected ? balances.get(selected.address) : undefined;
+
+  return (
+    <div className={styles.tokenDropdownWrapper} ref={ref}>
+      <button
+        type="button"
+        className={styles.tokenDropdownTrigger}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {selected ? (
+          <>
+            <TokenAvatar symbol={selected.symbol} />
+            <div className={styles.tokenDropdownInfo}>
+              <span className={styles.tokenDropdownName}>{selected.symbol}</span>
+              <span className={styles.tokenDropdownBalance}>
+                {bal !== undefined
+                  ? `Balance: ${formatTokenAmount(bal, selected.decimals)}`
+                  : "Loading balance…"}
+              </span>
+            </div>
+          </>
+        ) : (
+          <span className={styles.tokenDropdownName} style={{ color: "#656a8a" }}>
+            Select token
+          </span>
+        )}
+        <ChevronDown />
+      </button>
+
+      {open && (
+        <div className={styles.tokenDropdownMenu}>
+          {tokens.map((t) => {
+            const b = balances.get(t.address);
+            return (
+              <button
+                key={t.address}
+                type="button"
+                className={styles.tokenDropdownItem}
+                onClick={() => {
+                  onSelect(t);
+                  setOpen(false);
+                }}
+              >
+                <TokenAvatar symbol={t.symbol} />
+                <div>
+                  <span className={styles.tokenDropdownItemName}>{t.symbol}</span>
+                  <span className={styles.tokenDropdownItemBalance}>
+                    {b !== undefined ? `Balance: ${formatTokenAmount(b, t.decimals)}` : t.name}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -126,9 +230,9 @@ export function TransferPage({
   const [tokens, setTokens] = useState<TokenConfig[]>([]);
   const [tokensLoading, setTokensLoading] = useState(true);
   const [selectedToken, setSelectedToken] = useState<TokenConfig | null>(null);
+  const [balances, setBalances] = useState<Map<string, bigint>>(new Map());
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
-  const [balance, setBalance] = useState<bigint | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [signPhase, setSignPhase] = useState<SignPhase>("idle");
@@ -139,28 +243,31 @@ export function TransferPage({
   const isNonCustodial = keyMode === "external";
   const currentNet = getNetwork(network);
 
-  // Load token list
+  // Load token list then fetch all balances
   useEffect(() => {
     setTokensLoading(true);
+    const rpcUrl = `${currentNet.middlewareUrl}/eth`;
     getTokens(currentNet.middlewareUrl)
-      .then((list) => {
+      .then(async (list) => {
         setTokens(list);
         if (list.length > 0) setSelectedToken(list[0]);
+        const entries = await Promise.all(
+          list.map(async (t) => {
+            try {
+              const b = await getTokenBalance(rpcUrl, t.address, address);
+              return [t.address, b] as [string, bigint];
+            } catch {
+              return [t.address, 0n] as [string, bigint];
+            }
+          }),
+        );
+        setBalances(new Map(entries));
       })
       .catch(() => {})
       .finally(() => setTokensLoading(false));
-  }, [currentNet.middlewareUrl]);
+  }, [currentNet.middlewareUrl, address]);
 
-  // Load balance whenever selected token or address changes
-  useEffect(() => {
-    if (!selectedToken) { setBalance(null); return; }
-    const rpcUrl = `${currentNet.middlewareUrl}/eth`;
-    getTokenBalance(rpcUrl, selectedToken.address, address)
-      .then(setBalance)
-      .catch(() => setBalance(null));
-  }, [selectedToken, currentNet.middlewareUrl, address]);
-
-  // Auto-run prepare when entering sign step (non-custodial)
+  // Auto-run prepare when entering sign step (non-custodial only)
   useEffect(() => {
     if (step !== "sign" || !isNonCustodial || !selectedToken) return;
     let cancelled = false;
@@ -184,16 +291,18 @@ export function TransferPage({
         if (!cancelled) setPending(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function validate(): string | null {
     if (!selectedToken) return "Select a token";
     if (!recipient.match(/^0x[0-9a-fA-F]{40}$/)) return "Enter a valid 0x EVM address";
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return "Enter a positive amount";
-    if (balance !== null) {
-      const parsed = parseTokenAmount(amount, selectedToken.decimals);
-      if (parsed > balance) return "Amount exceeds your balance";
+    const bal = balances.get(selectedToken.address);
+    if (bal !== undefined) {
+      if (parseTokenAmount(amount, selectedToken.decimals) > bal) return "Amount exceeds your balance";
     }
     return null;
   }
@@ -205,7 +314,6 @@ export function TransferPage({
     setStep("sign");
   }
 
-  // Non-custodial: snap sign + execute (prepare already done on step entry)
   async function handleSnapSign() {
     if (!prepared || !selectedToken) return;
     setPending(true);
@@ -239,7 +347,6 @@ export function TransferPage({
     }
   }
 
-  // Custodial: add Canton chain to MetaMask, then send via eth_sendTransaction
   async function handleMetaMaskSign() {
     if (!selectedToken) return;
     setPending(true);
@@ -278,8 +385,18 @@ export function TransferPage({
     setReceipt(null);
   }
 
+  async function handlePaste() {
+    try {
+      const text = await navigator.clipboard.readText();
+      setRecipient(text.trim());
+    } catch {
+      // clipboard access denied — no-op
+    }
+  }
+
+  const recipientValid = /^0x[0-9a-fA-F]{40}$/.test(recipient);
+  const selectedBalance = selectedToken ? balances.get(selectedToken.address) : undefined;
   const pillClass = isNonCustodial ? styles.modePillNonCustodial : styles.modePillCustodial;
-  const pillLabel = isNonCustodial ? "NON-CUSTODIAL" : "CUSTODIAL";
 
   return (
     <>
@@ -295,254 +412,277 @@ export function TransferPage({
         {/* Header */}
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Transfer</h1>
-          <span className={cn(styles.modePill, pillClass)}>{pillLabel}</span>
+          <span className={cn(styles.modePill, pillClass)}>
+            {isNonCustodial ? "NON-CUSTODIAL" : "CUSTODIAL"}
+          </span>
         </div>
+        <p className={styles.pageSubtitle}>Send tokens on Canton Network.</p>
 
         <StepsBar step={step} />
 
-        {/* Error banner */}
         {error && <div className={styles.errorBanner}>{error}</div>}
 
         {/* ── Details step ── */}
         {step === "details" && (
-          <>
-            <div className={styles.card}>
-              {/* Token selector */}
-              <div className={styles.fieldGroup}>
-                <p className={styles.fieldLabel}>TOKEN</p>
-                {tokensLoading ? (
-                  <Spinner />
-                ) : (
-                  <select
-                    className={styles.tokenSelect}
-                    value={selectedToken?.address ?? ""}
-                    onChange={(e) => {
-                      const t = tokens.find((tk) => tk.address === e.target.value) ?? null;
-                      setSelectedToken(t);
-                      setAmount("");
-                    }}
-                  >
-                    {tokens.map((t) => (
-                      <option key={t.address} value={t.address}>
-                        {t.symbol} — {t.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
+          <div className={styles.card}>
+            {/* Token */}
+            <div className={styles.fieldGroup}>
+              <p className={styles.fieldLabel}>TOKEN</p>
+              {tokensLoading ? (
+                <Spinner />
+              ) : (
+                <TokenDropdown
+                  tokens={tokens}
+                  selected={selectedToken}
+                  balances={balances}
+                  onSelect={(t) => {
+                    setSelectedToken(t);
+                    setAmount("");
+                  }}
+                />
+              )}
+            </div>
 
-              {/* Recipient */}
-              <div className={styles.fieldGroup}>
-                <p className={styles.fieldLabel}>RECIPIENT</p>
+            {/* Recipient */}
+            <div className={styles.fieldGroup}>
+              <p className={styles.fieldLabel}>RECIPIENT</p>
+              <div className={styles.recipientWrapper}>
                 <input
-                  className={styles.input}
+                  className={styles.recipientInput}
                   type="text"
                   placeholder="0x..."
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value.trim())}
                   spellCheck={false}
                 />
+                <button className={styles.pasteBtn} type="button" onClick={handlePaste}>
+                  Paste
+                </button>
               </div>
+              {recipientValid && (
+                <p className={styles.recipientHint}>✓ Registered Canton party</p>
+              )}
+            </div>
 
-              {/* Amount */}
-              <div className={styles.fieldGroup}>
-                <p className={styles.fieldLabel}>AMOUNT</p>
-                <div className={styles.amountRow}>
-                  <input
-                    className={styles.amountInput}
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
-                  {balance !== null && selectedToken && (
-                    <button
-                      className={styles.maxBtn}
-                      onClick={() => setAmount(formatTokenAmount(balance, selectedToken.decimals))}
-                      type="button"
-                    >
-                      MAX
-                    </button>
-                  )}
-                </div>
-                {balance !== null && selectedToken && (
-                  <p className={styles.balanceHint}>
-                    Balance: {formatTokenAmount(balance, selectedToken.decimals)} {selectedToken.symbol}
-                  </p>
+            {/* Amount */}
+            <div className={styles.fieldGroup}>
+              <p className={styles.fieldLabel}>AMOUNT</p>
+              <div className={styles.amountRow}>
+                <input
+                  className={styles.amountInput}
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+                {selectedBalance !== undefined && selectedToken && (
+                  <button
+                    className={styles.maxBtn}
+                    type="button"
+                    onClick={() => setAmount(formatTokenAmount(selectedBalance, selectedToken.decimals))}
+                  >
+                    MAX
+                  </button>
+                )}
+                {selectedToken && (
+                  <span className={styles.amountSymbol}>{selectedToken.symbol}</span>
                 )}
               </div>
-
-              {/* Info strip */}
-              <div className={styles.infoStrip}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4" />
-                  <path d="M7 6V10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  <circle cx="7" cy="4" r="0.7" fill="currentColor" />
-                </svg>
-                {isNonCustodial
-                  ? "Gas-free on Canton · Settles in ~2–4s · You'll sign twice (MetaMask + Snap)"
-                  : "Gas-free on Canton · Settles in ~2–4s · One MetaMask confirmation"}
-              </div>
+              {selectedBalance !== undefined && selectedToken && (
+                <p className={styles.balanceHint}>
+                  Balance: {formatTokenAmount(selectedBalance, selectedToken.decimals)}{" "}
+                  {selectedToken.symbol}
+                </p>
+              )}
             </div>
 
-            <div className={styles.actions}>
-              <button className={styles.btnContinue} onClick={handleContinue}>
-                Continue
-              </button>
+            {/* Info strip */}
+            <div className={styles.infoStrip}>
+              <InfoIcon />
+              {isNonCustodial ? (
+                <span>
+                  Gas-free on Canton · Settles in ~2–4s · You&apos;ll sign{" "}
+                  <strong style={{ color: "var(--text-primary)" }}>twice</strong> (MetaMask + Snap)
+                </span>
+              ) : (
+                <span>
+                  Gas-free on Canton · Settles in ~2–4s ·{" "}
+                  <strong style={{ color: "var(--text-primary)" }}>one MetaMask signature</strong>{" "}
+                  — server co-signs Canton side
+                </span>
+              )}
             </div>
-          </>
+
+            <button className={styles.btnContinue} onClick={handleContinue}>
+              Continue
+            </button>
+          </div>
         )}
 
         {/* ── Sign step (non-custodial) ── */}
         {step === "sign" && isNonCustodial && (
-          <>
-            <div className={styles.signCard}>
-              <div className={cn(styles.signIcon, styles.signIconSnap)}>
-                {pending && signPhase !== "awaiting-snap" ? <Spinner /> : <SnapIcon />}
-              </div>
-
-              <p className={styles.signTitle}>Sign in Canton Snap</p>
-              <p className={styles.signSubtitle}>
-                {signPhase === "preparing"
-                  ? "Authenticating with MetaMask…"
-                  : "Review the transfer in your Canton Snap, then approve."}
-              </p>
-
-              {prepared && (
-                <div className={styles.hashPreview}>
-                  <span style={{ color: "var(--text-muted)", fontSize: 10, letterSpacing: 1 }}>TX HASH </span>
-                  {prepared.transactionHash}
-                </div>
+          <div className={styles.signCard}>
+            <div className={cn(styles.signIconWrap, styles.signIconSnap)}>
+              {pending && signPhase !== "awaiting-snap" ? (
+                <Spinner />
+              ) : (
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                  <path
+                    d="M14 4L24 9.5V18.5L14 24L4 18.5V9.5L14 4Z"
+                    stroke="#00d4a4"
+                    strokeWidth="1.8"
+                    strokeLinejoin="round"
+                  />
+                  <path d="M9 14L12 17L19 11" stroke="#00d4a4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               )}
+            </div>
 
-              <button
-                className={styles.btnOpenDialog}
-                onClick={handleSnapSign}
-                disabled={pending || signPhase !== "awaiting-snap"}
-              >
-                {pending && signPhase === "signing" ? "Signing…" : "Open snap dialog"}
-              </button>
+            <p className={styles.signTitle}>Sign in Canton Snap</p>
+            <p className={styles.signSubtitle}>
+              {signPhase === "preparing"
+                ? "Authenticating with MetaMask…"
+                : "Review the transaction hash in the snap dialog and approve to send the transfer."}
+            </p>
 
-              <div className={styles.signStatus}>
-                <div className={styles.statusRow}>
-                  <span
-                    className={cn(
-                      styles.statusDot,
-                      signPhase === "preparing" ? styles.statusDotActive : styles.statusDotDone,
-                    )}
-                  />
-                  <span className={signPhase !== "preparing" ? styles.statusDone : ""}>
-                    Authenticated with MetaMask
-                  </span>
-                </div>
-                <div className={styles.statusRow}>
-                  <span
-                    className={cn(
-                      styles.statusDot,
-                      signPhase === "preparing"
-                        ? styles.statusDotPending
-                        : signPhase === "awaiting-snap"
-                          ? styles.statusDotDone
-                          : styles.statusDotDone,
-                    )}
-                  />
-                  <span className={prepared ? styles.statusDone : ""}>Transaction prepared</span>
-                </div>
-                <div className={styles.statusRow}>
-                  <span
-                    className={cn(
-                      styles.statusDot,
-                      signPhase === "signing" || signPhase === "executing"
-                        ? styles.statusDotActive
-                        : styles.statusDotPending,
-                    )}
-                  />
-                  <span>Canton Snap signing</span>
-                </div>
+            {prepared && (
+              <div className={styles.hashPreview}>
+                <span className={styles.hashPreviewLabel}>TRANSACTION HASH</span>
+                <span className={styles.hashPreviewValue}>{prepared.transactionHash}</span>
               </div>
+            )}
 
+            <button
+              className={styles.btnOpenDialog}
+              onClick={handleSnapSign}
+              disabled={pending || signPhase !== "awaiting-snap"}
+            >
+              {pending && signPhase === "signing" ? "Signing…" : "Open snap dialog"}
+            </button>
+
+            <div className={styles.signStatusRow}>
+              <div className={styles.statusItem}>
+                <div
+                  className={cn(
+                    styles.statusItemDot,
+                    signPhase === "preparing"
+                      ? styles.statusItemDotActive
+                      : styles.statusItemDotDone,
+                  )}
+                />
+                <span className={styles.statusItemDone}>Authenticated with MetaMask</span>
+              </div>
+              <div className={styles.statusItem}>
+                <div
+                  className={cn(
+                    styles.statusItemDot,
+                    signPhase === "preparing"
+                      ? styles.statusItemDotPending
+                      : styles.statusItemDotDone,
+                  )}
+                />
+                <span className={prepared ? styles.statusItemDone : ""}>Transaction prepared</span>
+              </div>
               <button className={styles.btnCancel} onClick={handleReset}>
                 Cancel
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {/* ── Sign step (custodial) ── */}
         {step === "sign" && !isNonCustodial && selectedToken && (
-          <>
-            <div className={styles.signCard}>
-              <div className={cn(styles.signIcon, styles.signIconMetaMask)}>
-                {pending ? <Spinner /> : <MetaMaskIcon />}
+          <div className={styles.signCard}>
+            <div className={cn(styles.signIconWrap, styles.signIconMetaMask)}>
+              {pending ? (
+                <Spinner />
+              ) : (
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                  <path
+                    d="M14 3L25 8.5V19.5L14 25L3 19.5V8.5L14 3Z"
+                    fill="rgba(246,133,27,0.2)"
+                    stroke="#f6851b"
+                    strokeWidth="1.6"
+                    strokeLinejoin="round"
+                  />
+                  <circle cx="14" cy="14" r="3.5" fill="#f6851b" opacity="0.8" />
+                </svg>
+              )}
+            </div>
+
+            <p className={styles.signTitle}>Confirm in MetaMask</p>
+            <p className={styles.signSubtitle}>
+              Sign the ERC-20 transfer — the middleware will co-sign on Canton.
+            </p>
+
+            <div className={styles.contractPreview}>
+              <span className={styles.contractPreviewLabel}>
+                CONTRACT CALL
+                <span className={styles.contractVia}>via /eth</span>
+              </span>
+              <span className={styles.contractCall}>
+                {selectedToken.symbol.toLowerCase()}.transfer({shortenAddress(recipient)},{" "}
+                {parseTokenAmount(amount, selectedToken.decimals).toString()})
+              </span>
+            </div>
+
+            <button className={styles.btnOpenDialog} onClick={handleMetaMaskSign} disabled={pending}>
+              {pending ? "Waiting for MetaMask…" : "Open MetaMask"}
+            </button>
+
+            <div className={styles.signStatusRow}>
+              <div className={styles.statusItem}>
+                <div
+                  className={cn(
+                    styles.statusItemDot,
+                    pending ? styles.statusItemDotActive : styles.statusItemDotPending,
+                  )}
+                />
+                <span>Custodial mode — no Canton Snap required</span>
               </div>
-
-              <p className={styles.signTitle}>Confirm in MetaMask</p>
-              <p className={styles.signSubtitle}>
-                Custodial mode — no Canton Snap required. The server co-signs the Canton side.
-              </p>
-
-              <div className={styles.contractPreview}>
-                <span className={styles.contractCall}>
-                  {selectedToken.symbol.toLowerCase()}.transfer(
-                  {shortenAddress(recipient)}, {parseTokenAmount(amount, selectedToken.decimals).toString()})
-                </span>
-                {" "}via /eth
-              </div>
-
-              <button
-                className={styles.btnOpenDialog}
-                onClick={handleMetaMaskSign}
-                disabled={pending}
-              >
-                {pending ? "Waiting for MetaMask…" : "Open MetaMask"}
-              </button>
-
-              <div className={styles.signStatus}>
-                <div className={styles.statusRow}>
-                  <span className={cn(styles.statusDot, pending ? styles.statusDotActive : styles.statusDotPending)} />
-                  <span>MetaMask confirmation</span>
-                </div>
-                <div className={styles.statusRow}>
-                  <span className={cn(styles.statusDot, styles.statusDotPending)} />
-                  <span>Server signs Canton side</span>
-                </div>
-              </div>
-
               <button className={styles.btnCancel} onClick={handleReset}>
                 Cancel
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {/* ── Done step ── */}
         {step === "done" && receipt && (
           <div className={styles.doneCard}>
             <div className={styles.checkCircle}>
-              <CheckIcon />
+              <svg width="28" height="20" viewBox="0 0 28 20" fill="none">
+                <path
+                  d="M2 10L10 18L26 2"
+                  stroke="#0a0b14"
+                  strokeWidth="3.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
 
             <p className={styles.doneTitle}>Transfer sent</p>
-            <p className={styles.doneSubtitle}>Settled on Canton in under 4 seconds.</p>
+            <p className={styles.doneSubtitle}>Transfer confirmed on Canton Network.</p>
 
             <div className={styles.receipt}>
               <div className={styles.receiptRow}>
-                <span className={styles.receiptLabel}>AMOUNT</span>
+                <span className={styles.receiptLabel}>Amount</span>
                 <span className={cn(styles.receiptValue, styles.receiptAmount)}>
                   {receipt.amount} {receipt.token.symbol}
                 </span>
               </div>
               <div className={styles.receiptRow}>
-                <span className={styles.receiptLabel}>TO</span>
+                <span className={styles.receiptLabel}>To</span>
                 <span className={styles.receiptValue}>{receipt.to}</span>
               </div>
               <div className={styles.receiptRow}>
-                <span className={styles.receiptLabel}>TX HASH</span>
+                <span className={styles.receiptLabel}>Transaction</span>
                 <span className={styles.receiptValue}>{receipt.txHash}</span>
               </div>
               <div className={styles.receiptRow}>
-                <span className={styles.receiptLabel}>COMPLETED</span>
+                <span className={styles.receiptLabel}>Completed</span>
                 <span className={styles.receiptValue}>Just now</span>
               </div>
             </div>
@@ -550,6 +690,12 @@ export function TransferPage({
             <div className={styles.doneActions}>
               <button className={styles.btnSendAnother} onClick={handleReset}>
                 Send another
+              </button>
+              <button
+                className={styles.btnViewActivity}
+                onClick={() => onTabChange("balances")}
+              >
+                View in Activity →
               </button>
             </div>
           </div>
