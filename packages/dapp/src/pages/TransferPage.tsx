@@ -296,6 +296,7 @@ export function TransferPage({
   // and must not cause re-runs mid-flight.
   useEffect(() => {
     if (step !== "sign" || !isNonCustodial || !selectedToken) return;
+    const token = selectedToken;
     let cancelled = false;
 
     async function prepare() {
@@ -307,7 +308,7 @@ export function TransferPage({
           currentNet.middlewareUrl,
           address,
           recipient,
-          selectedToken.symbol,
+          token.symbol,
           amount,
         );
         if (cancelled) return;
