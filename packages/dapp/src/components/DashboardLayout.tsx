@@ -7,7 +7,7 @@ import { getNetwork, type NetworkId } from "../lib/config";
 import { cn } from "../lib/cn";
 import styles from "./DashboardLayout.module.css";
 
-export type DashboardTab = "profile" | "balances";
+export type DashboardTab = "profile" | "balances" | "transfer";
 
 interface Props {
   address: string;
@@ -104,7 +104,7 @@ function ActivityIcon() {
 const NAV = [
   { id: "profile" as DashboardTab, label: "Profile", Icon: ProfileIcon },
   { id: "balances" as DashboardTab, label: "Balances", Icon: BalancesIcon },
-  { id: "transfer", label: "Transfer", Icon: TransferIcon, disabled: true },
+  { id: "transfer" as DashboardTab, label: "Transfer", Icon: TransferIcon },
   { id: "bridge", label: "Bridge", Icon: BridgeIcon, disabled: true },
   { id: "activity", label: "Activity", Icon: ActivityIcon, disabled: true },
 ];
@@ -167,7 +167,7 @@ export function DashboardLayout({
                 disabled={isDisabled}
                 aria-current={isActive ? "page" : undefined}
                 onClick={() => {
-                  if (id === "profile" || id === "balances") onTabChange(id);
+                  if (id === "profile" || id === "balances" || id === "transfer") onTabChange(id);
                 }}
               >
                 <Icon />

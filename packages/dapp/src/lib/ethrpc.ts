@@ -30,6 +30,29 @@ export async function getTokenBalance(
   return BigInt(result);
 }
 
+export function encodeTransfer(to: string, amount: bigint): string {
+  const toEncoded = to.replace(/^0x/i, "").toLowerCase().padStart(64, "0");
+  const amountEncoded = amount.toString(16).padStart(64, "0");
+  return "0xa9059cbb" + toEncoded + amountEncoded;
+}
+
+export function parseTokenAmount(value: string, decimals: number): bigint {
+  const [whole, frac = ""] = value.trim().split(".");
+  const fracPadded = frac.slice(0, decimals).padEnd(decimals, "0");
+  return BigInt(whole || "0") * 10n ** BigInt(decimals) + BigInt(fracPadded || "0");
+}
+
+export async function ethChainId(rpcUrl: string): Promise<string> {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "eth_chainId", params: [], id: ++_rpcId }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message as string);
+  return json.result as string;
+}
+
 export function formatTokenAmount(raw: bigint, decimals: number): string {
   if (raw === 0n) return "0";
   const divisor = 10n ** BigInt(decimals);

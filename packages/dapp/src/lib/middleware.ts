@@ -107,7 +107,7 @@ async function post<T>(baseUrl: string, path: string, body: unknown): Promise<T>
   return JSON.parse(text);
 }
 
-function friendlyError(status: number, body: string): string {
+export function friendlyError(status: number, body: string): string {
   if (status === 403) {
     try {
       const parsed = JSON.parse(body);

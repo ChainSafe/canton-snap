@@ -155,7 +155,10 @@ export function DashboardBalancesPage({
                       <p className={styles.amount}>{formatTokenAmount(balance, token.decimals)}</p>
                       <p className={styles.amountLabel}>{token.symbol}</p>
                     </div>
-                    <button className={styles.sendRowBtn} disabled>
+                    <button
+                      className={styles.sendRowBtn}
+                      onClick={() => onTabChange("transfer")}
+                    >
                       Send →
                     </button>
                   </div>

@@ -7,6 +7,19 @@ export interface SnapPublicKey {
   spkiDer: string;
 }
 
+export interface SignHashMetadata {
+  operation: string;
+  tokenSymbol: string;
+  amount: string;
+  recipient?: string;
+  sender?: string;
+}
+
+export interface SignHashResult {
+  derSignature: string;
+  fingerprint: string;
+}
+
 export interface SnapState {
   installed: boolean;
   alreadyInstalled: boolean;
@@ -16,6 +29,7 @@ export interface SnapState {
   install: () => Promise<boolean>;
   getPublicKey: (keyIndex?: number) => Promise<SnapPublicKey>;
   signTopology: (hash: string) => Promise<string>;
+  signHash: (hash: string, metadata?: SignHashMetadata) => Promise<SignHashResult>;
 }
 
 export function useSnap(): SnapState {
@@ -63,6 +77,13 @@ export function useSnap(): SnapState {
     return result.derSignature;
   }, []);
 
+  const signHash = useCallback(
+    async (hash: string, metadata?: SignHashMetadata): Promise<SignHashResult> => {
+      return invokeSnap<SignHashResult>("canton_signHash", { hash, metadata });
+    },
+    [],
+  );
+
   return {
     installed,
     alreadyInstalled,
@@ -72,5 +93,6 @@ export function useSnap(): SnapState {
     install,
     getPublicKey,
     signTopology,
+    signHash,
   };
 }

@@ -145,11 +145,14 @@
   color: var(--teal);
   background: none;
   border: none;
-  cursor: not-allowed;
-  opacity: 0.4;
+  cursor: pointer;
   font-family: var(--font-sans);
   padding: 0;
   white-space: nowrap;
+}
+
+.sendRowBtn:hover {
+  text-decoration: underline;
 }
 
 /* Loading / error */
