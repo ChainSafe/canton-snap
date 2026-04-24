@@ -1,0 +1,365 @@
+/* ── Page header ── */
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.pageTitles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ── Search ── */
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 296px;
+  height: 36px;
+  background: #12141f;
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  padding: 0 14px;
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  width: 100%;
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Filter tabs ── */
+.filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.filterTabs {
+  display: flex;
+  gap: 8px;
+}
+
+.filterTab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #12141f;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.filterTab:hover:not(.filterTabActive) {
+  background: #1a1d2e;
+  color: var(--text-primary);
+}
+
+.filterTabActive {
+  background: #1a1d2e;
+  border-color: var(--border-muted);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.filterTabCount {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  background: #232640;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ── Column headers (above card) ── */
+.colHeaders {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  column-gap: 32px;
+  padding: 0 24px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.colRight {
+  text-align: right;
+}
+
+/* ── Activity card (full-width) ── */
+.card {
+  background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ── Day group label ── */
+.dayGroup {
+  padding: 16px 24px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ── Activity row ── */
+.rowDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 0 24px;
+}
+
+.activityRow {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  column-gap: 32px;
+  align-items: center;
+  padding: 16px 24px;
+}
+
+/* Type cell */
+.typeCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.typeIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iconSent {
+  background: rgba(0, 212, 164, 0.12);
+  color: #00d4a4;
+}
+
+.iconReceived {
+  background: rgba(96, 165, 250, 0.14);
+  color: #60a5fa;
+}
+
+.typeLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Token cell */
+.tokenCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tokenIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.tokenSymbol {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Address / tx cells */
+.addrCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.addrLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.addrRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.addrValue {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+
+/* Amount cell */
+.amountCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.amountValue {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.amountNeutral {
+  color: var(--text-primary);
+}
+
+.amountSent {
+  color: var(--text-primary);
+}
+
+.amountReceived {
+  color: #34d399;
+}
+
+.amountLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Status cell */
+.statusCell {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statusSettled {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+}
+
+.statusSettled .statusDot {
+  background: #34d399;
+}
+
+/* When cell */
+.whenCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.whenRelative {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.whenAbsolute {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Loading / error / empty */
+.centred {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+}
+
+.errorText {
+  font-size: 13px;
+  color: var(--amber);
+  text-align: center;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Footer ── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+}
+
+.footerCount {
+  font-size: 12px;
+  color: var(--text-muted);
+}

@@ -1,5 +1,12 @@
 let _rpcId = 0;
 
+const ERC20_TRANSFER_TOPIC =
+  "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+function padAddress(address: string): string {
+  return "0x000000000000000000000000" + address.replace(/^0x/i, "").toLowerCase();
+}
+
 function encodeBalanceOf(address: string): string {
   return "0x70a08231" + address.replace(/^0x/i, "").toLowerCase().padStart(64, "0");
 }
@@ -51,6 +58,143 @@ export async function ethChainId(rpcUrl: string): Promise<string> {
   const json = await res.json();
   if (json.error) throw new Error(json.error.message as string);
   return json.result as string;
+}
+
+interface RawLog {
+  address: string;
+  topics: string[];
+  data: string;
+  blockNumber: string;
+  transactionHash: string;
+  logIndex: string;
+}
+
+export interface TransferLog {
+  txHash: string;
+  blockNumber: number;
+  timestamp: number;
+  direction: "sent" | "received";
+  tokenAddress: string;
+  amount: bigint;
+  from: string;
+  to: string;
+}
+
+async function ethGetLogs(rpcUrl: string, filter: unknown): Promise<RawLog[]> {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "eth_getLogs",
+      params: [filter],
+      id: ++_rpcId,
+    }),
+  });
+  const json = (await res.json()) as { result?: unknown; error?: { message: string } };
+  if (json.error) throw new Error(json.error.message);
+  return (json.result as RawLog[]) ?? [];
+}
+
+async function getBlockTimestamps(
+  rpcUrl: string,
+  blockNumbers: string[],
+): Promise<Map<string, number>> {
+  const unique = [...new Set(blockNumbers)];
+  const results = await Promise.all(
+    unique.map(async (bn) => {
+      const res = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "eth_getBlockByNumber",
+          params: [bn, false],
+          id: ++_rpcId,
+        }),
+      });
+      const json = (await res.json()) as { result?: { timestamp: string } };
+      const ts = json.result?.timestamp ? parseInt(json.result.timestamp, 16) : 0;
+      return [bn, ts] as [string, number];
+    }),
+  );
+  return new Map(results);
+}
+
+async function ethBlockNumber(rpcUrl: string): Promise<string> {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "eth_blockNumber",
+      params: [],
+      id: ++_rpcId,
+    }),
+  });
+  const json = (await res.json()) as { result?: string; error?: { message: string } };
+  if (json.error) throw new Error(json.error.message);
+  return json.result ?? "0x0";
+}
+
+export async function getTransferLogs(
+  rpcUrl: string,
+  tokenAddresses: string[],
+  userAddress: string,
+): Promise<TransferLog[]> {
+  const paddedUser = padAddress(userAddress);
+  const toBlock = await ethBlockNumber(rpcUrl);
+
+  const perToken = await Promise.all(
+    tokenAddresses.map(async (tokenAddr) => {
+      const [sentRaw, receivedRaw] = await Promise.all([
+        ethGetLogs(rpcUrl, {
+          fromBlock: "0x0",
+          toBlock,
+          address: tokenAddr,
+          topics: [ERC20_TRANSFER_TOPIC, paddedUser],
+        }),
+        ethGetLogs(rpcUrl, {
+          fromBlock: "0x0",
+          toBlock,
+          address: tokenAddr,
+          topics: [ERC20_TRANSFER_TOPIC, null, paddedUser],
+        }),
+      ]);
+
+      // self-transfers appear in both queries — keep them under "sent" only
+      const sentKeys = new Set(sentRaw.map((l) => `${l.transactionHash}-${l.logIndex}`));
+      const uniqueReceived = receivedRaw.filter(
+        (l) => !sentKeys.has(`${l.transactionHash}-${l.logIndex}`),
+      );
+
+      return [
+        ...sentRaw.map((l) => ({ ...l, direction: "sent" as const })),
+        ...uniqueReceived.map((l) => ({ ...l, direction: "received" as const })),
+      ];
+    }),
+  );
+
+  const flat = perToken.flat();
+  if (flat.length === 0) return [];
+
+  const timestamps = await getBlockTimestamps(
+    rpcUrl,
+    flat.map((l) => l.blockNumber),
+  );
+
+  return flat
+    .map((l) => ({
+      txHash: l.transactionHash,
+      blockNumber: parseInt(l.blockNumber, 16),
+      timestamp: timestamps.get(l.blockNumber) ?? 0,
+      direction: l.direction,
+      tokenAddress: l.address.toLowerCase(),
+      amount: BigInt(l.data),
+      from: "0x" + l.topics[1].slice(26),
+      to: "0x" + l.topics[2].slice(26),
+    }))
+    .sort((a, b) => b.blockNumber - a.blockNumber);
 }
 
 export function formatTokenAmount(raw: bigint, decimals: number): string {

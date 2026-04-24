@@ -13,6 +13,7 @@ import { NonCustodialRegistrationPage } from "./pages/NonCustodialRegistrationPa
 import { RegistrationDonePage } from "./pages/RegistrationDonePage";
 import { DashboardProfilePage } from "./pages/DashboardProfilePage";
 import { DashboardBalancesPage } from "./pages/DashboardBalancesPage";
+import { DashboardActivityPage } from "./pages/DashboardActivityPage";
 import { TransferPage } from "./pages/TransferPage";
 import type { DashboardTab } from "./components/DashboardLayout";
 
@@ -320,6 +321,10 @@ export default function App() {
 
     if (dashboardTab === "transfer") {
       return <TransferPage {...sharedProps} keyMode={profile.keyMode} />;
+    }
+
+    if (dashboardTab === "activity") {
+      return <DashboardActivityPage {...sharedProps} />;
     }
 
     return (
