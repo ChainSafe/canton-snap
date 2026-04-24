@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
+import { PageCard } from "../components/PageCard";
 import { Spinner } from "../components/Spinner";
 import { getNetwork, type NetworkId } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
@@ -112,7 +113,7 @@ export function DashboardBalancesPage({
         </div>
 
         {/* Token card */}
-        <div className={styles.card}>
+        <PageCard className={styles.card}>
           {/* Column headers */}
           <div className={styles.colHeaders}>
             <span>TOKEN</span>
@@ -171,7 +172,7 @@ export function DashboardBalancesPage({
               </p>
             </>
           )}
-        </div>
+        </PageCard>
       </DashboardLayout>
     </>
   );

@@ -16,7 +16,7 @@
 .pageSubtitle {
   font-size: 13px;
   color: var(--text-secondary);
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .modePill {
@@ -44,7 +44,10 @@
 .stepsBar {
   display: flex;
   align-items: center;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
+  max-width: 768px;
+  margin-left: max(0px, calc(50% - 432px));
+  margin-right: auto;
 }
 
 .stepSegment {
@@ -130,11 +133,7 @@
 
 /* ── Form card ── */
 .card {
-  background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
-  border: 1px solid var(--border);
-  border-radius: 16px;
   padding: 32px;
-  margin-bottom: 0;
 }
 
 .fieldLabel {
@@ -146,7 +145,7 @@
 }
 
 .fieldGroup {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 /* ── Token dropdown ── */
@@ -160,7 +159,7 @@
   border: 1px solid #353a5a;
   border-radius: 10px;
   padding: 0 16px;
-  height: 64px;
+  height: 56px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -175,13 +174,13 @@
 }
 
 .tokenAvatar {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -324,7 +323,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 80px;
+  height: 56px;
 }
 
 .amountRow:focus-within {
@@ -336,7 +335,7 @@
   background: none;
   border: none;
   color: var(--text-primary);
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 700;
   font-family: var(--font-mono);
   min-width: 0;
@@ -349,7 +348,7 @@
 
 .amountInput::placeholder {
   color: #353a5a;
-  font-size: 28px;
+  font-size: 18px;
 }
 
 .maxBtn {
@@ -431,6 +430,9 @@
   font-size: 13px;
   color: var(--red);
   margin-bottom: 16px;
+  max-width: 768px;
+  margin-left: max(0px, calc(50% - 432px));
+  margin-right: auto;
 }
 
 /* ── Sign card ── */
@@ -443,6 +445,9 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
+  max-width: 768px;
+  margin-left: max(0px, calc(50% - 432px));
+  margin-right: auto;
 }
 
 .signIconWrap {
@@ -649,9 +654,6 @@
 
 /* ── Done card ── */
 .doneCard {
-  background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
-  border: 1px solid var(--border);
-  border-radius: 16px;
   padding: 48px 32px;
   display: flex;
   flex-direction: column;

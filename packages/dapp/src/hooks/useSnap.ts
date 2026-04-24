@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { sha256, getBytes } from "ethers";
 import { installSnap, getInstalledSnap, invokeSnap } from "../lib/ethereum";
 
 export interface SnapPublicKey {
@@ -79,7 +80,10 @@ export function useSnap(): SnapState {
 
   const signHash = useCallback(
     async (hash: string, metadata?: SignHashMetadata): Promise<SignHashResult> => {
-      return invokeSnap<SignHashResult>("canton_signHash", { hash, metadata });
+      // Canton returns a multihash from PrepareSubmission. Match Go's keys.SignDER:
+      // sha256 the raw multihash bytes so the snap signs the correct 32-byte digest.
+      const digest = sha256(getBytes(hash));
+      return invokeSnap<SignHashResult>("canton_signHash", { hash: digest, metadata });
     },
     [],
   );

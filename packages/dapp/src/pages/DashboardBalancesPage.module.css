@@ -39,9 +39,6 @@
 
 /* ── Token card ── */
 .card {
-  background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
-  border: 1px solid var(--border);
-  border-radius: 16px;
   padding: 0 24px;
   position: relative;
   z-index: 1;

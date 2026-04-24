@@ -1,3 +1,5 @@
+import { getAddress } from "ethers";
+
 export const SNAP_ID = `local:http://localhost:${import.meta.env.VITE_SNAP_PORT ?? 8080}`;
 
 declare global {
@@ -85,4 +87,12 @@ export async function sendEthTransaction(params: {
 
 export function shortenAddress(address: string, chars = 4): string {
   return `${address.slice(0, chars + 2)}…${address.slice(-chars)}`;
+}
+
+export function toChecksumAddress(address: string): string {
+  try {
+    return getAddress(address);
+  } catch {
+    return address;
+  }
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
+import { PageCard } from "../components/PageCard";
 import { Spinner } from "../components/Spinner";
 import { getNetwork, type NetworkId } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
@@ -12,7 +13,7 @@ import {
   ethChainId,
 } from "../lib/ethrpc";
 import { prepareTransfer, executeTransfer, type PrepareResult } from "../lib/transfer";
-import { addEthChain, sendEthTransaction, shortenAddress } from "../lib/ethereum";
+import { addEthChain, sendEthTransaction, shortenAddress, toChecksumAddress } from "../lib/ethereum";
 import { TOKEN_COLORS } from "../lib/tokens";
 import { useSnap } from "../hooks/useSnap";
 import { cn } from "../lib/cn";
@@ -388,10 +389,14 @@ export function TransferPage({
   async function handlePaste() {
     try {
       const text = await navigator.clipboard.readText();
-      setRecipient(text.trim());
+      setRecipient(toChecksumAddress(text.trim()));
     } catch {
       // clipboard access denied — no-op
     }
+  }
+
+  function handleRecipientBlur() {
+    if (recipient) setRecipient(toChecksumAddress(recipient));
   }
 
   const recipientValid = /^0x[0-9a-fA-F]{40}$/.test(recipient);
@@ -424,7 +429,7 @@ export function TransferPage({
 
         {/* ── Details step ── */}
         {step === "details" && (
-          <div className={styles.card}>
+          <PageCard className={styles.card}>
             {/* Token */}
             <div className={styles.fieldGroup}>
               <p className={styles.fieldLabel}>TOKEN</p>
@@ -453,6 +458,7 @@ export function TransferPage({
                   placeholder="0x..."
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value.trim())}
+                  onBlur={handleRecipientBlur}
                   spellCheck={false}
                 />
                 <button className={styles.pasteBtn} type="button" onClick={handlePaste}>
@@ -517,7 +523,7 @@ export function TransferPage({
             <button className={styles.btnContinue} onClick={handleContinue}>
               Continue
             </button>
-          </div>
+          </PageCard>
         )}
 
         {/* ── Sign step (non-custodial) ── */}
@@ -650,7 +656,7 @@ export function TransferPage({
 
         {/* ── Done step ── */}
         {step === "done" && receipt && (
-          <div className={styles.doneCard}>
+          <PageCard className={styles.doneCard}>
             <div className={styles.checkCircle}>
               <svg width="28" height="20" viewBox="0 0 28 20" fill="none">
                 <path
@@ -698,7 +704,7 @@ export function TransferPage({
                 View in Activity →
               </button>
             </div>
-          </div>
+          </PageCard>
         )}
       </DashboardLayout>
     </>
