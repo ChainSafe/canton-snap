@@ -16,7 +16,7 @@ export async function getUser(
   signature: string,
   message: string,
 ): Promise<UserProfile | null> {
-  const res = await fetch(`${baseUrl}/user?address=${encodeURIComponent(address)}`, {
+  const res = await fetch(`${baseUrl}/profile?address=${encodeURIComponent(address)}`, {
     headers: { "X-Signature": signature, "X-Message": message },
   });
   if (res.status === 404) return null;

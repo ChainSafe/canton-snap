@@ -124,7 +124,7 @@ export default function App() {
           const addr = await mm.connect();
           if (!addr) return;
 
-          // Get or create a session signature for authenticating GET /user.
+          // Get or create a session signature for authenticating GET /profile.
           // If the server rejects the cached signature as expired, clear it and re-sign once.
           const freshSign = async () => {
             const message = `login:${addr.toLowerCase()}:${Math.floor(Date.now() / 1000)}`;
