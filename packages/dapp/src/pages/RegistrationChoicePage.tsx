@@ -3,6 +3,7 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { Button } from "../components/Button";
 import { cn } from "../lib/cn";
 import { type NetworkId } from "../lib/config";
+import { colors } from "../lib/tokens";
 import styles from "./RegistrationChoicePage.module.css";
 
 interface Props {
@@ -57,12 +58,12 @@ export function RegistrationChoicePage({
                   width="14"
                   height="10"
                   rx="2"
-                  stroke="#8b7cff"
+                  stroke={colors.purple}
                   strokeWidth="1.8"
                 />
                 <path
                   d="M6 8 V6 C6 4 8 2 10 2 C12 2 14 4 14 6 V8"
-                  stroke="#8b7cff"
+                  stroke={colors.purple}
                   strokeWidth="1.8"
                   strokeLinecap="round"
                 />
@@ -87,7 +88,7 @@ export function RegistrationChoicePage({
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path
                   d="M10 2 L3 5 V11 C3 15 6 18 10 19 C14 18 17 15 17 11 V5 Z"
-                  stroke="#00d4a4"
+                  stroke={colors.teal}
                   strokeWidth="1.8"
                   fill="none"
                   strokeLinecap="round"
@@ -95,7 +96,7 @@ export function RegistrationChoicePage({
                 />
                 <path
                   d="M7 11 L9 13 L13 8"
-                  stroke="#00d4a4"
+                  stroke={colors.teal}
                   strokeWidth="1.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
