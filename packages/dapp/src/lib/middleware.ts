@@ -20,19 +20,23 @@ const TOKENS_PAGE_LIMIT = 50;
 
 export async function getTokens(baseUrl: string): Promise<TokenConfig[]> {
   const all: TokenConfig[] = [];
-  let page = 1;
+  let cursor: string | undefined;
 
   while (true) {
-    const res = await fetch(`${baseUrl}/tokens?page=${page}&limit=${TOKENS_PAGE_LIMIT}`);
+    const url = new URL(`${baseUrl}/tokens`);
+    url.searchParams.set("limit", String(TOKENS_PAGE_LIMIT));
+    if (cursor) url.searchParams.set("cursor", cursor);
+
+    const res = await fetch(url.toString());
     if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
 
-    const data = (await res.json()) as { items: unknown[]; total: number };
+    const data = (await res.json()) as { items: unknown[]; next_cursor?: string; has_more: boolean };
     if (!Array.isArray(data.items)) throw new Error("Unexpected tokens response shape");
 
     all.push(...data.items.filter(isTokenConfig));
 
-    if (all.length >= data.total) break;
-    page++;
+    if (!data.has_more) break;
+    cursor = data.next_cursor;
   }
 
   return all;

@@ -57,7 +57,7 @@ export function DashboardBalancesPage({
         Promise.all(
           tokens.map(async (token) => ({
             token,
-            balance: await getTokenBalance(rpcUrl, token.address, address),
+            balance: await getTokenBalance(rpcUrl, token.address, address).catch(() => 0n),
           })),
         ),
       )

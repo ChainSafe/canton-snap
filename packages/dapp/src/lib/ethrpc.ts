@@ -15,6 +15,7 @@ async function ethCall(rpcUrl: string, to: string, data: string): Promise<string
       id: ++_rpcId,
     }),
   });
+  if (!res.ok) throw new Error(`RPC error ${res.status}: ${await res.text()}`);
   const json = await res.json();
   if (json.error) throw new Error(json.error.message as string);
   return json.result as string;
