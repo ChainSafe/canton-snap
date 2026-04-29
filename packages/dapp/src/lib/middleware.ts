@@ -30,7 +30,11 @@ export async function getTokens(baseUrl: string): Promise<TokenConfig[]> {
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
 
-    const data = (await res.json()) as { items: unknown[]; next_cursor?: string; has_more: boolean };
+    const data = (await res.json()) as {
+      items: unknown[];
+      next_cursor?: string;
+      has_more: boolean;
+    };
     if (!Array.isArray(data.items)) throw new Error("Unexpected tokens response shape");
 
     all.push(...data.items.filter(isTokenConfig));
