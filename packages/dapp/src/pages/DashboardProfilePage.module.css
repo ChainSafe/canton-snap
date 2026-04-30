@@ -1,95 +1,3 @@
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
-
-/* ── Sidebar ── */
-.sidebar {
-  width: 240px;
-  flex-shrink: 0;
-  background: #0d0f19;
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebarLogo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 28px 24px 20px;
-}
-
-.sidebarDivider {
-  height: 1px;
-  background: var(--border);
-  margin: 0 24px;
-}
-
-.sidebarNav {
-  display: flex;
-  flex-direction: column;
-  padding: 20px 16px;
-  gap: 2px;
-}
-
-.navItem {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: default;
-  position: relative;
-  border: none;
-  background: transparent;
-  font-family: var(--font-sans);
-  width: 100%;
-  text-align: left;
-  transition: background 0.15s, color 0.15s;
-}
-
-.navItemActive {
-  background: rgba(0, 212, 164, 0.1);
-  color: var(--teal);
-  font-weight: 600;
-}
-
-.navItemActive::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 9px;
-  width: 3px;
-  height: 22px;
-  border-radius: 1.5px;
-  background: var(--teal);
-}
-
-/* ── Main area ── */
-.main {
-  flex: 1;
-  overflow-y: auto;
-  padding: 40px 48px;
-  min-width: 0;
-}
-
-.mainHeader {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 48px;
-}
-
-.pillAnchor {
-  position: relative;
-}
-
 .pageTitle {
   font-size: 28px;
   font-weight: 700;
@@ -122,6 +30,10 @@
   letter-spacing: 1.2px;
   color: var(--text-muted);
   margin-bottom: 14px;
+}
+
+.sectionLabelTop {
+  margin-top: 4px;
 }
 
 .partyIdRow {

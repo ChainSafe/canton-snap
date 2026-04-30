@@ -12,6 +12,8 @@ import { CustodialRegistrationPage } from "./pages/CustodialRegistrationPage";
 import { NonCustodialRegistrationPage } from "./pages/NonCustodialRegistrationPage";
 import { RegistrationDonePage } from "./pages/RegistrationDonePage";
 import { DashboardProfilePage } from "./pages/DashboardProfilePage";
+import { DashboardBalancesPage } from "./pages/DashboardBalancesPage";
+import type { DashboardTab } from "./components/DashboardLayout";
 
 type Page =
   | "landing"
@@ -29,6 +31,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>("profile");
 
   const mm = useMetaMask();
   const reg = useRegistration(getNetwork(network).middlewareUrl);
@@ -76,10 +79,31 @@ export default function App() {
     if (done) setPage("registration-done");
   }, [sign, mm.address]);
 
+  const handleNetworkChange = useCallback(
+    (id: NetworkId) => {
+      setNetwork(id);
+      if (!mm.address) return;
+      const session = getSession(mm.address);
+      if (!session) return;
+      void getUser(getNetwork(id).middlewareUrl, mm.address, session.signature, session.message)
+        .then((updated) => {
+          if (updated) {
+            setProfile(updated);
+          } else {
+            setProfile(null);
+            setPage("registration-choice");
+          }
+        })
+        .catch(() => {});
+    },
+    [mm.address],
+  );
+
   function handleDisconnect() {
     mm.disconnect();
     setProfile(null);
     clearAllSessions();
+    setDashboardTab("profile");
     setPage("landing");
   }
 
@@ -280,32 +304,26 @@ export default function App() {
   }
 
   if (page === "dashboard" && profile) {
-    const handleNetworkChange = (id: NetworkId) => {
-      setNetwork(id);
-      if (!mm.address) return;
-      const session = getSession(mm.address);
-      if (!session) return;
-      void getUser(getNetwork(id).middlewareUrl, mm.address, session.signature, session.message)
-        .then((updated) => {
-          if (updated) {
-            setProfile(updated);
-          } else {
-            setProfile(null);
-            setPage("registration-choice");
-          }
-        })
-        .catch(() => {});
+    const sharedProps = {
+      address,
+      network,
+      onNetworkChange: handleNetworkChange,
+      activeTab: dashboardTab,
+      onTabChange: setDashboardTab,
+      onDisconnect: handleDisconnect,
     };
+
+    if (dashboardTab === "balances") {
+      return <DashboardBalancesPage {...sharedProps} />;
+    }
+
     return (
       <DashboardProfilePage
-        address={address}
-        network={network}
-        onNetworkChange={handleNetworkChange}
+        {...sharedProps}
         profile={profile}
         snapInstalled={snapInstalled}
         snapVersion={snapVersion}
         onInstallSnap={reg.snap.install}
-        onDisconnect={handleDisconnect}
       />
     );
   }

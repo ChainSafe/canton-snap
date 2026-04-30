@@ -1,3 +1,54 @@
+export interface TokenConfig {
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+}
+
+function isTokenConfig(t: unknown): t is TokenConfig {
+  if (t === null || typeof t !== "object") return false;
+  const r = t as Record<string, unknown>;
+  return (
+    typeof r.address === "string" &&
+    typeof r.name === "string" &&
+    typeof r.symbol === "string" &&
+    typeof r.decimals === "number"
+  );
+}
+
+const TOKENS_PAGE_LIMIT = 50;
+
+const TOKENS_MAX_PAGES = 100;
+
+export async function getTokens(baseUrl: string): Promise<TokenConfig[]> {
+  const all: TokenConfig[] = [];
+  let cursor: string | undefined;
+
+  for (let page = 0; page < TOKENS_MAX_PAGES; page++) {
+    const url = new URL(`${baseUrl}/tokens`);
+    url.searchParams.set("limit", String(TOKENS_PAGE_LIMIT));
+    if (cursor) url.searchParams.set("cursor", cursor);
+
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+
+    const data = (await res.json()) as {
+      items: unknown[];
+      next_cursor?: string;
+      has_more: boolean;
+    };
+    if (!Array.isArray(data.items)) throw new Error("Unexpected tokens response shape");
+
+    all.push(...data.items.filter(isTokenConfig));
+
+    if (!data.has_more) break;
+    if (!data.next_cursor) throw new Error("Unexpected tokens response: has_more is true but next_cursor is missing");
+    cursor = data.next_cursor;
+  }
+
+  return all;
+}
+
 export interface UserProfile {
   cantonPartyId: string;
   fingerprint: string;
