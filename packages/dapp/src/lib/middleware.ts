@@ -42,7 +42,8 @@ export async function getTokens(baseUrl: string): Promise<TokenConfig[]> {
     all.push(...data.items.filter(isTokenConfig));
 
     if (!data.has_more) break;
-    if (!data.next_cursor) throw new Error("Unexpected tokens response: has_more is true but next_cursor is missing");
+    if (!data.next_cursor)
+      throw new Error("Unexpected tokens response: has_more is true but next_cursor is missing");
     cursor = data.next_cursor;
   }
 
