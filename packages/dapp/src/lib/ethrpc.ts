@@ -37,8 +37,12 @@ export function encodeTransfer(to: string, amount: bigint): string {
 }
 
 export function parseTokenAmount(value: string, decimals: number): bigint {
-  const [whole, frac = ""] = value.trim().split(".");
-  const fracPadded = frac.slice(0, decimals).padEnd(decimals, "0");
+  const parts = value.trim().split(".");
+  if (parts.length > 2) throw new Error("Invalid amount format");
+  const whole = (parts[0] ?? "").replace(/,/g, "");
+  const frac = parts[1] ?? "";
+  if (frac.length > decimals) throw new Error("Too many decimal places");
+  const fracPadded = frac.padEnd(decimals, "0");
   return BigInt(whole || "0") * 10n ** BigInt(decimals) + BigInt(fracPadded || "0");
 }
 

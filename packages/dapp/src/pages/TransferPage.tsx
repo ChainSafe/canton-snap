@@ -389,7 +389,9 @@ export function TransferPage({
       setStep("done");
     } catch (e: unknown) {
       setError((e as Error).message);
-      setSignPhase("awaiting-snap");
+      setPrepared(null);
+      setStep("details");
+      setSignPhase("idle");
     } finally {
       setPending(false);
     }
@@ -561,7 +563,8 @@ export function TransferPage({
               {isNonCustodial ? (
                 <span>
                   Gas-free on Canton · Settles in ~2–4s · You&apos;ll sign{" "}
-                  <strong style={{ color: "var(--text-primary)" }}>twice</strong> (MetaMask + Snap)
+                  <strong style={{ color: "var(--text-primary)" }}>three times</strong> (MetaMask
+                  auth × 2 + Snap)
                 </span>
               ) : (
                 <span>
