@@ -72,6 +72,7 @@ interface RawLog {
 export interface TransferLog {
   txHash: string;
   blockNumber: number;
+  logIndex: number;
   timestamp: number;
   direction: "sent" | "received";
   tokenAddress: string;
@@ -117,45 +118,44 @@ export async function getTransferLogs(
   tokenAddresses: string[],
   userAddress: string,
 ): Promise<TransferLog[]> {
+  if (tokenAddresses.length === 0) return [];
+
   const paddedUser = padAddress(userAddress);
+  // TODO: replace fromBlock "0x0" with block-range pagination once chain history grows
   const toBlock = await ethBlockNumber(rpcUrl);
 
-  const perToken = await Promise.all(
-    tokenAddresses.map(async (tokenAddr) => {
-      const [sentRaw, receivedRaw] = await Promise.all([
-        ethGetLogs(rpcUrl, {
-          fromBlock: "0x0",
-          toBlock,
-          address: tokenAddr,
-          topics: [ERC20_TRANSFER_TOPIC, paddedUser],
-        }),
-        ethGetLogs(rpcUrl, {
-          fromBlock: "0x0",
-          toBlock,
-          address: tokenAddr,
-          topics: [ERC20_TRANSFER_TOPIC, null, paddedUser],
-        }),
-      ]);
-
-      // self-transfers appear in both queries — keep them under "sent" only
-      const sentKeys = new Set(sentRaw.map((l) => `${l.transactionHash}-${l.logIndex}`));
-      const uniqueReceived = receivedRaw.filter(
-        (l) => !sentKeys.has(`${l.transactionHash}-${l.logIndex}`),
-      );
-
-      return [
-        ...sentRaw.map((l) => ({ ...l, direction: "sent" as const })),
-        ...uniqueReceived.map((l) => ({ ...l, direction: "received" as const })),
-      ];
+  const [sentRaw, receivedRaw] = await Promise.all([
+    ethGetLogs(rpcUrl, {
+      fromBlock: "0x0",
+      toBlock,
+      address: tokenAddresses,
+      topics: [ERC20_TRANSFER_TOPIC, paddedUser],
     }),
+    ethGetLogs(rpcUrl, {
+      fromBlock: "0x0",
+      toBlock,
+      address: tokenAddresses,
+      topics: [ERC20_TRANSFER_TOPIC, null, paddedUser],
+    }),
+  ]);
+
+  // self-transfers appear in both queries — keep them under "sent" only
+  const sentKeys = new Set(sentRaw.map((l) => `${l.transactionHash}-${l.logIndex}`));
+  const uniqueReceived = receivedRaw.filter(
+    (l) => !sentKeys.has(`${l.transactionHash}-${l.logIndex}`),
   );
 
-  return perToken
-    .flat()
+  const allLogs = [
+    ...sentRaw.map((l) => ({ ...l, direction: "sent" as const })),
+    ...uniqueReceived.map((l) => ({ ...l, direction: "received" as const })),
+  ];
+
+  return allLogs
     .filter((l) => l.topics.length >= 3)
     .map((l) => ({
       txHash: l.transactionHash,
       blockNumber: parseInt(l.blockNumber, 16),
+      logIndex: parseInt(l.logIndex, 16),
       timestamp: l.blockTimestamp ? parseInt(l.blockTimestamp, 16) : 0,
       direction: l.direction,
       tokenAddress: l.address.toLowerCase(),
@@ -163,7 +163,7 @@ export async function getTransferLogs(
       from: "0x" + l.topics[1].slice(26),
       to: "0x" + l.topics[2].slice(26),
     }))
-    .sort((a, b) => b.blockNumber - a.blockNumber);
+    .sort((a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex);
 }
 
 export function formatTokenAmount(raw: bigint, decimals: number): string {

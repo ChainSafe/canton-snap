@@ -301,7 +301,7 @@ export function DashboardActivityPage({
                   const shortTx = `${row.txHash.slice(0, 10)}…${row.txHash.slice(-8)}`;
 
                   return (
-                    <div key={`${row.txHash}-${row.direction}`}>
+                    <div key={`${row.txHash}-${row.logIndex}`}>
                       {i > 0 && <div className={styles.rowDivider} />}
                       <div className={styles.activityRow}>
                         {/* Type */}
