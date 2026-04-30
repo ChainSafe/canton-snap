@@ -18,21 +18,32 @@ function isTokenConfig(t: unknown): t is TokenConfig {
 
 const TOKENS_PAGE_LIMIT = 50;
 
+const TOKENS_MAX_PAGES = 100;
+
 export async function getTokens(baseUrl: string): Promise<TokenConfig[]> {
   const all: TokenConfig[] = [];
-  let page = 1;
+  let cursor: string | undefined;
 
-  while (true) {
-    const res = await fetch(`${baseUrl}/tokens?page=${page}&limit=${TOKENS_PAGE_LIMIT}`);
+  for (let page = 0; page < TOKENS_MAX_PAGES; page++) {
+    const url = new URL(`${baseUrl}/tokens`);
+    url.searchParams.set("limit", String(TOKENS_PAGE_LIMIT));
+    if (cursor) url.searchParams.set("cursor", cursor);
+
+    const res = await fetch(url.toString());
     if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
 
-    const data = (await res.json()) as { items: unknown[]; total: number };
+    const data = (await res.json()) as {
+      items: unknown[];
+      next_cursor?: string;
+      has_more: boolean;
+    };
     if (!Array.isArray(data.items)) throw new Error("Unexpected tokens response shape");
 
     all.push(...data.items.filter(isTokenConfig));
 
-    if (all.length >= data.total) break;
-    page++;
+    if (!data.has_more) break;
+    if (!data.next_cursor) throw new Error("Unexpected tokens response: has_more is true but next_cursor is missing");
+    cursor = data.next_cursor;
   }
 
   return all;
