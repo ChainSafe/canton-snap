@@ -68,7 +68,7 @@ export async function getUser(
   signature: string,
   message: string,
 ): Promise<UserProfile | null> {
-  const res = await fetch(`${baseUrl}/profile?address=${encodeURIComponent(address)}`, {
+  const res = await fetch(`${baseUrl}/user?address=${encodeURIComponent(address)}`, {
     headers: { "X-Signature": signature, "X-Message": message },
   });
   if (res.status === 404) return null;
@@ -119,7 +119,7 @@ async function post<T>(baseUrl: string, path: string, body: unknown): Promise<T>
   return JSON.parse(text);
 }
 
-function friendlyError(status: number, body: string): string {
+export function friendlyError(status: number, body: string): string {
   if (status === 403) {
     try {
       const parsed = JSON.parse(body);

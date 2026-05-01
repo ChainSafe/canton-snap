@@ -13,6 +13,8 @@ import { NonCustodialRegistrationPage } from "./pages/NonCustodialRegistrationPa
 import { RegistrationDonePage } from "./pages/RegistrationDonePage";
 import { DashboardProfilePage } from "./pages/DashboardProfilePage";
 import { DashboardBalancesPage } from "./pages/DashboardBalancesPage";
+import { DashboardActivityPage } from "./pages/DashboardActivityPage";
+import { TransferPage } from "./pages/TransferPage";
 import type { DashboardTab } from "./components/DashboardLayout";
 
 type Page =
@@ -148,7 +150,7 @@ export default function App() {
           const addr = await mm.connect();
           if (!addr) return;
 
-          // Get or create a session signature for authenticating GET /profile.
+          // Get or create a session signature for authenticating GET /user.
           // If the server rejects the cached signature as expired, clear it and re-sign once.
           const freshSign = async () => {
             const message = `login:${addr.toLowerCase()}:${Math.floor(Date.now() / 1000)}`;
@@ -315,6 +317,14 @@ export default function App() {
 
     if (dashboardTab === "balances") {
       return <DashboardBalancesPage {...sharedProps} />;
+    }
+
+    if (dashboardTab === "transfer") {
+      return <TransferPage {...sharedProps} keyMode={profile.keyMode} />;
+    }
+
+    if (dashboardTab === "activity") {
+      return <DashboardActivityPage {...sharedProps} />;
     }
 
     return (

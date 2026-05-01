@@ -1,0 +1,8 @@
+.card {
+  background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  max-width: 768px;
+  margin-left: max(0px, calc(50% - 432px));
+  margin-right: auto;
+}
