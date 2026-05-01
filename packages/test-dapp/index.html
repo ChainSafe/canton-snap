@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canton Snap Test dApp</title>
+  <style>
+    body { font-family: monospace; max-width: 860px; margin: 40px auto; padding: 0 20px; background: #1a1a2e; color: #eee; }
+    h1 { color: #e94560; }
+    h2 { color: #0f3460; background: #e94560; padding: 8px 12px; margin-top: 30px; }
+    h3 { color: #e94560; margin: 18px 0 6px; }
+    button { background: #0f3460; color: #eee; border: 1px solid #e94560; padding: 10px 20px; cursor: pointer; margin: 5px 0; font-family: monospace; font-size: 14px; }
+    button:hover { background: #e94560; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .result { background: #16213e; padding: 12px; margin: 10px 0; border-left: 3px solid #e94560; word-break: break-all; white-space: pre-wrap; font-size: 13px; }
+    .error { border-left-color: #ff6b6b; color: #ff6b6b; }
+    .success { border-left-color: #51cf66; }
+    input { background: #16213e; color: #eee; border: 1px solid #0f3460; padding: 8px; font-family: monospace; width: 100%; box-sizing: border-box; margin: 4px 0; }
+    label { display: block; margin-top: 10px; color: #aaa; }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .step { border-left: 3px solid #0f3460; padding-left: 14px; margin: 12px 0; }
+    .step-label { color: #aaa; font-size: 12px; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Canton Snap Test dApp</h1>
+  <p>Local testing interface for the Canton MetaMask Snap.</p>
+
+  <div id="noMetaMaskBanner" style="display:none;background:#3d0000;border:2px solid #ff6b6b;padding:16px;margin-bottom:20px;color:#ff6b6b;">
+    <strong>MetaMask not detected.</strong><br><br>
+    Two common causes:
+    <ol style="margin:8px 0 0 0;padding-left:20px;color:#ffaaaa;">
+      <li>You opened this file as <code>file://</code> — MetaMask does not inject into file:// pages.<br>
+          Fix: <code>npx serve packages/test-dapp</code> and open <code>http://localhost:3000</code></li>
+      <li>MetaMask Flask is not installed in this browser.<br>
+          Fix: Install <a href="https://metamask.io/flask/" style="color:#ff9999;">MetaMask Flask</a> (the developer build — required for local snaps).</li>
+    </ol>
+  </div>
+
+  <!-- ── Connection ───────────────────────────────────────────────── -->
+  <h2>Connection</h2>
+  <div class="row">
+    <button id="connectBtn" onclick="connectSnap()">Install / Connect Snap</button>
+    <span id="connectStatus"></span>
+  </div>
+  <div id="connectResult" class="result" hidden></div>
+
+  <!-- ── Config ───────────────────────────────────────────────────── -->
+  <h2>Config</h2>
+  <label>Middleware URL: <input id="middlewareUrl" value="http://localhost:8081"></label>
+  <label>Key Index (used across all flows): <input id="globalKeyIndex" type="number" value="0" min="0" style="width:80px"></label>
+
+  <!-- ── Custodial Registration ──────────────────────────────────── -->
+  <h2>Custodial Registration</h2>
+  <p style="color:#aaa;font-size:13px;">Middleware generates and stores the Canton key on your behalf. Single step.</p>
+
+  <div id="custAlreadyBanner" style="display:none;background:#0a2e0a;border:2px solid #51cf66;padding:14px;margin:10px 0;color:#51cf66;">
+    <strong>Already registered.</strong> This address already has a custodial Canton party.
+    <div id="custAlreadyDetails" style="margin-top:8px;font-size:12px;color:#aaffaa;word-break:break-all;"></div>
+  </div>
+
+  <button id="custRegBtn" onclick="custRegister()">Register (Custodial)</button>
+  <div id="custRegResult" class="result" hidden></div>
+
+  <!-- ── Registration Flow ────────────────────────────────────────── -->
+  <h2>Registration Flow (Non-Custodial)</h2>
+  <p style="color:#aaa;font-size:13px;">Run steps 1–4 in order. Each step unlocks the next.</p>
+
+  <div id="regAlreadyBanner" style="display:none;background:#0a2e0a;border:2px solid #51cf66;padding:14px;margin:10px 0;color:#51cf66;">
+    <strong>Already registered.</strong> This address has an active Canton party — no need to re-register.
+    <div id="regAlreadyDetails" style="margin-top:8px;font-size:12px;color:#aaffaa;word-break:break-all;"></div>
+  </div>
+
+  <div id="regSteps">
+    <div class="step">
+      <div class="step-label">Step 1 — Get public key from snap</div>
+      <button onclick="regStep1()">1. Get Public Key</button>
+      <div id="reg1Result" class="result" hidden></div>
+    </div>
+
+    <div class="step">
+      <div class="step-label">Step 2 — Sign registration message &amp; prepare topology on middleware</div>
+      <button id="reg2Btn" onclick="regStep2()" disabled>2. Prepare Topology</button>
+      <div id="reg2Result" class="result" hidden></div>
+    </div>
+
+    <div class="step">
+      <div class="step-label">Step 3 — Sign topology hash with snap</div>
+      <button id="reg3Btn" onclick="regStep3()" disabled>3. Sign Topology</button>
+      <div id="reg3Result" class="result" hidden></div>
+    </div>
+
+    <div class="step">
+      <div class="step-label">Step 4 — Submit registration to middleware</div>
+      <button id="reg4Btn" onclick="regStep4()" disabled>4. Complete Registration</button>
+      <div id="reg4Result" class="result" hidden></div>
+    </div>
+  </div>
+
+  <!-- ── Individual Snap Methods ──────────────────────────────────── -->
+  <h2>canton_getPublicKey</h2>
+  <label>Key Index: <input id="getPubKeyIndex" type="number" value="0" min="0" style="width:80px"></label>
+  <button onclick="getPublicKey()">Get Public Key</button>
+  <div id="pubKeyResult" class="result" hidden></div>
+
+  <h2>canton_getFingerprint</h2>
+  <label>Key Index: <input id="getFpIndex" type="number" value="0" min="0" style="width:80px"></label>
+  <button onclick="getFingerprint()">Get Fingerprint</button>
+  <div id="fpResult" class="result" hidden></div>
+
+  <h2>canton_signHash (Transfer)</h2>
+  <label>Hash (hex): <input id="signHashInput" placeholder="32-byte hex hash (with or without 0x)" value="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"></label>
+  <label>Operation: <input id="signOp" value="Transfer"></label>
+  <label>Token: <input id="signToken" value="DEMO"></label>
+  <label>Amount: <input id="signAmount" value="100"></label>
+  <label>Recipient: <input id="signRecipient" placeholder="0x..."></label>
+  <button onclick="signHash()">Sign Hash</button>
+  <div id="signResult" class="result" hidden></div>
+
+  <script>
+    const SNAP_ID = 'local:http://localhost:4001';
+
+    // State carried between registration steps
+    const reg = {};
+
+    function getEthereum() {
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error(
+          'MetaMask not found. Open this page over HTTP (not file://) and ensure MetaMask Flask is installed.'
+        );
+      }
+      return window.ethereum;
+    }
+
+    function middlewareUrl() {
+      return document.getElementById('middlewareUrl').value.replace(/\/$/, '');
+    }
+
+    function globalKeyIndex() {
+      return parseInt(document.getElementById('globalKeyIndex').value) || 0;
+    }
+
+    window.addEventListener('load', () => {
+      if (typeof window.ethereum === 'undefined') {
+        document.getElementById('noMetaMaskBanner').style.display = 'block';
+        document.getElementById('connectBtn').disabled = true;
+      }
+    });
+
+    function show(id, data, isError = false) {
+      const el = document.getElementById(id);
+      el.hidden = false;
+      el.className = 'result ' + (isError ? 'error' : 'success');
+      el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    class AlreadyRegisteredError extends Error {
+      constructor(details) { super('already_registered'); this.details = details; }
+    }
+
+    async function mwFetch(path, body) {
+      const resp = await fetch(`${middlewareUrl()}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const text = await resp.text();
+      if (resp.status === 409) throw new AlreadyRegisteredError(text);
+      if (!resp.ok) throw new Error(`${resp.status}: ${text}`);
+      return JSON.parse(text);
+    }
+
+    function showAlreadyRegistered(details) {
+      document.getElementById('regSteps').style.display = 'none';
+      const banner = document.getElementById('regAlreadyBanner');
+      banner.style.display = 'block';
+      if (details) {
+        document.getElementById('regAlreadyDetails').textContent = details;
+      }
+    }
+
+    // ── Snap connection ───────────────────────────────────────────────
+
+    async function connectSnap() {
+      try {
+        await getEthereum().request({
+          method: 'wallet_requestSnaps',
+          params: { [SNAP_ID]: {} },
+        });
+        document.getElementById('connectStatus').textContent = 'Connected';
+        show('connectResult', 'Snap installed successfully');
+      } catch (e) {
+        show('connectResult', e.message, true);
+      }
+    }
+
+    async function invokeSnap(method, params) {
+      return getEthereum().request({
+        method: 'wallet_invokeSnap',
+        params: { snapId: SNAP_ID, request: { method, params } },
+      });
+    }
+
+    // ── Registration flow ─────────────────────────────────────────────
+
+    async function regStep1() {
+      try {
+        const result = await invokeSnap('canton_getPublicKey', { keyIndex: globalKeyIndex() });
+        reg.compressedPubKey = result.compressedPubKey;
+        reg.spkiDer = result.spkiDer;
+        reg.fingerprint = result.fingerprint;
+        show('reg1Result', result);
+        document.getElementById('reg2Btn').disabled = false;
+      } catch (e) {
+        show('reg1Result', e.message, true);
+      }
+    }
+
+    async function regStep2() {
+      try {
+        const accounts = await getEthereum().request({ method: 'eth_requestAccounts' });
+        reg.evmAddress = accounts[0];
+
+        const timestamp = Math.floor(Date.now() / 1000);
+        reg.message = `register:${timestamp}`;
+
+        // personal_sign expects hex-encoded UTF-8 string
+        const msgHex = '0x' + Array.from(new TextEncoder().encode(reg.message))
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+
+        reg.signature = await getEthereum().request({
+          method: 'personal_sign',
+          params: [msgHex, reg.evmAddress],
+        });
+
+        const data = await mwFetch('/register/prepare-topology', {
+          signature: reg.signature,
+          message: reg.message,
+          canton_public_key: reg.compressedPubKey,
+        });
+
+        reg.topologyHash = data.topology_hash;
+        reg.registrationToken = data.registration_token;
+
+        show('reg2Result', data);
+        document.getElementById('reg3Btn').disabled = false;
+      } catch (e) {
+        if (e instanceof AlreadyRegisteredError) { showAlreadyRegistered(e.details); return; }
+        show('reg2Result', e.message, true);
+      }
+    }
+
+    async function regStep3() {
+      try {
+        const result = await invokeSnap('canton_signTopology', { hash: reg.topologyHash });
+        reg.topologySignature = result.derSignature;
+        show('reg3Result', result);
+        document.getElementById('reg4Btn').disabled = false;
+      } catch (e) {
+        show('reg3Result', e.message, true);
+      }
+    }
+
+    async function regStep4() {
+      try {
+        const data = await mwFetch('/register', {
+          signature: reg.signature,
+          message: reg.message,
+          key_mode: 'external',
+          canton_public_key: reg.compressedPubKey,
+          registration_token: reg.registrationToken,
+          topology_signature: reg.topologySignature,
+        });
+        show('reg4Result', data);
+      } catch (e) {
+        if (e instanceof AlreadyRegisteredError) { showAlreadyRegistered(e.details); return; }
+        show('reg4Result', e.message, true);
+      }
+    }
+
+    // ── Custodial registration ────────────────────────────────────────
+
+    async function custRegister() {
+      try {
+        const accounts = await getEthereum().request({ method: 'eth_requestAccounts' });
+        const address = accounts[0];
+
+        const timestamp = Math.floor(Date.now() / 1000);
+        const message = `register:${timestamp}`;
+        const msgHex = '0x' + Array.from(new TextEncoder().encode(message))
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+
+        const signature = await getEthereum().request({
+          method: 'personal_sign',
+          params: [msgHex, address],
+        });
+
+        const data = await mwFetch('/register', { signature, message });
+        show('custRegResult', data);
+      } catch (e) {
+        if (e instanceof AlreadyRegisteredError) {
+          document.getElementById('custRegBtn').disabled = true;
+          const banner = document.getElementById('custAlreadyBanner');
+          banner.style.display = 'block';
+          document.getElementById('custAlreadyDetails').textContent = e.details;
+          return;
+        }
+        show('custRegResult', e.message, true);
+      }
+    }
+
+    // ── Individual snap methods ───────────────────────────────────────
+
+    async function getPublicKey() {
+      try {
+        const keyIndex = parseInt(document.getElementById('getPubKeyIndex').value) || 0;
+        const result = await invokeSnap('canton_getPublicKey', { keyIndex });
+        show('pubKeyResult', result);
+      } catch (e) {
+        show('pubKeyResult', e.message, true);
+      }
+    }
+
+    async function getFingerprint() {
+      try {
+        const keyIndex = parseInt(document.getElementById('getFpIndex').value) || 0;
+        const result = await invokeSnap('canton_getFingerprint', { keyIndex });
+        show('fpResult', result);
+      } catch (e) {
+        show('fpResult', e.message, true);
+      }
+    }
+
+    async function signHash() {
+      try {
+        const hash = document.getElementById('signHashInput').value;
+        const metadata = {
+          operation: document.getElementById('signOp').value,
+          tokenSymbol: document.getElementById('signToken').value,
+          amount: document.getElementById('signAmount').value,
+          recipient: document.getElementById('signRecipient').value || undefined,
+        };
+        const result = await invokeSnap('canton_signHash', { hash, metadata });
+        show('signResult', result);
+      } catch (e) {
+        show('signResult', e.message, true);
+      }
+    }
+
+  </script>
+</body>
+</html>
