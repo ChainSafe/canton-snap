@@ -26,6 +26,10 @@ export async function requestAccounts(): Promise<string[]> {
   return getEthereum().request({ method: "eth_requestAccounts" }) as Promise<string[]>;
 }
 
+export async function getAccounts(): Promise<string[]> {
+  return getEthereum().request({ method: "eth_accounts" }) as Promise<string[]>;
+}
+
 export async function personalSign(message: string, address: string): Promise<string> {
   return getEthereum().request({
     method: "personal_sign",
@@ -40,15 +44,15 @@ export async function installSnap(): Promise<void> {
   });
 }
 
-export async function isSnapInstalled(): Promise<boolean> {
+export async function getInstalledSnap(): Promise<{ version: string } | null> {
   try {
     const snaps = (await getEthereum().request({ method: "wallet_getSnaps" })) as Record<
       string,
-      unknown
+      { version: string }
     >;
-    return SNAP_ID in snaps;
+    return snaps[SNAP_ID] ?? null;
   } catch {
-    return false;
+    return null;
   }
 }
 

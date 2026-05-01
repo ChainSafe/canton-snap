@@ -1,3 +1,104 @@
+export interface TokenConfig {
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+}
+
+function isTokenConfig(t: unknown): t is TokenConfig {
+  if (t === null || typeof t !== "object") return false;
+  const r = t as Record<string, unknown>;
+  return (
+    typeof r.address === "string" &&
+    typeof r.name === "string" &&
+    typeof r.symbol === "string" &&
+    typeof r.decimals === "number"
+  );
+}
+
+const TOKENS_PAGE_LIMIT = 50;
+
+const TOKENS_MAX_PAGES = 100;
+
+export async function getTokens(baseUrl: string): Promise<TokenConfig[]> {
+  const all: TokenConfig[] = [];
+  let cursor: string | undefined;
+
+  for (let page = 0; page < TOKENS_MAX_PAGES; page++) {
+    const url = new URL(`${baseUrl}/tokens`);
+    url.searchParams.set("limit", String(TOKENS_PAGE_LIMIT));
+    if (cursor) url.searchParams.set("cursor", cursor);
+
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+
+    const data = (await res.json()) as {
+      items: unknown[];
+      next_cursor?: string;
+      has_more: boolean;
+    };
+    if (!Array.isArray(data.items)) throw new Error("Unexpected tokens response shape");
+
+    all.push(...data.items.filter(isTokenConfig));
+
+    if (!data.has_more) break;
+    if (!data.next_cursor)
+      throw new Error("Unexpected tokens response: has_more is true but next_cursor is missing");
+    cursor = data.next_cursor;
+  }
+
+  return all;
+}
+
+export interface UserProfile {
+  cantonPartyId: string;
+  fingerprint: string;
+  keyMode: "custodial" | "external";
+}
+
+export class SessionExpiredError extends Error {
+  constructor() {
+    super("Session expired — please reconnect");
+  }
+}
+
+export async function getUser(
+  baseUrl: string,
+  address: string,
+  signature: string,
+  message: string,
+): Promise<UserProfile | null> {
+  const res = await fetch(`${baseUrl}/profile?address=${encodeURIComponent(address)}`, {
+    headers: { "X-Signature": signature, "X-Message": message },
+  });
+  if (res.status === 404) return null;
+  if (res.status === 401) {
+    const body = await res.json().catch(() => ({}) as Record<string, unknown>);
+    const msg = typeof body.error === "string" ? body.error : "";
+    if (msg.includes("expired")) throw new SessionExpiredError();
+    throw new Error(msg || "Unauthorized");
+  }
+  if (!res.ok) throw new Error(`Middleware error ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return {
+    cantonPartyId: data.canton_party,
+    fingerprint: data.fingerprint,
+    keyMode: data.key_mode === "external" ? "external" : "custodial",
+  };
+}
+
+export async function checkMiddlewareHealth(baseUrl: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 3000);
+    await fetch(`${baseUrl}/health`, { signal: controller.signal });
+    clearTimeout(id);
+    return true; // any HTTP response means the server is reachable
+  } catch {
+    return false;
+  }
+}
+
 export class AlreadyRegisteredError extends Error {
   readonly details: string;
   constructor(details: string) {
@@ -36,7 +137,7 @@ function friendlyError(status: number, body: string): string {
 }
 
 export interface RegisterResult {
-  canton_party_id: string;
+  party: string;
   fingerprint: string;
 }
 

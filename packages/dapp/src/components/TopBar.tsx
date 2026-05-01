@@ -8,7 +8,6 @@ import styles from "./TopBar.module.css";
 
 interface Props {
   address?: string | null;
-  snapInstalled?: boolean;
   network?: NetworkId;
   onNetworkChange?: (id: NetworkId) => void;
   onDisconnect?: () => void;
@@ -28,13 +27,7 @@ function Caret({ open }: { open: boolean }) {
   );
 }
 
-export function TopBar({
-  address,
-  snapInstalled,
-  network = "devnet",
-  onNetworkChange,
-  onDisconnect,
-}: Props) {
+export function TopBar({ address, network = "devnet", onNetworkChange, onDisconnect }: Props) {
   const [walletOpen, setWalletOpen] = useState(false);
   const [networkOpen, setNetworkOpen] = useState(false);
 
@@ -102,7 +95,6 @@ export function TopBar({
             {walletOpen && (
               <WalletMenu
                 address={address}
-                snapInstalled={snapInstalled}
                 onDisconnect={() => {
                   setWalletOpen(false);
                   onDisconnect?.();
