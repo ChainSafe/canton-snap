@@ -1,35 +1,14 @@
 # Testing the Canton Snap with Middleware (Local Development)
 
-This guide covers local setup and the supported registration flows. See [Current Limitations](#current-limitations) and [TODO](#todo--future-work) for what isn't implemented yet.
-
----
-
-## Architecture Overview
-
-The Canton Snap is a **pure signing oracle** — it never talks to the middleware directly. The Canton dApp orchestrates between the two:
-
-```
-Canton dApp (browser)
-    │
-    ├── window.ethereum.request(wallet_invokeSnap, ...) ──► MetaMask
-    │                                                            │
-    │                                                       Canton Snap
-    │                                                       (key derivation
-    │                                                        + signing)
-    │
-    └── fetch(http://localhost:8081/...) ──────────────────► Middleware API
-                                                                  │
-                                                             Canton Ledger
-                                                             (gRPC)
-```
-
 ---
 
 ## Prerequisites
 
-### 1. MetaMask
+### 1. MetaMask Flask
 
-Install [MetaMask](https://metamask.io) in your browser. The Canton Snap installs as a local snap via `wallet_requestSnaps` — no Flask or developer build required for local development.
+**MetaMask Flask is required.** Local snaps are a developer feature rejected by the standard MetaMask extension. Once the snap is published to npm and passes MetaMask's snap review process, a regular MetaMask install will suffice.
+
+> **Browser profile:** Run MetaMask Flask in a **dedicated browser profile** that does not have the standard MetaMask extension installed. Both extensions inject `window.ethereum` and conflict with each other — the dApp will behave unpredictably if both are active in the same profile.
 
 ### 2. Node.js
 
@@ -37,11 +16,16 @@ Install [MetaMask](https://metamask.io) in your browser. The Canton Snap install
 node --version   # v18 or higher
 ```
 
-### 3. Middleware running
+### 3. Middleware
 
-Clone and start the [canton-middleware](https://github.com/ChainSafe/canton-middleware) repo (Canton ledger + PostgreSQL + API server). Refer to its README for setup instructions.
+Clone the [canton-middleware](https://github.com/ChainSafe/canton-middleware) repo and start the local stack:
 
-Once running, verify:
+```bash
+make docker-up     # start Canton ledger + PostgreSQL + middleware API
+make docker-down   # stop and remove containers
+```
+
+Verify the API is up:
 
 ```bash
 curl http://localhost:8081/health
@@ -50,109 +34,117 @@ curl http://localhost:8081/health
 
 ---
 
+## Setup
+
+```bash
+npm install
+
+cp packages/snap/.env.example packages/snap/.env
+cp packages/dapp/.env.example packages/dapp/.env
+```
+
+Edit each `.env` as needed. `VITE_SNAP_PORT` must match in both files (default: `4040`).
+
+---
+
 ## Starting the Dev Servers
 
 ```bash
-# First-time setup
-npm install
-cp .env.example .env          # snap port config (default: 8080)
+npm run build          # build snap + dApp
+npm run serve          # start snap (4040) + dApp (3000) together
 
-# Build snap + dApp
-npm run build
-
-# Start snap server (port 8080) + dApp (port 3000) together
-npm run serve
-
-# Or start individually:
-npm run serve:snap   # snap only  — http://localhost:8080
-npm run dev:dapp     # dApp only  — http://localhost:3000
+# Or individually:
+npm run serve:snap     # http://localhost:4040
+npm run dev:dapp       # http://localhost:3000
 ```
 
-> **Port conflicts:** The dApp Vite server auto-increments past any busy port (3000 → 3001 → …). The snap server uses the port from your `.env` (`VITE_SNAP_PORT`, default `8080`); both snap and dApp read from the same file.
-
-Open the dApp at **http://localhost:3000**
+Open the dApp at **http://localhost:3000** — in the browser profile where MetaMask Flask is installed.
 
 ---
 
-## Step 1: Connect MetaMask
+## Architecture
 
-1. Open http://localhost:3000 in the browser where MetaMask is installed.
-2. Click **"Connect MetaMask"**.
-3. MetaMask prompts to share your account address — approve.
+The snap is a pure signing oracle — it never contacts the middleware directly.
 
----
-
-## Step 2: Choose Registration Mode
-
-After connecting you'll see two options:
-
-- **Custodial** — the middleware generates and stores your Canton signing key. One-click flow.
-- **Non-Custodial** — the Canton Snap holds your key inside MetaMask. You approve every signature.
-
----
-
-## Custodial Registration
-
-1. Click **"Use Custodial"**.
-2. MetaMask shows a **Sign Message** dialog for `register:<timestamp>` — approve it.
-3. The middleware allocates a Canton party and returns your party ID and fingerprint.
-
-If you see **"Already registered"**, this address already has a Canton party — you'll be taken to the done screen.
+```
+Canton dApp (browser)
+    │
+    ├── wallet_invokeSnap ──────────────────► MetaMask Flask
+    │                                              │
+    │                                         Canton Snap
+    │                                         (key derivation + signing)
+    │
+    └── fetch(http://localhost:8081/...) ────► Middleware API
+                                                   │
+                                              Canton Ledger (gRPC)
+```
 
 ---
 
-## Non-Custodial Registration
+## dApp Pages
 
-The Canton Snap holds your signing key. It never leaves MetaMask.
+The UI guides users through the flow. Pages in order:
 
-### Step 1 — Install Canton Snap
-
-1. Click **"Use Non-Custodial"** then **"Install Canton Snap"** (or **"Connect Canton Snap"** if already installed).
-2. MetaMask asks to install the snap and grant this dApp permission — approve.
-
-### Step 2 — Sign
-
-1. Click **"Start signing"**.
-2. MetaMask prompts for an EIP-191 signature (`register:<timestamp>`) — approve.
-3. The snap prompts to sign the topology hash — approve.
-4. Registration is submitted automatically once both signatures are collected.
+| Page | Description |
+|---|---|
+| **Landing** | Connect MetaMask wallet |
+| **Registration Choice** | Choose Custodial or Non-Custodial mode |
+| **Custodial Registration** | One-click: middleware holds your Canton key |
+| **Non-Custodial Registration** | Install snap → sign registration → submit |
+| **Registration Done** | Party ID and fingerprint confirmed |
+| **Dashboard: Profile** | Party details, key mode, snap version and install status |
+| **Dashboard: Balances** | ERC-20 token balances for the registered Canton party |
+| **Dashboard: Transfer** | Send tokens to another Canton party via the snap |
+| **Dashboard: Activity** | ERC-20 transfer history (requires relayer — see Limitations) |
 
 ---
 
-## Running Snap Unit Tests
+## Registration: Whitelist Requirement
+
+Before an address can register, it must be whitelisted on the middleware. From the `canton-middleware` repo:
 
 ```bash
-npm test           # crypto unit tests
-npm run test:snap  # full snap integration tests (jest + @metamask/snaps-jest)
+go run ./scripts/utils/whitelist.go --address <evm-address>
+```
+
+Registration will return an error until the address is whitelisted.
+
+---
+
+## Transfer Testing: Fund the Wallet
+
+To test transfers, the Canton party must hold tokens. From the `canton-middleware` repo:
+
+```bash
+go run ./scripts/utils/fund-wallet.go --address <evm-address> --amount 1000 --token DEMO
+```
+
+---
+
+## Tests
+
+```bash
+npm test              # crypto unit tests + snap integration tests
+npm run test:snap     # snap integration tests only (jest + @metamask/snaps-jest)
 ```
 
 ---
 
 ## Current Limitations
 
-**Snap not published** — The snap is not on npm. It only works via `local:http://localhost:8080`. Publishing requires an npm release and MetaMask's snap review process.
+**MetaMask Flask required** — Until the snap is published to npm and reviewed by MetaMask, only MetaMask Flask users can install it.
 
-**Each developer runs their own snap server** — The `local:` snap ID is tied to localhost. Teammates cannot share one snap server.
+**Snap not published** — The snap runs only as `local:http://localhost:4040`. Publishing requires an npm release and MetaMask's snap review.
 
-**No staging environment** — The dApp supports switching networks via the network switcher, but there is no shared testnet or staging deployment yet.
+**Each developer runs their own snap server** — The `local:` snap ID is bound to localhost; teammates cannot share one instance.
 
-**Key index must match registration** — All snap calls must use the same key index used during registration (default: `0`). A different index derives a different key.
+**Activity tab requires relayer/bridge** — The Activity UI is built and reads ERC-20 transfer logs from the Canton EVM RPC. Populating real transaction history depends on the relayer or bridge being deployed and indexing events. This is the primary remaining integration work.
 
 ---
 
-## TODO / Future Work
+## TODO
 
-The following flows are not yet implemented (tracked in [issue #5](https://github.com/ChainSafe/canton-snap/issues/5)):
-
-- **Check registration status** — No proactive status check on load; already-registered state is detected reactively via 409 responses.
-- **Token transfer flow** — Prepare transfer, sign with `canton_signHash`, execute. The snap method works but there is no dApp UI yet.
-- **Balance display** — No UI to query a registered user's token balance.
-- **Token minting** — No faucet UI. Requires running middleware scripts manually:
-  ```bash
-  cd ../canton-middleware
-  go run scripts/testing/mint-tokens.go --address <evm-address> --amount 1000 --token DEMO
-  ```
-- **End-to-end automated test** — The full registration → mint → transfer → verify flow is not scripted.
+- **Relayer / bridge integration** — Deploy and connect the relayer or bridge so the Activity tab has real transaction history to display. The UI and log-fetching logic are complete on the dApp side.
 
 ---
 
@@ -161,23 +153,27 @@ The following flows are not yet implemented (tracked in [issue #5](https://githu
 | | |
 |---|---|
 | Canton dApp | http://localhost:3000 |
-| Snap server | http://localhost:8080 (set via `VITE_SNAP_PORT` in `.env`) |
-| Snap ID | `local:http://localhost:8080` |
+| Snap server | http://localhost:4040 (set via `VITE_SNAP_PORT` in `packages/snap/.env`) |
+| Snap ID | `local:http://localhost:4040` |
 | Middleware API | http://localhost:8081 |
-| Middleware health | `GET http://localhost:8081/health` |
 
 | Command | Purpose |
 |---|---|
+| `make docker-up` | Start middleware stack (Canton + DB + API) |
+| `make docker-down` | Stop middleware stack |
 | `npm run serve` | Start snap + dApp together |
 | `npm run serve:snap` | Snap server only |
 | `npm run dev:dapp` | dApp dev server only |
 | `npm run build` | Build snap + dApp |
-| `npm run build:snap` | Build snap bundle only |
-| `npm run watch:snap` | Snap hot-reload during development |
-| `npm test` | Crypto unit tests |
-| `npm run test:snap` | Full snap integration tests |
+| `npm run watch:snap` | Snap hot-reload |
+| `npm test` | All tests |
 | `npm run lint` | Lint all packages |
 | `npm run format` | Format all packages |
+
+| Middleware script | Purpose |
+|---|---|
+| `go run ./scripts/utils/whitelist.go --address <addr>` | Whitelist an EVM address for registration |
+| `go run ./scripts/utils/fund-wallet.go --address <addr> --amount N --token DEMO` | Fund a Canton party for transfer testing |
 
 | Middleware endpoint | Purpose |
 |---|---|
@@ -187,6 +183,6 @@ The following flows are not yet implemented (tracked in [issue #5](https://githu
 | Snap method | Dialog | Purpose |
 |---|---|---|
 | `canton_getPublicKey` | Yes | Key derivation + SPKI + fingerprint |
-| `canton_signTopology` | Yes | SHA-256 + ECDSA sign of Canton topology multihash |
-| `canton_signHash` | Yes | ECDSA sign of 32-byte pre-hashed digest |
+| `canton_signTopology` | Yes | Sign Canton topology multihash |
+| `canton_signHash` | Yes | Sign 32-byte pre-hashed digest |
 | `canton_getFingerprint` | No | Fingerprint lookup only |
