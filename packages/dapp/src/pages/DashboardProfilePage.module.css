@@ -1,0 +1,211 @@
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+/* ── Identity card ── */
+.identityCard {
+  background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 48px;
+  margin-bottom: 24px;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.sectionLabelTop {
+  margin-top: 4px;
+}
+
+.partyIdRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.partyId {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-primary);
+  word-break: break-all;
+  line-height: 1.35;
+}
+
+.partyIdCont {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  word-break: break-all;
+  margin-top: 4px;
+}
+
+.fingerprintRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fingerprint {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── Quick actions ── */
+.quickActions {
+  display: flex;
+  flex-direction: column;
+}
+
+.btnAction {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: not-allowed;
+  font-family: var(--font-sans);
+  opacity: 0.6;
+  margin-top: 12px;
+  width: 100%;
+  text-align: left;
+}
+
+.btnSend {
+  composes: btnAction;
+  background: var(--teal-gradient);
+}
+
+.btnBridge {
+  composes: btnAction;
+  background: #232640;
+  border: 1px solid var(--border-muted) !important;
+}
+
+.btnActionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0a0b14;
+  display: block;
+}
+
+.btnActionSub {
+  font-size: 11px;
+  color: rgba(10, 11, 20, 0.65);
+  display: block;
+  margin-top: 2px;
+}
+
+.btnBridgeTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+}
+
+.btnBridgeSub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 2px;
+}
+
+/* ── Connection card ── */
+.connectionCard {
+  background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+}
+
+.connectionCardTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 28px;
+}
+
+.connectionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+
+.connStatus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+
+.connDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.connDotGreen {
+  background: var(--green);
+}
+
+.connDotAmber {
+  background: var(--amber);
+}
+
+.connLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.connMeta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.reinstallBtn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--teal);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  letter-spacing: 0.3px;
+}
+
+.reinstallBtn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.reinstallBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

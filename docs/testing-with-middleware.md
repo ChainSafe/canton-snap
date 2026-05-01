@@ -92,7 +92,10 @@ The UI guides users through the flow. Pages in order:
 | **Custodial Registration** | One-click: middleware holds your Canton key |
 | **Non-Custodial Registration** | Install snap → sign registration → submit |
 | **Registration Done** | Party ID and fingerprint confirmed |
-| **Dashboard** | Transfer, balance, and activity |
+| **Dashboard: Profile** | Party details, key mode, snap version and install status |
+| **Dashboard: Balances** | ERC-20 token balances for the registered Canton party |
+| **Dashboard: Transfer** | Send tokens to another Canton party via the snap |
+| **Dashboard: Activity** | ERC-20 transfer history (requires relayer — see Limitations) |
 
 ---
 
@@ -101,7 +104,7 @@ The UI guides users through the flow. Pages in order:
 Before an address can register, it must be whitelisted on the middleware. From the `canton-middleware` repo:
 
 ```bash
-go run ./scripts/utils/whitelist.go
+go run ./scripts/utils/whitelist.go --address <evm-address>
 ```
 
 Registration will return an error until the address is whitelisted.
@@ -113,7 +116,7 @@ Registration will return an error until the address is whitelisted.
 To test transfers, the Canton party must hold tokens. From the `canton-middleware` repo:
 
 ```bash
-go run ./scripts/utils/fund-wallet.go
+go run ./scripts/utils/fund-wallet.go --address <evm-address> --amount 1000 --token DEMO
 ```
 
 ---
@@ -135,13 +138,13 @@ npm run test:snap     # snap integration tests only (jest + @metamask/snaps-jest
 
 **Each developer runs their own snap server** — The `local:` snap ID is bound to localhost; teammates cannot share one instance.
 
-**Activity feed not yet available** — Transaction history depends on relayer/bridge integration, which is the remaining outstanding work.
+**Activity tab requires relayer/bridge** — The Activity UI is built and reads ERC-20 transfer logs from the Canton EVM RPC. Populating real transaction history depends on the relayer or bridge being deployed and indexing events. This is the primary remaining integration work.
 
 ---
 
 ## TODO
 
-- **Activity feed** — Fetch and display transaction history via the relayer or bridge. This is the primary remaining feature.
+- **Relayer / bridge integration** — Deploy and connect the relayer or bridge so the Activity tab has real transaction history to display. The UI and log-fetching logic are complete on the dApp side.
 
 ---
 

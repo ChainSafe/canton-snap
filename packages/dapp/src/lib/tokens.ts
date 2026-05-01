@@ -1,3 +1,9 @@
+export const TOKEN_COLORS: Record<string, { bg: string; text: string }> = {
+  DEMO: { bg: "#00d4a4", text: "#0a0b14" },
+  PROMPT: { bg: "#8b7cff", text: "#0a0b14" },
+  USDCX: { bg: "#2775ca", text: "#ffffff" },
+};
+
 export const colors = {
   bg: "#0a0b14",
   bgCard: "#1a1d2e",
