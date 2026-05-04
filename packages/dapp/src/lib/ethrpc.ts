@@ -102,22 +102,6 @@ async function ethGetLogs(rpcUrl: string, filter: unknown): Promise<RawLog[]> {
   return (json.result as RawLog[]) ?? [];
 }
 
-async function ethBlockNumber(rpcUrl: string): Promise<string> {
-  const res = await fetch(rpcUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "eth_blockNumber",
-      params: [],
-      id: ++_rpcId,
-    }),
-  });
-  const json = (await res.json()) as { result?: string; error?: { message: string } };
-  if (json.error) throw new Error(json.error.message);
-  return json.result ?? "0x0";
-}
-
 export async function getTransferLogs(
   rpcUrl: string,
   tokenAddresses: string[],
@@ -126,19 +110,17 @@ export async function getTransferLogs(
   if (tokenAddresses.length === 0) return [];
 
   const paddedUser = padAddress(userAddress);
-  // TODO: replace fromBlock "0x0" with block-range pagination once chain history grows
-  const toBlock = await ethBlockNumber(rpcUrl);
 
   const [sentRaw, receivedRaw] = await Promise.all([
     ethGetLogs(rpcUrl, {
-      fromBlock: "0x0",
-      toBlock,
+      fromBlock: "earliest",
+      toBlock: "latest",
       address: tokenAddresses,
       topics: [ERC20_TRANSFER_TOPIC, paddedUser],
     }),
     ethGetLogs(rpcUrl, {
-      fromBlock: "0x0",
-      toBlock,
+      fromBlock: "earliest",
+      toBlock: "latest",
       address: tokenAddresses,
       topics: [ERC20_TRANSFER_TOPIC, null, paddedUser],
     }),
