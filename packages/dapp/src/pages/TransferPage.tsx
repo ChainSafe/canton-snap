@@ -774,7 +774,7 @@ export function TransferPage({
               <button className={styles.btnSendAnother} onClick={handleReset}>
                 Send another
               </button>
-              <button className={styles.btnViewActivity} onClick={() => onTabChange("balances")}>
+              <button className={styles.btnViewActivity} onClick={() => onTabChange("activity")}>
                 View in Activity →
               </button>
             </div>
