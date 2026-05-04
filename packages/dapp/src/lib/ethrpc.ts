@@ -2,7 +2,6 @@ let _rpcId = 0;
 
 const ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-
 function encodeBalanceOf(address: string): string {
   return "0x70a08231" + address.replace(/^0x/i, "").toLowerCase().padStart(64, "0");
 }
