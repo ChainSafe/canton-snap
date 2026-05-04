@@ -61,20 +61,25 @@ canton-snap/
 │   └── testing-with-middleware.md  # Local dev setup and testing guide
 ├── designs/                        # UI design mockups (SVG)
 ├── eslint.config.js                # ESLint 9 flat config (all packages)
-├── .env.example                    # Environment variable template
+├── .env.example                    # Points to per-package .env.example files
 └── package.json                    # Workspace root — scripts for all packages
 ```
 
 ## Development
 
+**Requires [MetaMask Flask](https://metamask.io/flask/)** — local snaps are rejected by the standard MetaMask extension. Flask is needed until the snap is published to npm. Run it in a dedicated browser profile where the standard MetaMask extension is not installed to avoid `window.ethereum` conflicts.
+
 ```bash
 npm install
-cp .env.example .env          # configure snap port (default: 8080)
+
+# Copy env templates for each package
+cp packages/snap/.env.example packages/snap/.env
+cp packages/dapp/.env.example packages/dapp/.env
 
 # Build snap + dApp
 npm run build
 
-# Start both servers (snap on 8080, dApp on 3000)
+# Start both servers (snap on 4040, dApp on 3000)
 npm run serve
 
 # Or individually:
@@ -82,6 +87,8 @@ npm run serve:snap             # snap dev server
 npm run dev:dapp               # dApp Vite dev server
 npm run watch:snap             # snap with hot-reload
 ```
+
+`VITE_SNAP_PORT` must match in both `.env` files (default: `4040`).
 
 See [`docs/testing-with-middleware.md`](docs/testing-with-middleware.md) for the full local setup guide including middleware integration.
 
