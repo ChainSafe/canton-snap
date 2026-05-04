@@ -98,7 +98,7 @@ export function DashboardBalancesPage({
             <h1 className={styles.pageTitle}>Balances</h1>
             <p className={styles.pageSubtitle}>Canton Network tokens held by this party.</p>
           </div>
-          <button className={styles.sendBtn} disabled>
+          <button className={styles.sendBtn} onClick={() => onTabChange("transfer")}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path
                 d="M3 8H13M9 4L13 8L9 12"
