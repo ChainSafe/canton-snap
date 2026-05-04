@@ -109,48 +109,41 @@ export async function getTransferLogs(
 ): Promise<TransferLog[]> {
   if (tokenAddresses.length === 0) return [];
 
-  const paddedUser = padAddress(userAddress);
+  const userAddrLower = userAddress.toLowerCase();
 
-  const [sentRaw, receivedRaw] = await Promise.all([
-    ethGetLogs(rpcUrl, {
-      fromBlock: "earliest",
-      toBlock: "latest",
-      address: tokenAddresses,
-      topics: [ERC20_TRANSFER_TOPIC, paddedUser],
-    }),
-    ethGetLogs(rpcUrl, {
-      fromBlock: "earliest",
-      toBlock: "latest",
-      address: tokenAddresses,
-      topics: [ERC20_TRANSFER_TOPIC, null, paddedUser],
-    }),
-  ]);
-
-  // self-transfers appear in both queries — keep them under "sent" only
-  const sentKeys = new Set(sentRaw.map((l) => `${l.transactionHash}-${l.logIndex}`));
-  const uniqueReceived = receivedRaw.filter(
-    (l) => !sentKeys.has(`${l.transactionHash}-${l.logIndex}`),
+  // Query one address at a time: the middleware address filter only accepts a
+  // single string. fromBlock/toBlock are omitted so the middleware defaults to
+  // the full range (0 → latest). topic1/topic2 filtering is not supported
+  // server-side, so sent/received direction is determined client-side.
+  const perToken = await Promise.all(
+    tokenAddresses.map((addr) =>
+      ethGetLogs(rpcUrl, {
+        address: addr,
+        topics: [ERC20_TRANSFER_TOPIC],
+      }),
+    ),
   );
 
-  const allLogs = [
-    ...sentRaw.map((l) => ({ ...l, direction: "sent" as const })),
-    ...uniqueReceived.map((l) => ({ ...l, direction: "received" as const })),
-  ];
+  const logs: TransferLog[] = [];
+  for (const raw of perToken.flat()) {
+    if (raw.topics.length < 3) continue;
+    const from = ("0x" + raw.topics[1].slice(26)).toLowerCase();
+    const to = ("0x" + raw.topics[2].slice(26)).toLowerCase();
+    if (from !== userAddrLower && to !== userAddrLower) continue;
+    logs.push({
+      txHash: raw.transactionHash,
+      blockNumber: parseInt(raw.blockNumber, 16),
+      logIndex: parseInt(raw.logIndex, 16),
+      timestamp: raw.blockTimestamp ? parseInt(raw.blockTimestamp, 16) : 0,
+      direction: from === userAddrLower ? "sent" : "received",
+      tokenAddress: raw.address.toLowerCase(),
+      amount: raw.data && raw.data !== "0x" ? BigInt(raw.data) : 0n,
+      from,
+      to,
+    });
+  }
 
-  return allLogs
-    .filter((l) => l.topics.length >= 3)
-    .map((l) => ({
-      txHash: l.transactionHash,
-      blockNumber: parseInt(l.blockNumber, 16),
-      logIndex: parseInt(l.logIndex, 16),
-      timestamp: l.blockTimestamp ? parseInt(l.blockTimestamp, 16) : 0,
-      direction: l.direction,
-      tokenAddress: l.address.toLowerCase(),
-      amount: l.data && l.data !== "0x" ? BigInt(l.data) : 0n,
-      from: "0x" + l.topics[1].slice(26),
-      to: "0x" + l.topics[2].slice(26),
-    }))
-    .sort((a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex);
+  return logs.sort((a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex);
 }
 
 export function formatTokenAmount(raw: bigint, decimals: number): string {
