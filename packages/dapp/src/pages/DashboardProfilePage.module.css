@@ -86,12 +86,21 @@
   padding: 16px 20px;
   border-radius: var(--radius-md);
   border: none;
-  cursor: not-allowed;
+  cursor: pointer;
   font-family: var(--font-sans);
-  opacity: 0.6;
   margin-top: 12px;
   width: 100%;
   text-align: left;
+  transition: opacity 0.15s;
+}
+
+.btnAction:hover {
+  opacity: 0.85;
+}
+
+.btnAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .btnSend {

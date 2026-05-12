@@ -107,7 +107,7 @@ export function DashboardProfilePage({
           {/* Quick actions */}
           <div className={styles.quickActions}>
             <p className={styles.sectionLabel}>QUICK ACTIONS</p>
-            <button className={styles.btnSend} disabled>
+            <button className={styles.btnSend} onClick={() => onTabChange("transfer")}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path
                   d="M2 10H18M12 4L18 10L12 16"

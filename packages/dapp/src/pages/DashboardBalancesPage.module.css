@@ -32,9 +32,18 @@
   font-size: 13px;
   font-weight: 700;
   font-family: var(--font-sans);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.sendBtn:hover {
+  opacity: 0.85;
+}
+
+.sendBtn:disabled {
   cursor: not-allowed;
   opacity: 0.55;
-  flex-shrink: 0;
 }
 
 /* ── Token card ── */
