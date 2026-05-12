@@ -115,9 +115,8 @@ export function useRegistration(middlewareUrl: string): UseRegistrationReturn {
 function parseRegistered(details: string): RegistrationResult | null {
   try {
     const p = JSON.parse(details);
-    const partyId = p.party ?? p.canton_party_id;
-    if (partyId) {
-      return { cantonPartyId: partyId as string, fingerprint: (p.fingerprint as string) ?? "" };
+    if (p.canton_party_id) {
+      return { cantonPartyId: p.canton_party_id, fingerprint: p.fingerprint ?? "" };
     }
   } catch {
     // not JSON
