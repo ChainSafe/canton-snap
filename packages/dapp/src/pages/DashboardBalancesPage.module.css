@@ -56,8 +56,8 @@
 /* Column header row */
 .colHeaders {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 48px;
+  grid-template-columns: 1fr 180px 70px;
+  gap: 32px;
   align-items: center;
   padding: 20px 0 16px;
   border-bottom: 1px solid var(--border);
@@ -70,14 +70,13 @@
 
 .colBalance {
   text-align: right;
-  min-width: 140px;
 }
 
 /* Token row */
 .tokenRow {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 48px;
+  grid-template-columns: 1fr 180px 70px;
+  gap: 32px;
   align-items: center;
   padding: 24px 0;
 }
@@ -87,11 +86,12 @@
   background: var(--border);
 }
 
-/* Left: icon + name */
+/* Left: icon + name + add button */
 .tokenInfo {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
 }
 
 .tokenIconCircle {
@@ -129,7 +129,6 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
-  min-width: 140px;
 }
 
 .amount {
@@ -155,10 +154,72 @@
   font-family: var(--font-sans);
   padding: 0;
   white-space: nowrap;
+  justify-self: end;
 }
 
 .sendRowBtn:hover {
   text-decoration: underline;
+}
+
+.addRowBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--border-muted);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.addRowBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-muted);
+  color: var(--text-primary);
+}
+
+.addRowBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.addRowBtnSuccess {
+  color: var(--green);
+}
+
+.addRowBtnSuccess:hover:not(:disabled) {
+  color: var(--green);
+}
+
+.addRowBtnError {
+  color: var(--amber);
+}
+
+.addRowBtnError:hover:not(:disabled) {
+  color: var(--amber);
+}
+
+.addRowSpinner {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgba(161, 166, 196, 0.25);
+  border-top-color: var(--text-secondary);
+  border-radius: 50%;
+  animation: addRowSpin 0.7s linear infinite;
+}
+
+@keyframes addRowSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Loading / error */

@@ -7,6 +7,8 @@ import { getNetwork, type NetworkId } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
 import { getTokenBalance, formatTokenAmount } from "../lib/ethrpc";
 import { TOKEN_COLORS } from "../lib/tokens";
+import { useMetaMaskImport, type ImportStatus } from "../hooks/useMetaMaskImport";
+import { cn } from "../lib/cn";
 import styles from "./DashboardBalancesPage.module.css";
 
 interface TokenRow {
@@ -36,6 +38,123 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
+/** Wallet outline with a "+" — signals "add token". */
+function WalletPlusIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <rect
+        x="2.5"
+        y="5"
+        width="15"
+        height="11"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <path d="M2.5 9H17.5" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M14 11.5V14M12.75 12.75H15.25"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path
+        d="M2.5 7.5L5.5 10.5L11.5 3.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function RetryIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path
+        d="M11.5 6.5C11.5 9 9.5 11 7 11C4.5 11 2.5 9 2.5 6.5C2.5 4 4.5 2 7 2C8.7 2 10.2 3 10.9 4.4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M11 1.5V4.5H8"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function AddTokenIconButton({
+  status,
+  symbol,
+  error,
+  onClick,
+}: {
+  status: ImportStatus;
+  symbol: string;
+  error?: string;
+  onClick: () => void;
+}) {
+  if (status === "pending") {
+    return (
+      <button
+        className={styles.addRowBtn}
+        disabled
+        aria-label={`Adding ${symbol} to MetaMask`}
+        title={`Adding ${symbol} to MetaMask…`}
+      >
+        <span className={styles.addRowSpinner} />
+      </button>
+    );
+  }
+  if (status === "success") {
+    return (
+      <button
+        className={cn(styles.addRowBtn, styles.addRowBtnSuccess)}
+        onClick={onClick}
+        aria-label={`${symbol} added to MetaMask. Click to add again.`}
+        title={`${symbol} added to MetaMask`}
+      >
+        <CheckIcon />
+      </button>
+    );
+  }
+  if (status === "error") {
+    return (
+      <button
+        className={cn(styles.addRowBtn, styles.addRowBtnError)}
+        onClick={onClick}
+        aria-label={`Retry adding ${symbol} to MetaMask`}
+        title={error ? `Retry — ${error}` : "Retry"}
+      >
+        <RetryIcon />
+      </button>
+    );
+  }
+  return (
+    <button
+      className={styles.addRowBtn}
+      onClick={onClick}
+      aria-label={`Add ${symbol} to MetaMask`}
+      title={`Add ${symbol} to MetaMask`}
+    >
+      <WalletPlusIcon />
+    </button>
+  );
+}
+
 export function DashboardBalancesPage({
   address,
   network,
@@ -48,6 +167,8 @@ export function DashboardBalancesPage({
 
   const currentNet = getNetwork(network);
   const loading = fetchState?.url !== currentNet.middlewareUrl || fetchState?.address !== address;
+
+  const mmImport = useMetaMaskImport(currentNet, address);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,27 +262,41 @@ export function DashboardBalancesPage({
 
           {!loading && fetchState?.rows && fetchState.rows.length > 0 && (
             <>
-              {fetchState.rows.map(({ token, balance }, i) => (
-                <div key={token.address}>
-                  {i > 0 && <div className={styles.rowDivider} />}
-                  <div className={styles.tokenRow}>
-                    <div className={styles.tokenInfo}>
-                      <TokenIcon symbol={token.symbol} />
-                      <div className={styles.tokenText}>
-                        <p className={styles.tokenSymbol}>{token.symbol}</p>
-                        <p className={styles.tokenName}>{token.name}</p>
+              {fetchState.rows.map(({ token, balance }, i) => {
+                const tokenState = mmImport.tokenStates[token.address];
+                return (
+                  <div key={token.address}>
+                    {i > 0 && <div className={styles.rowDivider} />}
+                    <div className={styles.tokenRow}>
+                      <div className={styles.tokenInfo}>
+                        <TokenIcon symbol={token.symbol} />
+                        <div className={styles.tokenText}>
+                          <p className={styles.tokenSymbol}>{token.symbol}</p>
+                          <p className={styles.tokenName}>{token.name}</p>
+                        </div>
+                        <AddTokenIconButton
+                          status={tokenState?.status ?? "idle"}
+                          symbol={token.symbol}
+                          error={tokenState?.error}
+                          onClick={() => void mmImport.importToken(token)}
+                        />
                       </div>
+                      <div className={styles.balanceInfo}>
+                        <p className={styles.amount}>
+                          {formatTokenAmount(balance, token.decimals)}
+                        </p>
+                        <p className={styles.amountLabel}>{token.symbol}</p>
+                      </div>
+                      <button
+                        className={styles.sendRowBtn}
+                        onClick={() => onTabChange("transfer")}
+                      >
+                        Send →
+                      </button>
                     </div>
-                    <div className={styles.balanceInfo}>
-                      <p className={styles.amount}>{formatTokenAmount(balance, token.decimals)}</p>
-                      <p className={styles.amountLabel}>{token.symbol}</p>
-                    </div>
-                    <button className={styles.sendRowBtn} onClick={() => onTabChange("transfer")}>
-                      Send →
-                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               <div className={styles.rowDivider} />
               <p className={styles.hint}>
