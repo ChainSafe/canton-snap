@@ -3,13 +3,10 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { Button } from "../components/Button";
 import { CopyButton } from "../components/CopyButton";
 import { cn } from "../lib/cn";
-import { type NetworkId } from "../lib/config";
 import styles from "./RegistrationDonePage.module.css";
 
 interface Props {
   address: string;
-  network: NetworkId;
-  onNetworkChange: (id: NetworkId) => void;
   cantonPartyId: string;
   fingerprint: string;
   wasAlreadyRegistered?: boolean;
@@ -19,8 +16,6 @@ interface Props {
 
 export function RegistrationDonePage({
   address,
-  network,
-  onNetworkChange,
   cantonPartyId,
   fingerprint,
   wasAlreadyRegistered,
@@ -30,12 +25,7 @@ export function RegistrationDonePage({
   return (
     <div className="page">
       <AmbientOrb opacity={0.22} size={920} y="58%" />
-      <TopBar
-        address={address}
-        network={network}
-        onNetworkChange={onNetworkChange}
-        onDisconnect={onDisconnect}
-      />
+      <TopBar address={address} onDisconnect={onDisconnect} />
 
       <main className={styles.main}>
         <div className={styles.checkWrap}>

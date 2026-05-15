@@ -1,15 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Logo } from "./Logo";
 import { WalletMenu } from "./WalletMenu";
-import { NetworkSwitcher } from "./NetworkSwitcher";
 import { shortenAddress } from "../lib/ethereum";
-import { getNetwork, type NetworkId } from "../lib/config";
+import { NETWORK } from "../lib/config";
 import styles from "./TopBar.module.css";
 
 interface Props {
   address?: string | null;
-  network?: NetworkId;
-  onNetworkChange?: (id: NetworkId) => void;
   onDisconnect?: () => void;
 }
 
@@ -27,24 +24,17 @@ function Caret({ open }: { open: boolean }) {
   );
 }
 
-export function TopBar({ address, network = "devnet", onNetworkChange, onDisconnect }: Props) {
+export function TopBar({ address, onDisconnect }: Props) {
   const [walletOpen, setWalletOpen] = useState(false);
-  const [networkOpen, setNetworkOpen] = useState(false);
-
   const walletRef = useRef<HTMLDivElement>(null);
-  const networkRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleOutsideClick(e: MouseEvent) {
       if (walletRef.current && !walletRef.current.contains(e.target as Node)) setWalletOpen(false);
-      if (networkRef.current && !networkRef.current.contains(e.target as Node))
-        setNetworkOpen(false);
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
-
-  const currentNet = getNetwork(network);
 
   return (
     <header className="topbar">
@@ -57,36 +47,15 @@ export function TopBar({ address, network = "devnet", onNetworkChange, onDisconn
 
       {address && (
         <div className={styles.walletActions}>
-          <div ref={networkRef} className={styles.pillAnchor}>
-            <button
-              className={`pill ${networkOpen ? "active-amber" : ""}`}
-              onClick={() => {
-                setNetworkOpen((o) => !o);
-                setWalletOpen(false);
-              }}
-            >
-              <span className="pill-dot" style={{ background: currentNet.color }} />
-              <span>{currentNet.name}</span>
-              <Caret open={networkOpen} />
-            </button>
-            {networkOpen && (
-              <NetworkSwitcher
-                current={network}
-                onSelect={(id) => {
-                  onNetworkChange?.(id as NetworkId);
-                  setNetworkOpen(false);
-                }}
-              />
-            )}
+          <div className="pill pill-static" aria-label={`Network: ${NETWORK.name}`}>
+            <span className="pill-dot" style={{ background: NETWORK.color }} />
+            <span>{NETWORK.name}</span>
           </div>
 
           <div ref={walletRef} className={styles.pillAnchor}>
             <button
               className={`pill pill-mono ${walletOpen ? "active-teal" : ""}`}
-              onClick={() => {
-                setWalletOpen((o) => !o);
-                setNetworkOpen(false);
-              }}
+              onClick={() => setWalletOpen((o) => !o)}
             >
               <span className="pill-dot" style={{ background: "#34d399" }} />
               <span>{shortenAddress(address)}</span>
