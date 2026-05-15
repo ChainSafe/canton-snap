@@ -115,12 +115,7 @@ function SearchIcon() {
   );
 }
 
-export function DashboardActivityPage({
-  address,
-  activeTab,
-  onTabChange,
-  onDisconnect,
-}: Props) {
+export function DashboardActivityPage({ address, activeTab, onTabChange, onDisconnect }: Props) {
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
   const [filterTab, setFilterTab] = useState<FilterTab>("transfers");
   const [search, setSearch] = useState("");

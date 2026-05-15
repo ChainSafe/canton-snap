@@ -227,13 +227,7 @@ function TokenDropdown({ tokens, selected, balances, onSelect }: TokenDropdownPr
   );
 }
 
-export function TransferPage({
-  address,
-  activeTab,
-  onTabChange,
-  onDisconnect,
-  keyMode,
-}: Props) {
+export function TransferPage({ address, activeTab, onTabChange, onDisconnect, keyMode }: Props) {
   const [step, setStep] = useState<Step>("details");
   const [tokens, setTokens] = useState<TokenConfig[]>([]);
   const [tokensLoading, setTokensLoading] = useState(true);

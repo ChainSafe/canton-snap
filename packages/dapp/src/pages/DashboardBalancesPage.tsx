@@ -34,12 +34,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
-export function DashboardBalancesPage({
-  address,
-  activeTab,
-  onTabChange,
-  onDisconnect,
-}: Props) {
+export function DashboardBalancesPage({ address, activeTab, onTabChange, onDisconnect }: Props) {
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
 
   const loading = fetchState?.url !== NETWORK.middlewareUrl || fetchState?.address !== address;

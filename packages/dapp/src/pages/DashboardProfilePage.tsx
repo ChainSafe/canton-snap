@@ -34,8 +34,7 @@ export function DashboardProfilePage({
   const [healthCache, setHealthCache] = useState<{ url: string; healthy: boolean } | null>(null);
 
   const isNonCustodial = profile.keyMode === "external";
-  const middlewareHealthy =
-    healthCache?.url === NETWORK.middlewareUrl ? healthCache.healthy : null;
+  const middlewareHealthy = healthCache?.url === NETWORK.middlewareUrl ? healthCache.healthy : null;
 
   useEffect(() => {
     let cancelled = false;
