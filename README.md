@@ -110,11 +110,11 @@ npm run test:snap              # Full snap integration tests (jest + snaps-jest)
 
 ## Snap Permissions
 
-- `snap_getEntropy` — derive a deterministic, snap-scoped seed (Canton uses coin type 60, which `snap_getBip44Entropy` forbids, so we hash snap-specific entropy instead)
-- `snap_dialog` — show confirmation dialogs
+- `snap_getEntropy` — derive snap-scoped Canton signing keys
+- `snap_dialog` — confirmation dialogs
 - `snap_manageState` — persist registered fingerprints
-- `endowment:rpc` (`dapps: true`) — accept JSON-RPC calls from dApps
-- **No network access** — the snap is a pure signing oracle
+- `endowment:rpc` (`dapps: true`) — accept RPC from dApps
+- No network access
 
 ## Dependencies
 
@@ -128,75 +128,32 @@ npm run test:snap              # Full snap integration tests (jest + snaps-jest)
 
 ## Release
 
-Releases of the snap are fully automated by [release-please](https://github.com/googleapis/release-please) — no local scripts, no manual tagging, no `npm publish` from a laptop. Authentication uses npm [Trusted Publishing](https://docs.npmjs.com/trusted-publishers) (OIDC), so there is **no long-lived `NPM_TOKEN`** in the repo.
+Snap releases are driven by [release-please](https://github.com/googleapis/release-please) and published to npm via [Trusted Publishing](https://docs.npmjs.com/trusted-publishers) — no `NPM_TOKEN` in the repo.
 
-> **Scope:** the release pipeline only releases the snap (`packages/snap`). Commits that only touch `packages/dapp`, the root README, or workflows will not open a release PR. The dApp will get its own release flow later (GitHub release only, no npm publish).
+Scope: only `packages/snap`. Commits that don't touch `packages/snap/` are ignored. The dApp will have its own pipeline later.
 
-### How it works
+1. Land conventional commits (`feat:`, `fix:`, `feat!:`) touching `packages/snap/`.
+2. `Release Please` opens a release PR (`chore(main): release snap X.Y.Z`).
+3. Merge it → tag `snap-vX.Y.Z`, GitHub release, `npm publish` with provenance.
 
-1. **Land conventional commits that touch `packages/snap/`.** Use `feat: …`, `fix: …`, `feat!: …` (breaking) etc. in PR titles / squashed commits. These drive the version bump.
-2. **release-please opens a release PR automatically.** On every push to `main`, the `Release Please` workflow runs and either opens or updates a PR titled e.g. `chore(main): release snap 0.3.0`. It contains:
-   - the version bump in `packages/snap/package.json` and `packages/snap/snap.manifest.json` (kept in lockstep via `extra-files`),
-   - a generated `packages/snap/CHANGELOG.md` entry,
-   - the list of commits going into the release.
-3. **Review and merge the release PR.** That's the only manual step.
-4. **On merge, the same workflow's `publish` job runs.** It:
-   - creates the git tag `snap-vX.Y.Z`,
-   - creates the GitHub release (visible under the repo's **Releases** tab),
-   - runs lint + build (which auto-syncs the manifest shasum) + tests,
-   - publishes `@chainsafe/canton-snap@X.Y.Z` to npm via Trusted Publishing, with [provenance attestation](https://docs.npmjs.com/generating-provenance-statements) generated automatically (visible under the repo's **Packages** sidebar),
-   - appends install instructions to the GitHub release notes.
-
-You can also trigger the workflow manually from the Actions tab via **Run workflow** if you want release-please to re-evaluate without waiting for the next push.
-
-### One-time setup
-
-Already done in npm:
-- **Trusted Publisher** is configured on the `@chainsafe/canton-snap` package on npm, pointing at this repo's `release-please.yml` workflow. No `NPM_TOKEN` secret is needed or used. To rotate, just update the trusted publisher entry on the package's npm settings page.
-
-Provided automatically by GitHub Actions:
-- `GITHUB_TOKEN` — used to create the release PR and the GitHub release.
-- `id-token: write` permission — used by npm to exchange a GitHub OIDC token for a short-lived npm publish token. Already granted in the workflow.
-
-### Conventional commit cheat sheet
-
-| Prefix | Effect on version | Example |
-|---|---|---|
-| `fix: …` | patch (0.2.0 → 0.2.1) | `fix: handle missing keyIndex param` |
-| `feat: …` | minor (0.2.0 → 0.3.0) | `feat: add canton_signBatch RPC method` |
-| `feat!: …` or footer `BREAKING CHANGE:` | major (0.2.0 → 1.0.0) | `feat!: rename canton_signHash params` |
-| `chore:`, `ci:`, `build:`, `test:`, `style:` | no release | housekeeping |
-| `docs:`, `refactor:`, `perf:`, `deps:` | no version bump on their own, but appear in changelog | |
-
-If `main` only has `chore:` / `ci:` commits since the last release, release-please will not open a PR — there's nothing user-visible to release. Likewise, commits whose only changes are outside `packages/snap/` (dApp work, root docs, workflow tweaks) are ignored by the snap release.
+Manual trigger: Actions → Release Please → Run workflow.
 
 ## Installing the Published Snap
 
-Once published, the snap is identified by `npm:@chainsafe/canton-snap` and is supported by the standard MetaMask extension (no Flask required).
-
-A dApp installs and connects to it through `wallet_requestSnaps`:
+Snap ID: `npm:@chainsafe/canton-snap`. Works with standard MetaMask (no Flask).
 
 ```ts
 const SNAP_ID = "npm:@chainsafe/canton-snap";
 
-// Prompts the user to install (first time) or just connect (subsequent times).
-const result = await window.ethereum.request({
+await window.ethereum.request({
   method: "wallet_requestSnaps",
   params: { [SNAP_ID]: { version: "^0.2.0" } },
 });
 
-// Invoke an RPC method on the snap.
-const { fingerprint } = await window.ethereum.request({
+await window.ethereum.request({
   method: "wallet_invokeSnap",
   params: { snapId: SNAP_ID, request: { method: "canton_getFingerprint" } },
 });
 ```
 
-MetaMask shows the install dialog with the snap's icon, permissions, and version, and the user approves once. After that, `wallet_invokeSnap` calls go straight through.
-
-To check whether a snap is already installed:
-
-```ts
-const snaps = await window.ethereum.request({ method: "wallet_getSnaps" });
-const installed = snaps[SNAP_ID]; // { version, id, ... } or undefined
-```
+Check install status with `wallet_getSnaps`.
