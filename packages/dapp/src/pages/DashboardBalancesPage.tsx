@@ -185,37 +185,39 @@ export function DashboardBalancesPage({
   const mmImport = useMetaMaskImport(currentNet, address);
   const snap = useSnap();
 
-  useEffect(() => {
-    let cancelled = false;
-    const rpcUrl = `${currentNet.middlewareUrl}/eth`;
-
-    getTokens(currentNet.middlewareUrl)
-      .then((tokens) =>
-        Promise.all(
+  // Fetches the token list + each token's balance and writes the result into
+  // `fetchState`. Used by the initial mount effect and again after accepting an
+  // offer (so the newly-credited amount is reflected without a page refresh).
+  // `isCancelled` lets the caller cancel a stale fetch on unmount/dep change.
+  const fetchBalances = useCallback(
+    async (isCancelled?: () => boolean) => {
+      const url = currentNet.middlewareUrl;
+      const rpcUrl = `${url}/eth`;
+      try {
+        const tokens = await getTokens(url);
+        const rows = await Promise.all(
           tokens.map(async (token) => ({
             token,
             balance: await getTokenBalance(rpcUrl, token.address, address).catch(() => 0n),
           })),
-        ),
-      )
-      .then((rows) => {
-        if (!cancelled)
-          setFetchState({ url: currentNet.middlewareUrl, address, rows, error: null });
-      })
-      .catch((e: unknown) => {
-        if (!cancelled)
-          setFetchState({
-            url: currentNet.middlewareUrl,
-            address,
-            rows: null,
-            error: (e as Error).message,
-          });
-      });
+        );
+        if (isCancelled?.()) return;
+        setFetchState({ url, address, rows, error: null });
+      } catch (e) {
+        if (isCancelled?.()) return;
+        setFetchState({ url, address, rows: null, error: (e as Error).message });
+      }
+    },
+    [currentNet.middlewareUrl, address],
+  );
 
+  useEffect(() => {
+    let cancelled = false;
+    void fetchBalances(() => cancelled);
     return () => {
       cancelled = true;
     };
-  }, [currentNet.middlewareUrl, address]);
+  }, [fetchBalances]);
 
   // Pending offers — non-custodial only. Custodial accepts are handled
   // server-side by the auto-accept worker, so the list is meaningful only
@@ -287,20 +289,7 @@ export function DashboardBalancesPage({
         // would briefly re-include the just-accepted offer, flickering it back
         // into the UI. The optimistic filter above is enough; next mount will
         // pick up the reconciled list.
-        const rpcUrl = `${currentNet.middlewareUrl}/eth`;
-        getTokens(currentNet.middlewareUrl)
-          .then((tokens) =>
-            Promise.all(
-              tokens.map(async (token) => ({
-                token,
-                balance: await getTokenBalance(rpcUrl, token.address, address).catch(() => 0n),
-              })),
-            ),
-          )
-          .then((rows) =>
-            setFetchState({ url: currentNet.middlewareUrl, address, rows, error: null }),
-          )
-          .catch(() => {});
+        void fetchBalances();
       } catch (e) {
         setAcceptError((s) => ({ ...s, [cid]: (e as Error).message }));
       } finally {
@@ -311,7 +300,7 @@ export function DashboardBalancesPage({
         });
       }
     },
-    [currentNet.middlewareUrl, address, snap],
+    [currentNet.middlewareUrl, address, snap, fetchBalances],
   );
 
   const offerItems = offers?.items ?? null;
