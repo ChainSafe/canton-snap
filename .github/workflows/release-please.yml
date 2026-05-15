@@ -57,11 +57,26 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Build snap (auto-syncs manifest shasum)
+      - name: Build snap (auto-syncs manifest shasum + platformVersion)
         run: npm -w packages/snap run build:clean
 
-      - name: Test snap
+      - name: Fail if the build rewrote the manifest
+        # mm-snap build rewrites snap.manifest.json's shasum and platformVersion to
+        # match the freshly built bundle. If git sees a diff after build, the
+        # released manifest is out of sync — most likely because @metamask/snaps-sdk
+        # was bumped past the prod-supported platformVersion (currently 11.1.0).
+        # Blocking the publish is safer than shipping a snap MetaMask refuses to install.
+        run: |
+          if ! git diff --exit-code packages/snap/snap.manifest.json; then
+            echo "::error::snap.manifest.json drifted during build. Check @metamask/snaps-sdk version vs production MetaMask's supported platformVersion."
+            exit 1
+          fi
+
+      - name: Test snap (jest integration)
         run: npm -w packages/snap test
+
+      - name: Test snap (vitest crypto cross-validation)
+        run: npm -w packages/snap run test:crypto
 
       - name: Publish to npm with provenance
         run: npm publish --workspace packages/snap --access public --provenance

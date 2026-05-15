@@ -36,7 +36,7 @@
     "test:crypto": "vitest run",
     "lint": "eslint src/",
     "manifest:fix": "mm-snap manifest --fix",
-    "prepublishOnly": "npm run build:clean && npm test"
+    "prepublishOnly": "npm run build:clean && npm run test:crypto && npm test"
   },
   "publishConfig": {
     "access": "public",
