@@ -152,6 +152,14 @@ body {
   border-color: color-mix(in srgb, var(--border-muted) 60%, white);
 }
 
+.pill.pill-static {
+  cursor: default;
+}
+
+.pill.pill-static:hover {
+  border-color: var(--border-muted);
+}
+
 .pill.active-teal { border-color: color-mix(in srgb, var(--teal) 55%, transparent); }
 .pill.active-amber { border-color: color-mix(in srgb, var(--amber) 55%, transparent); }
 
