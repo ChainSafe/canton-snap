@@ -39,8 +39,8 @@ export default function App() {
   const reg = useRegistration(NETWORK.middlewareUrl);
   const { registerCustodial, sign } = reg;
 
-  // Prompt MetaMask to switch to the active Canton chain on connect and on
-  // network changes — silent if MM is already on it.
+  // Prompt MetaMask to switch to the active Canton chain on connect — silent
+  // if MM is already on it.
   useAutoNetworkSwitch(NETWORK, mm.address);
 
   // Auto-reconnect on refresh: if MetaMask already has an account and we have a
@@ -288,7 +288,7 @@ export default function App() {
     };
 
     if (dashboardTab === "balances") {
-      return <DashboardBalancesPage {...sharedProps} />;
+      return <DashboardBalancesPage {...sharedProps} keyMode={profile.keyMode} />;
     }
 
     if (dashboardTab === "transfer") {

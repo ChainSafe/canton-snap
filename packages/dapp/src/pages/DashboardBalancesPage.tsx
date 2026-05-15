@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { PageCard } from "../components/PageCard";
@@ -8,6 +8,13 @@ import { getTokens, type TokenConfig } from "../lib/middleware";
 import { getTokenBalance, formatTokenAmount } from "../lib/ethrpc";
 import { TOKEN_COLORS } from "../lib/tokens";
 import { useMetaMaskImport, type ImportStatus } from "../hooks/useMetaMaskImport";
+import { useSnap } from "../hooks/useSnap";
+import {
+  listIncomingTransfers,
+  prepareAcceptTransfer,
+  executeAcceptTransfer,
+  type IncomingTransfer,
+} from "../lib/transfer";
 import { cn } from "../lib/cn";
 import styles from "./DashboardBalancesPage.module.css";
 
@@ -25,6 +32,16 @@ interface Props {
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
+  keyMode: "custodial" | "external";
+}
+
+type OfferRowState = "idle" | "preparing" | "signing" | "executing";
+
+interface OffersState {
+  url: string;
+  address: string;
+  items: IncomingTransfer[] | null;
+  error: string | null;
 }
 
 function TokenIcon({ symbol }: { symbol: string }) {
@@ -145,43 +162,144 @@ function AddTokenIconButton({
   );
 }
 
-export function DashboardBalancesPage({ address, activeTab, onTabChange, onDisconnect }: Props) {
+export function DashboardBalancesPage({
+  address,
+  activeTab,
+  onTabChange,
+  onDisconnect,
+  keyMode,
+}: Props) {
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
+  const [offers, setOffers] = useState<OffersState | null>(null);
+  const [acceptState, setAcceptState] = useState<Record<string, OfferRowState>>({});
+  const [acceptError, setAcceptError] = useState<Record<string, string>>({});
 
   const loading = fetchState?.url !== NETWORK.middlewareUrl || fetchState?.address !== address;
+  const isNonCustodial = keyMode === "external";
 
   const mmImport = useMetaMaskImport(NETWORK, address);
+  const snap = useSnap();
 
-  useEffect(() => {
-    let cancelled = false;
-    const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
-
-    getTokens(NETWORK.middlewareUrl)
-      .then((tokens) =>
-        Promise.all(
+  // Fetches the token list + each token's balance and writes the result into
+  // `fetchState`. Used by the initial mount effect and again after accepting an
+  // offer (so the newly-credited amount is reflected without a page refresh).
+  // `isCancelled` lets the caller cancel a stale fetch on unmount/dep change.
+  const fetchBalances = useCallback(
+    async (isCancelled?: () => boolean) => {
+      const url = NETWORK.middlewareUrl;
+      const rpcUrl = `${url}/eth`;
+      try {
+        const tokens = await getTokens(url);
+        const rows = await Promise.all(
           tokens.map(async (token) => ({
             token,
             balance: await getTokenBalance(rpcUrl, token.address, address).catch(() => 0n),
           })),
-        ),
-      )
-      .then((rows) => {
-        if (!cancelled) setFetchState({ url: NETWORK.middlewareUrl, address, rows, error: null });
-      })
-      .catch((e: unknown) => {
-        if (!cancelled)
-          setFetchState({
-            url: NETWORK.middlewareUrl,
-            address,
-            rows: null,
-            error: (e as Error).message,
-          });
-      });
+        );
+        if (isCancelled?.()) return;
+        setFetchState({ url, address, rows, error: null });
+      } catch (e) {
+        if (isCancelled?.()) return;
+        setFetchState({ url, address, rows: null, error: (e as Error).message });
+      }
+    },
+    [address],
+  );
 
+  useEffect(() => {
+    let cancelled = false;
+    void fetchBalances(() => cancelled);
     return () => {
       cancelled = true;
     };
-  }, [address]);
+  }, [fetchBalances]);
+
+  // Pending offers — non-custodial only. Custodial accepts are handled
+  // server-side by the auto-accept worker, so the list is meaningful only
+  // for users who hold their own Canton signing key.
+  useEffect(() => {
+    if (!isNonCustodial) {
+      setOffers(null);
+      return;
+    }
+    let cancelled = false;
+    listIncomingTransfers(NETWORK.middlewareUrl, address)
+      .then((items) => {
+        if (!cancelled) setOffers({ url: NETWORK.middlewareUrl, address, items, error: null });
+      })
+      .catch((e: unknown) => {
+        if (!cancelled)
+          setOffers({
+            url: NETWORK.middlewareUrl,
+            address,
+            items: null,
+            error: (e as Error).message,
+          });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [address, isNonCustodial]);
+
+  const handleAccept = useCallback(
+    async (offer: IncomingTransfer) => {
+      const cid = offer.contractId;
+      setAcceptError((s) => {
+        const next = { ...s };
+        delete next[cid];
+        return next;
+      });
+      setAcceptState((s) => ({ ...s, [cid]: "preparing" }));
+      try {
+        const prep = await prepareAcceptTransfer(
+          NETWORK.middlewareUrl,
+          address,
+          cid,
+          offer.instrumentAdmin,
+        );
+        setAcceptState((s) => ({ ...s, [cid]: "signing" }));
+        const { derSignature, fingerprint } = await snap.signHash(prep.transactionHash, {
+          operation: "accept",
+          tokenSymbol: offer.symbol ?? offer.instrumentId,
+          amount: offer.amount,
+          sender: offer.senderPartyId,
+        });
+        setAcceptState((s) => ({ ...s, [cid]: "executing" }));
+        await executeAcceptTransfer(
+          NETWORK.middlewareUrl,
+          address,
+          cid,
+          prep.transferId,
+          derSignature,
+          fingerprint,
+        );
+        // Optimistically remove from the list; the indexer will catch up shortly.
+        setOffers((prev) =>
+          prev && prev.items
+            ? { ...prev, items: prev.items.filter((o) => o.contractId !== cid) }
+            : prev,
+        );
+        // Refresh balances so the accepted amount shows up. We do NOT refetch
+        // the offers list here — the indexer can lag a beat after execute and
+        // would briefly re-include the just-accepted offer, flickering it back
+        // into the UI. The optimistic filter above is enough; next mount will
+        // pick up the reconciled list.
+        void fetchBalances();
+      } catch (e) {
+        setAcceptError((s) => ({ ...s, [cid]: (e as Error).message }));
+      } finally {
+        setAcceptState((s) => {
+          const next = { ...s };
+          delete next[cid];
+          return next;
+        });
+      }
+    },
+    [address, snap, fetchBalances],
+  );
+
+  const offerItems = offers?.items ?? null;
+  const hasOffers = !!offerItems && offerItems.length > 0;
 
   return (
     <>
@@ -192,24 +310,81 @@ export function DashboardBalancesPage({ address, activeTab, onTabChange, onDisco
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}
       >
-        {/* Page heading + CTA */}
-        <div className={styles.pageHeader}>
-          <div>
-            <h1 className={styles.pageTitle}>Balances</h1>
-            <p className={styles.pageSubtitle}>Canton Network tokens held by this party.</p>
-          </div>
-          <button className={styles.sendBtn} onClick={() => onTabChange("transfer")}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M3 8H13M9 4L13 8L9 12"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Send tokens
-          </button>
+        {/* ── Pending offers (non-custodial, only when present) ── */}
+        {isNonCustodial && hasOffers && offerItems && (
+          <>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Pending offers</h2>
+              <p className={styles.sectionSubtitle}>
+                Inbound transfers waiting for your acceptance.
+              </p>
+            </div>
+
+            <PageCard className={styles.offersCard}>
+              <div className={styles.colHeaders}>
+                <span>TOKEN</span>
+                <span className={styles.colBalance}>AMOUNT</span>
+                <span />
+              </div>
+
+              {offerItems.map((offer, i) => {
+                const state = acceptState[offer.contractId];
+                const inFlight = state !== undefined;
+                const err = acceptError[offer.contractId];
+                const symbol = offer.symbol ?? offer.instrumentId;
+                const decimals = offer.decimals ?? 0;
+                // The middleware already truncates senderPartyId for privacy
+                // (unauthenticated endpoint), so we render it as-is. Run it
+                // through shortenPartyId anyway so the dapp's display rules
+                // also cover the local devstack short-party case.
+                const fromShort = shortenPartyId(offer.senderPartyId);
+                return (
+                  <div key={offer.contractId}>
+                    {i > 0 && <div className={styles.rowDivider} />}
+                    <div className={styles.tokenRow}>
+                      <div className={styles.tokenInfo}>
+                        <TokenIcon symbol={symbol} />
+                        <div className={styles.tokenText}>
+                          <p className={styles.tokenSymbol}>{symbol}</p>
+                          <p className={styles.tokenName}>From {fromShort}</p>
+                        </div>
+                      </div>
+                      <div className={styles.balanceInfo}>
+                        <p className={styles.amount}>
+                          {offer.decimals !== undefined
+                            ? formatTokenAmount(
+                                parseAmountToBigInt(offer.amount, decimals),
+                                decimals,
+                              )
+                            : offer.amount}
+                        </p>
+                        <p className={styles.amountLabel}>{symbol}</p>
+                      </div>
+                      {inFlight ? (
+                        <div className={styles.acceptSpinnerWrap} aria-busy="true">
+                          <Spinner size={24} />
+                        </div>
+                      ) : (
+                        <button
+                          className={styles.acceptBtn}
+                          onClick={() => void handleAccept(offer)}
+                        >
+                          Accept
+                        </button>
+                      )}
+                    </div>
+                    {err && <p className={styles.rowError}>{err}</p>}
+                  </div>
+                );
+              })}
+            </PageCard>
+          </>
+        )}
+
+        {/* Balances heading */}
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Balances</h2>
+          <p className={styles.sectionSubtitle}>Canton Network tokens held by this party.</p>
         </div>
 
         {/* Token card */}
@@ -273,15 +448,33 @@ export function DashboardBalancesPage({ address, activeTab, onTabChange, onDisco
                   </div>
                 );
               })}
-
-              <div className={styles.rowDivider} />
-              <p className={styles.hint}>
-                More tokens supported by the middleware will appear here as they're added.
-              </p>
             </>
           )}
         </PageCard>
       </DashboardLayout>
     </>
   );
+}
+
+function shortenPartyId(partyId: string): string {
+  const sep = partyId.indexOf("::");
+  if (sep < 0) return partyId.length > 16 ? `${partyId.slice(0, 8)}…${partyId.slice(-6)}` : partyId;
+  const head = partyId.slice(0, sep);
+  const fp = partyId.slice(sep + 2);
+  const fpShort = fp.length > 12 ? `${fp.slice(0, 6)}…${fp.slice(-4)}` : fp;
+  return `${head}::${fpShort}`;
+}
+
+// Parse a decimal string ("12.5") into the smallest-unit bigint for `decimals`.
+// Permissive: ignores anything beyond `decimals` digits past the dot so formatting
+// stays consistent with whatever precision the indexer reported.
+function parseAmountToBigInt(amount: string, decimals: number): bigint {
+  const [whole, fracRaw = ""] = amount.split(".");
+  const frac = (fracRaw + "0".repeat(decimals)).slice(0, decimals);
+  const digits = (whole + frac).replace(/^0+(?=\d)/, "") || "0";
+  try {
+    return BigInt(digits);
+  } catch {
+    return 0n;
+  }
 }
