@@ -1,3 +1,9 @@
+export interface NativeCurrency {
+  name: string;
+  symbol: string;
+  decimals: number;
+}
+
 export interface NetworkConfig {
   id: string;
   name: string;
@@ -6,9 +12,17 @@ export interface NetworkConfig {
   host: string;
   /** Base URL for the Canton middleware REST API */
   middlewareUrl: string;
+  /** Native currency metadata used for wallet_addEthereumChain */
+  nativeCurrency: NativeCurrency;
 }
 
 export type NetworkId = "mainnet" | "devnet" | "local";
+
+const CANTON_NATIVE_CURRENCY: NativeCurrency = {
+  name: "Canton",
+  symbol: "CANTON",
+  decimals: 18,
+};
 
 export const NETWORKS: NetworkConfig[] = [
   {
@@ -17,6 +31,7 @@ export const NETWORKS: NetworkConfig[] = [
     color: "#60a5fa",
     host: import.meta.env.VITE_LOCAL_HOST ?? "localhost:8081",
     middlewareUrl: import.meta.env.VITE_LOCAL_MIDDLEWARE_URL ?? "http://localhost:8081",
+    nativeCurrency: CANTON_NATIVE_CURRENCY,
   },
 ];
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { addEthChain, getEthereum, watchAsset } from "../lib/ethereum";
-import { ethChainId } from "../lib/ethrpc";
+import { watchAsset } from "../lib/ethereum";
+import { ensureChainAdded } from "../lib/network";
 import type { NetworkConfig } from "../lib/config";
 import type { TokenConfig } from "../lib/middleware";
 
@@ -32,7 +32,9 @@ function loadPersisted(address: string, networkId: string): Set<string> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return new Set();
-    const parsed = JSON.parse(raw) as PersistedShape;
+    // `JSON.parse("null")` is valid and returns null — fall back to {} so the
+    // downstream property access doesn't throw.
+    const parsed = (JSON.parse(raw) || {}) as PersistedShape;
     return new Set(parsed[persistedKey(address)]?.[networkId] ?? []);
   } catch {
     return new Set();
@@ -43,7 +45,7 @@ function savePersisted(address: string, networkId: string, set: Set<string>): vo
   if (!address) return;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed: PersistedShape = raw ? JSON.parse(raw) : {};
+    const parsed: PersistedShape = (raw ? JSON.parse(raw) : null) || {};
     const key = persistedKey(address);
     parsed[key] = { ...(parsed[key] ?? {}), [networkId]: Array.from(set) };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
@@ -67,7 +69,7 @@ function isUserRejection(err: unknown): boolean {
 
 function formatError(err: unknown): string {
   if (isUserRejection(err)) return "Rejected in MetaMask";
-  return (err as Error)?.message ?? "Unknown error";
+  return (err as Error)?.message ?? String(err);
 }
 
 export function useMetaMaskImport(network: NetworkConfig, address: string) {
@@ -77,21 +79,6 @@ export function useMetaMaskImport(network: NetworkConfig, address: string) {
   useEffect(() => {
     setState(hydrate(address, network.id));
   }, [address, network.id]);
-
-  const ensureChain = useCallback(async (): Promise<void> => {
-    const rpcUrl = `${network.middlewareUrl}/eth`;
-    const targetChainId = (await ethChainId(rpcUrl)).toLowerCase();
-    const currentChainId = (
-      (await getEthereum().request({ method: "eth_chainId" })) as string
-    ).toLowerCase();
-    if (currentChainId === targetChainId) return;
-    await addEthChain({
-      chainId: targetChainId,
-      chainName: network.name,
-      rpcUrls: [rpcUrl],
-      nativeCurrency: { name: "Canton", symbol: "CANTON", decimals: 18 },
-    });
-  }, [network]);
 
   const importToken = useCallback(
     async (token: TokenConfig): Promise<boolean> => {
@@ -103,7 +90,7 @@ export function useMetaMaskImport(network: NetworkConfig, address: string) {
       }));
 
       try {
-        await ensureChain();
+        await ensureChainAdded(network);
         const added = await watchAsset({
           address: token.address,
           symbol: token.symbol,
@@ -151,17 +138,11 @@ export function useMetaMaskImport(network: NetworkConfig, address: string) {
         return false;
       }
     },
-    [address, ensureChain, network.id],
+    [address, network],
   );
-
-  const reset = useCallback(() => setState(hydrate(address, network.id)), [address, network.id]);
-
-  const anyPending = Object.values(state.tokens).some((t) => t.status === "pending");
 
   return {
     tokenStates: state.tokens,
-    anyPending,
     importToken,
-    reset,
   };
 }

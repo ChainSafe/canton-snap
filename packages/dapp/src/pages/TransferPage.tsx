@@ -409,7 +409,7 @@ export function TransferPage({
         chainId,
         chainName: currentNet.name,
         rpcUrls: [rpcUrl],
-        nativeCurrency: { name: "Canton", symbol: "CANTON", decimals: 18 },
+        nativeCurrency: currentNet.nativeCurrency,
       });
 
       const amountBigInt = parseTokenAmount(amount, selectedToken.decimals);
