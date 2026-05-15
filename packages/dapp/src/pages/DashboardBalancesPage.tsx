@@ -351,6 +351,10 @@ export function DashboardBalancesPage({
                 const err = acceptError[offer.contractId];
                 const symbol = offer.symbol ?? offer.instrumentId;
                 const decimals = offer.decimals ?? 0;
+                // The middleware already truncates senderPartyId for privacy
+                // (unauthenticated endpoint), so we render it as-is. Run it
+                // through shortenPartyId anyway so the dapp's display rules
+                // also cover the local devstack short-party case.
                 const fromShort = shortenPartyId(offer.senderPartyId);
                 return (
                   <div key={offer.contractId}>

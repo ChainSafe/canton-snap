@@ -8,6 +8,11 @@ export interface PrepareResult {
   expiresAt: string;
 }
 
+// Server-truncated party identifiers (e.g. `user_2dA…4680b7ec`). The endpoint
+// is unauthenticated, so the middleware redacts the fingerprint portion of the
+// party id; the truncated form is sufficient for the dapp to disambiguate
+// offers in the UI and to display "From <short>" without leaking enough to
+// enumerate counterparties.
 export interface IncomingTransfer {
   contractId: string;
   senderPartyId: string;
