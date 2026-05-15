@@ -398,7 +398,7 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
         chainId,
         chainName: NETWORK.name,
         rpcUrls: [rpcUrl],
-        nativeCurrency: { name: "Canton", symbol: "CANTON", decimals: 18 },
+        nativeCurrency: NETWORK.nativeCurrency,
       });
 
       const amountBigInt = parseTokenAmount(amount, selectedToken.decimals);

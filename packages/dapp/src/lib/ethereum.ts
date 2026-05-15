@@ -74,6 +74,19 @@ export async function addEthChain(params: {
   await getEthereum().request({ method: "wallet_addEthereumChain", params: [params] });
 }
 
+export async function watchAsset(params: {
+  address: string;
+  symbol: string;
+  decimals: number;
+  image?: string;
+}): Promise<boolean> {
+  const result = (await getEthereum().request({
+    method: "wallet_watchAsset",
+    params: { type: "ERC20", options: params },
+  })) as boolean;
+  return result;
+}
+
 export async function sendEthTransaction(params: {
   from: string;
   to: string;
