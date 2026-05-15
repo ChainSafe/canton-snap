@@ -1,0 +1,94 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release-please:
+    name: Open / update release PR
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs['packages/snap--release_created'] }}
+      tag_name: ${{ steps.release.outputs['packages/snap--tag_name'] }}
+      version: ${{ steps.release.outputs['packages/snap--version'] }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    name: Publish to npm
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify versions are in sync with the release tag
+        run: |
+          TAG="${{ needs.release-please.outputs.version }}"
+          PKG=$(node -p "require('./packages/snap/package.json').version")
+          MAN=$(node -p "require('./packages/snap/snap.manifest.json').version")
+          echo "release=$TAG pkg=$PKG manifest=$MAN"
+          if [ "$TAG" != "$PKG" ] || [ "$PKG" != "$MAN" ]; then
+            echo "::error::Version mismatch between release, package.json, and snap.manifest.json"
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build snap (auto-syncs manifest shasum)
+        run: npm -w packages/snap run build:clean
+
+      - name: Test snap
+        run: npm -w packages/snap test
+
+      - name: Publish to npm with provenance
+        run: npm publish --workspace packages/snap --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Attach install instructions to GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          {
+            echo
+            echo "---"
+            echo
+            echo "### Install in a dApp"
+            echo
+            echo '```ts'
+            echo 'await window.ethereum.request({'
+            echo '  method: "wallet_requestSnaps",'
+            echo "  params: { \"npm:@chainsafe/canton-snap\": { version: \"^${VERSION}\" } },"
+            echo '});'
+            echo '```'
+            echo
+            echo "Published to npm: https://www.npmjs.com/package/@chainsafe/canton-snap/v/${VERSION}"
+          } > install-notes.md
+          gh release view "$TAG" --json body --jq .body > existing-notes.md || true
+          cat existing-notes.md install-notes.md > combined-notes.md
+          gh release edit "$TAG" --notes-file combined-notes.md
