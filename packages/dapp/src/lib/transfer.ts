@@ -8,8 +8,24 @@ export interface PrepareResult {
   expiresAt: string;
 }
 
-async function makeAuthHeaders(address: string): Promise<Record<string, string>> {
-  const message = `transfer:${Math.floor(Date.now() / 1000)}`;
+export interface IncomingTransfer {
+  contractId: string;
+  senderPartyId: string;
+  receiverPartyId: string;
+  amount: string;
+  instrumentAdmin: string;
+  instrumentId: string;
+  symbol?: string;
+  decimals?: number;
+  name?: string;
+  contractAddress?: string;
+}
+
+async function makeAuthHeaders(
+  address: string,
+  prefix: "transfer" | "prepare-accept" | "execute-accept" = "transfer",
+): Promise<Record<string, string>> {
+  const message = `${prefix}:${Math.floor(Date.now() / 1000)}`;
   const signature = await personalSign(message, address);
   return { "X-Signature": signature, "X-Message": message };
 }
@@ -50,5 +66,87 @@ export async function executeTransfer(
     headers: { "Content-Type": "application/json", ...authHeaders },
     body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
   });
+  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+}
+
+// GET /api/v2/transfer/incoming?address=<addr>. Unauthenticated.
+export async function listIncomingTransfers(
+  baseUrl: string,
+  address: string,
+): Promise<IncomingTransfer[]> {
+  const url = new URL(`${baseUrl}/api/v2/transfer/incoming`);
+  url.searchParams.set("address", address);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  const data = (await res.json()) as {
+    items: Array<{
+      contract_id: string;
+      sender_party_id: string;
+      receiver_party_id: string;
+      amount: string;
+      instrument_admin: string;
+      instrument_id: string;
+      symbol?: string;
+      decimals?: number;
+      name?: string;
+      contract_address?: string;
+    }>;
+  };
+  return (data.items ?? []).map((o) => ({
+    contractId: o.contract_id,
+    senderPartyId: o.sender_party_id,
+    receiverPartyId: o.receiver_party_id,
+    amount: o.amount,
+    instrumentAdmin: o.instrument_admin,
+    instrumentId: o.instrument_id,
+    symbol: o.symbol,
+    decimals: o.decimals,
+    name: o.name,
+    contractAddress: o.contract_address,
+  }));
+}
+
+export async function prepareAcceptTransfer(
+  baseUrl: string,
+  address: string,
+  contractId: string,
+  instrumentAdmin: string,
+): Promise<PrepareResult> {
+  const authHeaders = await makeAuthHeaders(address, "prepare-accept");
+  const res = await fetch(
+    `${baseUrl}/api/v2/transfer/incoming/${encodeURIComponent(contractId)}/prepare`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ instrument_admin: instrumentAdmin }),
+    },
+  );
+  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  const data = await res.json();
+  return {
+    transferId: data.transfer_id as string,
+    transactionHash: data.transaction_hash as string,
+    partyId: data.party_id as string,
+    expiresAt: data.expires_at as string,
+  };
+}
+
+export async function executeAcceptTransfer(
+  baseUrl: string,
+  address: string,
+  contractId: string,
+  transferId: string,
+  signature: string,
+  signedBy: string,
+): Promise<void> {
+  const authHeaders = await makeAuthHeaders(address, "execute-accept");
+  const res = await fetch(
+    `${baseUrl}/api/v2/transfer/incoming/${encodeURIComponent(contractId)}/execute`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
+    },
+  );
   if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
 }

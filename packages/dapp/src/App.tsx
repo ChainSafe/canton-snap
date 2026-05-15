@@ -321,7 +321,7 @@ export default function App() {
     };
 
     if (dashboardTab === "balances") {
-      return <DashboardBalancesPage {...sharedProps} />;
+      return <DashboardBalancesPage {...sharedProps} keyMode={profile.keyMode} />;
     }
 
     if (dashboardTab === "transfer") {
