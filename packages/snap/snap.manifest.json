@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Canton Network key management and transaction signing for MetaMask",
   "proposedName": "Canton Snap",
   "repository": {
@@ -8,7 +8,7 @@
     "directory": "packages/snap"
   },
   "source": {
-    "shasum": "fFaggzcO9qqKYMTHsw3Ys3uUJi5JoMO6UmzJQR2en+c=",
+    "shasum": "HIDNkgcijyLhBFbs5jUjPBMgHEwr1/APbqB5KTpZPq0=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",

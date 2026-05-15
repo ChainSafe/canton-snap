@@ -40,6 +40,11 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
+      - name: Upgrade npm to a version that supports Trusted Publishing
+        # npm OIDC (Trusted Publishing) requires CLI >= 11.5.1. Node 20 ships
+        # npm 10.x, so we pin a known-good 11.x release explicitly.
+        run: npm install --global npm@^11.5.1
+
       - name: Install dependencies
         run: npm ci
 
@@ -57,18 +62,18 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Build snap (auto-syncs manifest shasum + platformVersion)
-        run: npm -w packages/snap run build:clean
-
-      - name: Fail if the build rewrote the manifest
-        # mm-snap build rewrites snap.manifest.json's shasum and platformVersion to
-        # match the freshly built bundle. If git sees a diff after build, the
-        # released manifest is out of sync — most likely because @metamask/snaps-sdk
-        # was bumped past the prod-supported platformVersion (currently 11.1.0).
-        # Blocking the publish is safer than shipping a snap MetaMask refuses to install.
+      - name: Build snap and fail on production-support warnings
+        # mm-snap build auto-syncs snap.manifest.json's shasum + platformVersion
+        # to match the freshly built bundle, then emits warnings (exit code 0)
+        # if anything in the manifest is unsafe to ship. The most important one
+        # is the prod-platformVersion warning — if @metamask/snaps-sdk gets
+        # bumped past what production MetaMask supports, the snap won't install
+        # for end users. Promote that warning to a hard failure here.
         run: |
-          if ! git diff --exit-code packages/snap/snap.manifest.json; then
-            echo "::error::snap.manifest.json drifted during build. Check @metamask/snaps-sdk version vs production MetaMask's supported platformVersion."
+          set -o pipefail
+          npm -w packages/snap run build:clean 2>&1 | tee build.log
+          if grep -q "is not supported in the production version of MetaMask" build.log; then
+            echo "::error::mm-snap reported the snap's platformVersion exceeds production MetaMask. Pin @metamask/snaps-sdk to a supported version."
             exit 1
           fi
 
@@ -78,10 +83,12 @@ jobs:
       - name: Test snap (vitest crypto cross-validation)
         run: npm -w packages/snap run test:crypto
 
-      - name: Publish to npm with provenance
-        run: npm publish --workspace packages/snap --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm via Trusted Publishing
+        # Trusted Publishing: npm CLI exchanges the GitHub OIDC token (granted
+        # by id-token: write at the workflow level) for a short-lived npm
+        # publish token at the registry. No NPM_TOKEN secret needed. Provenance
+        # is generated automatically from the same OIDC token.
+        run: npm publish --workspace packages/snap --access public
 
       - name: Attach install instructions to GitHub release
         env:

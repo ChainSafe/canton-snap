@@ -128,30 +128,35 @@ npm run test:snap              # Full snap integration tests (jest + snaps-jest)
 
 ## Release
 
-Releases are fully automated by [release-please](https://github.com/googleapis/release-please) — no local scripts, no manual tagging, no `npm publish` from a laptop.
+Releases of the snap are fully automated by [release-please](https://github.com/googleapis/release-please) — no local scripts, no manual tagging, no `npm publish` from a laptop. Authentication uses npm [Trusted Publishing](https://docs.npmjs.com/trusted-publishers) (OIDC), so there is **no long-lived `NPM_TOKEN`** in the repo.
+
+> **Scope:** the release pipeline only releases the snap (`packages/snap`). Commits that only touch `packages/dapp`, the root README, or workflows will not open a release PR. The dApp will get its own release flow later (GitHub release only, no npm publish).
 
 ### How it works
 
-1. **Land conventional commits.** Use `feat: …`, `fix: …`, `feat!: …` (breaking) etc. in PR titles / squashed commits. These drive the version bump.
-2. **release-please opens a release PR automatically.** On every push to `main`, the `Release Please` workflow runs and either opens or updates a single PR titled e.g. `chore(main): release 0.3.0`. It contains:
+1. **Land conventional commits that touch `packages/snap/`.** Use `feat: …`, `fix: …`, `feat!: …` (breaking) etc. in PR titles / squashed commits. These drive the version bump.
+2. **release-please opens a release PR automatically.** On every push to `main`, the `Release Please` workflow runs and either opens or updates a PR titled e.g. `chore(main): release snap 0.3.0`. It contains:
    - the version bump in `packages/snap/package.json` and `packages/snap/snap.manifest.json` (kept in lockstep via `extra-files`),
    - a generated `packages/snap/CHANGELOG.md` entry,
    - the list of commits going into the release.
 3. **Review and merge the release PR.** That's the only manual step.
 4. **On merge, the same workflow's `publish` job runs.** It:
-   - creates the git tag `vX.Y.Z`,
+   - creates the git tag `snap-vX.Y.Z`,
    - creates the GitHub release (visible under the repo's **Releases** tab),
    - runs lint + build (which auto-syncs the manifest shasum) + tests,
-   - publishes `@chainsafe/canton-snap@X.Y.Z` to npm with [provenance attestation](https://docs.npmjs.com/generating-provenance-statements) (visible under the repo's **Packages** sidebar after first publish),
+   - publishes `@chainsafe/canton-snap@X.Y.Z` to npm via Trusted Publishing, with [provenance attestation](https://docs.npmjs.com/generating-provenance-statements) generated automatically (visible under the repo's **Packages** sidebar),
    - appends install instructions to the GitHub release notes.
 
 You can also trigger the workflow manually from the Actions tab via **Run workflow** if you want release-please to re-evaluate without waiting for the next push.
 
 ### One-time setup
 
-- Add an `NPM_TOKEN` secret to the repo: an **Automation** token from npm with publish rights on the `@chainsafe` scope (Settings → Secrets and variables → Actions → New repository secret).
-- `GITHUB_TOKEN` is provided by Actions automatically.
-- For npm provenance to work, the `id-token: write` permission must be granted to the workflow — it already is.
+Already done in npm:
+- **Trusted Publisher** is configured on the `@chainsafe/canton-snap` package on npm, pointing at this repo's `release-please.yml` workflow. No `NPM_TOKEN` secret is needed or used. To rotate, just update the trusted publisher entry on the package's npm settings page.
+
+Provided automatically by GitHub Actions:
+- `GITHUB_TOKEN` — used to create the release PR and the GitHub release.
+- `id-token: write` permission — used by npm to exchange a GitHub OIDC token for a short-lived npm publish token. Already granted in the workflow.
 
 ### Conventional commit cheat sheet
 
@@ -163,7 +168,7 @@ You can also trigger the workflow manually from the Actions tab via **Run workfl
 | `chore:`, `ci:`, `build:`, `test:`, `style:` | no release | housekeeping |
 | `docs:`, `refactor:`, `perf:`, `deps:` | no version bump on their own, but appear in changelog | |
 
-If `main` only has `chore:` / `ci:` commits since the last release, release-please will not open a PR — there's nothing user-visible to release.
+If `main` only has `chore:` / `ci:` commits since the last release, release-please will not open a PR — there's nothing user-visible to release. Likewise, commits whose only changes are outside `packages/snap/` (dApp work, root docs, workflow tweaks) are ignored by the snap release.
 
 ## Installing the Published Snap
 

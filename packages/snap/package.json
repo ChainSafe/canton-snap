@@ -1,6 +1,6 @@
 {
   "name": "@chainsafe/canton-snap",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "MetaMask Snap for non-custodial Canton Network signing",
   "keywords": [
     "metamask",
