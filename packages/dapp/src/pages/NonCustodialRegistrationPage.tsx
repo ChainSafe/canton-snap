@@ -3,15 +3,12 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { Button } from "../components/Button";
 import { Spinner } from "../components/Spinner";
 import { cn } from "../lib/cn";
-import { type NetworkId } from "../lib/config";
 import styles from "./NonCustodialRegistrationPage.module.css";
 
 type Step = "install" | "sign";
 
 interface Props {
   address: string;
-  network: NetworkId;
-  onNetworkChange: (id: NetworkId) => void;
   step: Step;
   snapInstalling: boolean;
   signingPending: boolean;
@@ -70,8 +67,6 @@ function StepNumber({ n }: { n: number }) {
 
 export function NonCustodialRegistrationPage({
   address,
-  network,
-  onNetworkChange,
   step,
   snapInstalling,
   signingPending,
@@ -89,12 +84,7 @@ export function NonCustodialRegistrationPage({
   return (
     <div className="page">
       <AmbientOrb opacity={0.14} size={840} y="62%" />
-      <TopBar
-        address={address}
-        network={network}
-        onNetworkChange={onNetworkChange}
-        onDisconnect={onDisconnect}
-      />
+      <TopBar address={address} onDisconnect={onDisconnect} />
 
       <div className={styles.backBar}>
         <button className="back-link" onClick={onBack}>

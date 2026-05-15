@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { Spinner } from "../components/Spinner";
-import { getNetwork, type NetworkId } from "../lib/config";
+import { NETWORK } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
 import { getTransferLogs, formatTokenAmount, type TransferLog } from "../lib/ethrpc";
 import { TOKEN_COLORS } from "../lib/tokens";
@@ -12,8 +12,6 @@ import styles from "./DashboardActivityPage.module.css";
 
 interface Props {
   address: string;
-  network: NetworkId;
-  onNetworkChange: (id: NetworkId) => void;
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
@@ -117,28 +115,20 @@ function SearchIcon() {
   );
 }
 
-export function DashboardActivityPage({
-  address,
-  network,
-  onNetworkChange,
-  activeTab,
-  onTabChange,
-  onDisconnect,
-}: Props) {
+export function DashboardActivityPage({ address, activeTab, onTabChange, onDisconnect }: Props) {
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
   const [filterTab, setFilterTab] = useState<FilterTab>("transfers");
   const [search, setSearch] = useState("");
 
-  const currentNet = getNetwork(network);
-  const loading = fetchState?.url !== currentNet.middlewareUrl || fetchState?.address !== address;
+  const loading = fetchState?.url !== NETWORK.middlewareUrl || fetchState?.address !== address;
 
   useEffect(() => {
     let cancelled = false;
-    const rpcUrl = `${currentNet.middlewareUrl}/eth`;
+    const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
 
     async function load() {
       try {
-        const tokens = await getTokens(currentNet.middlewareUrl);
+        const tokens = await getTokens(NETWORK.middlewareUrl);
         const tokenByAddress = new Map(tokens.map((t) => [t.address.toLowerCase(), t]));
         const logs = await getTransferLogs(
           rpcUrl,
@@ -153,12 +143,11 @@ export function DashboardActivityPage({
           })
           .filter((r): r is ActivityRow => r !== null);
 
-        if (!cancelled)
-          setFetchState({ url: currentNet.middlewareUrl, address, rows, error: null });
+        if (!cancelled) setFetchState({ url: NETWORK.middlewareUrl, address, rows, error: null });
       } catch (e: unknown) {
         if (!cancelled)
           setFetchState({
-            url: currentNet.middlewareUrl,
+            url: NETWORK.middlewareUrl,
             address,
             rows: null,
             error: (e as Error).message,
@@ -170,7 +159,7 @@ export function DashboardActivityPage({
     return () => {
       cancelled = true;
     };
-  }, [currentNet.middlewareUrl, address]);
+  }, [address]);
 
   const filtered = useMemo(() => {
     const rows = fetchState?.rows ?? [];
@@ -202,8 +191,6 @@ export function DashboardActivityPage({
       <AmbientOrb opacity={0.1} size={880} x="80%" y="33%" />
       <DashboardLayout
         address={address}
-        network={network}
-        onNetworkChange={onNetworkChange}
         activeTab={activeTab}
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}

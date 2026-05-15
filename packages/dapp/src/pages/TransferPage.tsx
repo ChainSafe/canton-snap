@@ -3,7 +3,7 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { PageCard } from "../components/PageCard";
 import { Spinner } from "../components/Spinner";
-import { getNetwork, type NetworkId } from "../lib/config";
+import { NETWORK } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
 import {
   getTokenBalance,
@@ -36,8 +36,6 @@ interface Receipt {
 
 interface Props {
   address: string;
-  network: NetworkId;
-  onNetworkChange: (id: NetworkId) => void;
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
@@ -229,15 +227,7 @@ function TokenDropdown({ tokens, selected, balances, onSelect }: TokenDropdownPr
   );
 }
 
-export function TransferPage({
-  address,
-  network,
-  onNetworkChange,
-  activeTab,
-  onTabChange,
-  onDisconnect,
-  keyMode,
-}: Props) {
+export function TransferPage({ address, activeTab, onTabChange, onDisconnect, keyMode }: Props) {
   const [step, setStep] = useState<Step>("details");
   const [tokens, setTokens] = useState<TokenConfig[]>([]);
   const [tokensLoading, setTokensLoading] = useState(true);
@@ -253,17 +243,16 @@ export function TransferPage({
 
   const snap = useSnap();
   const isNonCustodial = keyMode === "external";
-  const currentNet = getNetwork(network);
 
   // Load token list then fetch all balances
   useEffect(() => {
     let cancelled = false;
-    const rpcUrl = `${currentNet.middlewareUrl}/eth`;
+    const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
 
     async function load() {
       setTokensLoading(true);
       try {
-        const list = await getTokens(currentNet.middlewareUrl);
+        const list = await getTokens(NETWORK.middlewareUrl);
         if (cancelled) return;
         setTokens(list);
         if (list.length > 0) setSelectedToken(list[0]);
@@ -289,7 +278,7 @@ export function TransferPage({
     return () => {
       cancelled = true;
     };
-  }, [currentNet.middlewareUrl, address]);
+  }, [address]);
 
   // Auto-run prepare when entering sign step (non-custodial only).
   // Depends only on [step]: fires once on entry; form fields are captured via closure
@@ -305,7 +294,7 @@ export function TransferPage({
       setError(null);
       try {
         const result = await prepareTransfer(
-          currentNet.middlewareUrl,
+          NETWORK.middlewareUrl,
           address,
           recipient,
           token.symbol,
@@ -378,7 +367,7 @@ export function TransferPage({
 
       setSignPhase("executing");
       await executeTransfer(
-        currentNet.middlewareUrl,
+        NETWORK.middlewareUrl,
         address,
         prepared.transferId,
         derSignature,
@@ -402,14 +391,14 @@ export function TransferPage({
     setPending(true);
     setError(null);
     try {
-      const rpcUrl = `${currentNet.middlewareUrl}/eth`;
+      const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
       const chainId = await ethChainId(rpcUrl);
 
       await addEthChain({
         chainId,
-        chainName: currentNet.name,
+        chainName: NETWORK.name,
         rpcUrls: [rpcUrl],
-        nativeCurrency: currentNet.nativeCurrency,
+        nativeCurrency: NETWORK.nativeCurrency,
       });
 
       const amountBigInt = parseTokenAmount(amount, selectedToken.decimals);
@@ -457,8 +446,6 @@ export function TransferPage({
       <AmbientOrb opacity={0.1} size={880} x="80%" y="33%" />
       <DashboardLayout
         address={address}
-        network={network}
-        onNetworkChange={onNetworkChange}
         activeTab={activeTab}
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}

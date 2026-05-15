@@ -8,7 +8,7 @@ export interface NetworkConfig {
   id: string;
   name: string;
   color: string;
-  /** Human-readable host shown in the switcher */
+  /** Human-readable host shown in the network pill */
   host: string;
   /** Base URL for the Canton middleware REST API */
   middlewareUrl: string;
@@ -16,7 +16,19 @@ export interface NetworkConfig {
   nativeCurrency: NativeCurrency;
 }
 
-export type NetworkId = "mainnet" | "devnet" | "local";
+function hostFromUrl(url: string, fallback: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return fallback;
+  }
+}
+
+const NETWORK_PRESETS: Record<string, { name: string; color: string }> = {
+  mainnet: { name: "Canton Mainnet", color: "#10b981" },
+  devnet: { name: "Canton Devnet", color: "#a78bfa" },
+  local: { name: "Canton Local", color: "#60a5fa" },
+};
 
 const CANTON_NATIVE_CURRENCY: NativeCurrency = {
   name: "Canton",
@@ -24,20 +36,15 @@ const CANTON_NATIVE_CURRENCY: NativeCurrency = {
   decimals: 18,
 };
 
-export const NETWORKS: NetworkConfig[] = [
-  {
-    id: "local",
-    name: "Canton Local",
-    color: "#60a5fa",
-    host: import.meta.env.VITE_LOCAL_HOST ?? "localhost:8081",
-    middlewareUrl: import.meta.env.VITE_LOCAL_MIDDLEWARE_URL ?? "http://localhost:8081",
-    nativeCurrency: CANTON_NATIVE_CURRENCY,
-  },
-];
+const id = import.meta.env.VITE_NETWORK ?? "local";
+const middlewareUrl = import.meta.env.VITE_MIDDLEWARE_URL ?? "http://localhost:8081";
+const preset = NETWORK_PRESETS[id] ?? { name: `Canton ${id}`, color: "#60a5fa" };
 
-export const DEFAULT_NETWORK: NetworkId =
-  (import.meta.env.VITE_DEFAULT_NETWORK as NetworkId | undefined) ?? "local";
-
-export function getNetwork(id: NetworkId): NetworkConfig {
-  return NETWORKS.find((n) => n.id === id) ?? NETWORKS[0];
-}
+export const NETWORK: NetworkConfig = {
+  id,
+  name: preset.name,
+  color: preset.color,
+  host: hostFromUrl(middlewareUrl, id),
+  middlewareUrl,
+  nativeCurrency: CANTON_NATIVE_CURRENCY,
+};
