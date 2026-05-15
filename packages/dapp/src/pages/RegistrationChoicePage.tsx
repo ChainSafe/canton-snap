@@ -2,13 +2,10 @@ import { TopBar } from "../components/TopBar";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { Button } from "../components/Button";
 import { cn } from "../lib/cn";
-import { type NetworkId } from "../lib/config";
 import styles from "./RegistrationChoicePage.module.css";
 
 interface Props {
   address: string;
-  network: NetworkId;
-  onNetworkChange: (id: NetworkId) => void;
   onCustodial: () => void;
   onNonCustodial: () => void;
   onDisconnect: () => void;
@@ -25,8 +22,6 @@ function Bullet({ text }: { text: string }) {
 
 export function RegistrationChoicePage({
   address,
-  network,
-  onNetworkChange,
   onCustodial,
   onNonCustodial,
   onDisconnect,
@@ -35,12 +30,7 @@ export function RegistrationChoicePage({
     <div className="page">
       <AmbientOrb opacity={0.14} size={840} y="62%" />
 
-      <TopBar
-        address={address}
-        network={network}
-        onNetworkChange={onNetworkChange}
-        onDisconnect={onDisconnect}
-      />
+      <TopBar address={address} onDisconnect={onDisconnect} />
 
       <main className={styles.main}>
         <h1 className={styles.title}>Choose how to manage your Canton key</h1>

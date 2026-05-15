@@ -3,7 +3,7 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { PageCard } from "../components/PageCard";
 import { Spinner } from "../components/Spinner";
-import { getNetwork, type NetworkId } from "../lib/config";
+import { NETWORK } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
 import { getTokenBalance, formatTokenAmount } from "../lib/ethrpc";
 import { TOKEN_COLORS } from "../lib/tokens";
@@ -29,8 +29,6 @@ type FetchState =
 
 interface Props {
   address: string;
-  network: NetworkId;
-  onNetworkChange: (id: NetworkId) => void;
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
@@ -166,8 +164,6 @@ function AddTokenIconButton({
 
 export function DashboardBalancesPage({
   address,
-  network,
-  onNetworkChange,
   activeTab,
   onTabChange,
   onDisconnect,
@@ -178,11 +174,10 @@ export function DashboardBalancesPage({
   const [acceptState, setAcceptState] = useState<Record<string, OfferRowState>>({});
   const [acceptError, setAcceptError] = useState<Record<string, string>>({});
 
-  const currentNet = getNetwork(network);
-  const loading = fetchState?.url !== currentNet.middlewareUrl || fetchState?.address !== address;
+  const loading = fetchState?.url !== NETWORK.middlewareUrl || fetchState?.address !== address;
   const isNonCustodial = keyMode === "external";
 
-  const mmImport = useMetaMaskImport(currentNet, address);
+  const mmImport = useMetaMaskImport(NETWORK, address);
   const snap = useSnap();
 
   // Fetches the token list + each token's balance and writes the result into
@@ -191,7 +186,7 @@ export function DashboardBalancesPage({
   // `isCancelled` lets the caller cancel a stale fetch on unmount/dep change.
   const fetchBalances = useCallback(
     async (isCancelled?: () => boolean) => {
-      const url = currentNet.middlewareUrl;
+      const url = NETWORK.middlewareUrl;
       const rpcUrl = `${url}/eth`;
       try {
         const tokens = await getTokens(url);
@@ -208,7 +203,7 @@ export function DashboardBalancesPage({
         setFetchState({ url, address, rows: null, error: (e as Error).message });
       }
     },
-    [currentNet.middlewareUrl, address],
+    [address],
   );
 
   useEffect(() => {
@@ -228,14 +223,14 @@ export function DashboardBalancesPage({
       return;
     }
     let cancelled = false;
-    listIncomingTransfers(currentNet.middlewareUrl, address)
+    listIncomingTransfers(NETWORK.middlewareUrl, address)
       .then((items) => {
-        if (!cancelled) setOffers({ url: currentNet.middlewareUrl, address, items, error: null });
+        if (!cancelled) setOffers({ url: NETWORK.middlewareUrl, address, items, error: null });
       })
       .catch((e: unknown) => {
         if (!cancelled)
           setOffers({
-            url: currentNet.middlewareUrl,
+            url: NETWORK.middlewareUrl,
             address,
             items: null,
             error: (e as Error).message,
@@ -244,7 +239,7 @@ export function DashboardBalancesPage({
     return () => {
       cancelled = true;
     };
-  }, [currentNet.middlewareUrl, address, isNonCustodial]);
+  }, [address, isNonCustodial]);
 
   const handleAccept = useCallback(
     async (offer: IncomingTransfer) => {
@@ -257,7 +252,7 @@ export function DashboardBalancesPage({
       setAcceptState((s) => ({ ...s, [cid]: "preparing" }));
       try {
         const prep = await prepareAcceptTransfer(
-          currentNet.middlewareUrl,
+          NETWORK.middlewareUrl,
           address,
           cid,
           offer.instrumentAdmin,
@@ -271,7 +266,7 @@ export function DashboardBalancesPage({
         });
         setAcceptState((s) => ({ ...s, [cid]: "executing" }));
         await executeAcceptTransfer(
-          currentNet.middlewareUrl,
+          NETWORK.middlewareUrl,
           address,
           cid,
           prep.transferId,
@@ -300,7 +295,7 @@ export function DashboardBalancesPage({
         });
       }
     },
-    [currentNet.middlewareUrl, address, snap, fetchBalances],
+    [address, snap, fetchBalances],
   );
 
   const offerItems = offers?.items ?? null;
@@ -311,8 +306,6 @@ export function DashboardBalancesPage({
       <AmbientOrb opacity={0.1} size={880} x="80%" y="33%" />
       <DashboardLayout
         address={address}
-        network={network}
-        onNetworkChange={onNetworkChange}
         activeTab={activeTab}
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}

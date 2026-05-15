@@ -4,13 +4,10 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { Spinner } from "../components/Spinner";
 import { Button } from "../components/Button";
 import { cn } from "../lib/cn";
-import { type NetworkId } from "../lib/config";
 import styles from "./CustodialRegistrationPage.module.css";
 
 interface Props {
   address: string;
-  network: NetworkId;
-  onNetworkChange: (id: NetworkId) => void;
   pending: boolean;
   error: string | null;
   onBack: () => void;
@@ -34,8 +31,6 @@ function StatusIcon({ pending: _pending, error }: { pending: boolean; error: str
 
 export function CustodialRegistrationPage({
   address,
-  network,
-  onNetworkChange,
   pending,
   error,
   onBack,
@@ -54,12 +49,7 @@ export function CustodialRegistrationPage({
   return (
     <div className="page">
       <AmbientOrb opacity={0.14} size={840} y="62%" />
-      <TopBar
-        address={address}
-        network={network}
-        onNetworkChange={onNetworkChange}
-        onDisconnect={onDisconnect}
-      />
+      <TopBar address={address} onDisconnect={onDisconnect} />
 
       <div className={styles.backBar}>
         <button className="back-link" onClick={onBack}>

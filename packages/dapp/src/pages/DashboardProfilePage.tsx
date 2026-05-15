@@ -3,7 +3,7 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { CopyButton } from "../components/CopyButton";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { shortenAddress } from "../lib/ethereum";
-import { getNetwork, type NetworkId } from "../lib/config";
+import { NETWORK } from "../lib/config";
 import { cn } from "../lib/cn";
 import { checkMiddlewareHealth } from "../lib/middleware";
 import type { UserProfile } from "../lib/middleware";
@@ -11,8 +11,6 @@ import styles from "./DashboardProfilePage.module.css";
 
 interface Props {
   address: string;
-  network: NetworkId;
-  onNetworkChange: (id: NetworkId) => void;
   profile: UserProfile;
   snapInstalled: boolean;
   snapVersion: string | null;
@@ -24,8 +22,6 @@ interface Props {
 
 export function DashboardProfilePage({
   address,
-  network,
-  onNetworkChange,
   profile,
   snapInstalled,
   snapVersion,
@@ -37,28 +33,24 @@ export function DashboardProfilePage({
   const [reinstalling, setReinstalling] = useState(false);
   const [healthCache, setHealthCache] = useState<{ url: string; healthy: boolean } | null>(null);
 
-  const currentNet = getNetwork(network);
   const isNonCustodial = profile.keyMode === "external";
-  const middlewareHealthy =
-    healthCache?.url === currentNet.middlewareUrl ? healthCache.healthy : null;
+  const middlewareHealthy = healthCache?.url === NETWORK.middlewareUrl ? healthCache.healthy : null;
 
   useEffect(() => {
     let cancelled = false;
-    checkMiddlewareHealth(currentNet.middlewareUrl).then((healthy) => {
-      if (!cancelled) setHealthCache({ url: currentNet.middlewareUrl, healthy });
+    checkMiddlewareHealth(NETWORK.middlewareUrl).then((healthy) => {
+      if (!cancelled) setHealthCache({ url: NETWORK.middlewareUrl, healthy });
     });
     return () => {
       cancelled = true;
     };
-  }, [currentNet.middlewareUrl]);
+  }, []);
 
   return (
     <>
       <AmbientOrb opacity={0.1} size={880} x="80%" y="33%" />
       <DashboardLayout
         address={address}
-        network={network}
-        onNetworkChange={onNetworkChange}
         activeTab={activeTab}
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}
@@ -199,13 +191,13 @@ export function DashboardProfilePage({
                 )}
                 <span className={styles.connLabel}>
                   {middlewareHealthy === null
-                    ? currentNet.name
+                    ? NETWORK.name
                     : middlewareHealthy
-                      ? `${currentNet.name} · Connected`
-                      : `${currentNet.name} · Unreachable`}
+                      ? `${NETWORK.name} · Connected`
+                      : `${NETWORK.name} · Unreachable`}
                 </span>
               </div>
-              <p className={styles.connMeta}>{currentNet.host}</p>
+              <p className={styles.connMeta}>{NETWORK.host}</p>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useMetaMask } from "./hooks/useMetaMask";
 import { useRegistration } from "./hooks/useRegistration";
 import { useAutoNetworkSwitch } from "./hooks/useAutoNetworkSwitch";
-import { DEFAULT_NETWORK, getNetwork, type NetworkId } from "./lib/config";
+import { NETWORK } from "./lib/config";
 import { personalSign } from "./lib/ethereum";
 import { getUser, SessionExpiredError, type UserProfile } from "./lib/middleware";
 import { getSession, storeSession, clearSession, clearAllSessions } from "./lib/session";
@@ -30,24 +30,21 @@ type Page =
 export default function App() {
   const [page, setPage] = useState<Page>("landing");
   const [mode, setMode] = useState<"custodial" | "noncustodial">("custodial");
-  const [network, setNetwork] = useState<NetworkId>(DEFAULT_NETWORK);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>("profile");
 
   const mm = useMetaMask();
-  const reg = useRegistration(getNetwork(network).middlewareUrl);
+  const reg = useRegistration(NETWORK.middlewareUrl);
   const { registerCustodial, sign } = reg;
 
-  // Prompt MetaMask to switch to the active Canton chain on connect and on
-  // network changes — silent if MM is already on it.
-  useAutoNetworkSwitch(getNetwork(network), mm.address);
+  // Prompt MetaMask to switch to the active Canton chain on connect — silent
+  // if MM is already on it.
+  useAutoNetworkSwitch(NETWORK, mm.address);
 
   // Auto-reconnect on refresh: if MetaMask already has an account and we have a
   // cached session signature, skip the landing page and go straight to dashboard.
-  // Gating on page === "landing" naturally prevents re-runs once we've navigated
-  // away, while still allowing a re-check when the network changes on landing.
   useEffect(() => {
     if (page !== "landing") return;
     if (mm.autoConnecting) return;
@@ -60,9 +57,7 @@ export default function App() {
     // setReconnecting via .then() so it's in a callback, not the synchronous effect body.
     Promise.resolve()
       .then(() => setReconnecting(true))
-      .then(() =>
-        getUser(getNetwork(network).middlewareUrl, addr, session.signature, session.message),
-      )
+      .then(() => getUser(NETWORK.middlewareUrl, addr, session.signature, session.message))
       .then((existing) => {
         if (existing) {
           setProfile(existing);
@@ -74,7 +69,7 @@ export default function App() {
         // stay on landing in all error cases; user re-connects manually
       })
       .finally(() => setReconnecting(false));
-  }, [page, mm.autoConnecting, mm.address, network]);
+  }, [page, mm.autoConnecting, mm.address]);
 
   const handleRegisterCustodial = useCallback(async () => {
     const done = await registerCustodial(mm.address ?? "");
@@ -85,26 +80,6 @@ export default function App() {
     const done = await sign(mm.address ?? "");
     if (done) setPage("registration-done");
   }, [sign, mm.address]);
-
-  const handleNetworkChange = useCallback(
-    (id: NetworkId) => {
-      setNetwork(id);
-      if (!mm.address) return;
-      const session = getSession(mm.address);
-      if (!session) return;
-      void getUser(getNetwork(id).middlewareUrl, mm.address, session.signature, session.message)
-        .then((updated) => {
-          if (updated) {
-            setProfile(updated);
-          } else {
-            setProfile(null);
-            setPage("registration-choice");
-          }
-        })
-        .catch(() => {});
-    },
-    [mm.address],
-  );
 
   function handleDisconnect() {
     mm.disconnect();
@@ -125,7 +100,6 @@ export default function App() {
   }
 
   const address = mm.address ?? "";
-  const netProps = { network, onNetworkChange: setNetwork };
   const snapInstalled = reg.snap.installed || reg.snap.alreadyInstalled;
   const snapVersion = reg.snap.version;
 
@@ -175,7 +149,7 @@ export default function App() {
 
           try {
             const existing = await getUser(
-              getNetwork(network).middlewareUrl,
+              NETWORK.middlewareUrl,
               addr,
               session.signature,
               session.message,
@@ -196,7 +170,7 @@ export default function App() {
               }
               try {
                 const existing = await getUser(
-                  getNetwork(network).middlewareUrl,
+                  NETWORK.middlewareUrl,
                   addr,
                   session.signature,
                   session.message,
@@ -223,7 +197,6 @@ export default function App() {
     return (
       <RegistrationChoicePage
         address={address}
-        {...netProps}
         onCustodial={handleCustodial}
         onNonCustodial={handleNonCustodial}
         onDisconnect={handleDisconnect}
@@ -235,7 +208,6 @@ export default function App() {
     return (
       <CustodialRegistrationPage
         address={address}
-        {...netProps}
         pending={reg.pending}
         error={reg.error}
         onBack={() => setPage("registration-choice")}
@@ -249,7 +221,6 @@ export default function App() {
     return (
       <NonCustodialRegistrationPage
         address={address}
-        {...netProps}
         step="install"
         snapInstalling={reg.snap.installing}
         signingPending={false}
@@ -271,7 +242,6 @@ export default function App() {
     return (
       <NonCustodialRegistrationPage
         address={address}
-        {...netProps}
         step="sign"
         snapInstalling={false}
         signingPending={reg.pending}
@@ -291,7 +261,6 @@ export default function App() {
     return (
       <RegistrationDonePage
         address={address}
-        {...netProps}
         cantonPartyId={done?.cantonPartyId ?? ""}
         fingerprint={done?.fingerprint ?? ""}
         wasAlreadyRegistered={reg.wasAlreadyRegistered}
@@ -313,8 +282,6 @@ export default function App() {
   if (page === "dashboard" && profile) {
     const sharedProps = {
       address,
-      network,
-      onNetworkChange: handleNetworkChange,
       activeTab: dashboardTab,
       onTabChange: setDashboardTab,
       onDisconnect: handleDisconnect,
