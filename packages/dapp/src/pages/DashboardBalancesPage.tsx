@@ -42,15 +42,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
 function WalletPlusIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect
-        x="2.5"
-        y="5"
-        width="15"
-        height="11"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.4"
-      />
+      <rect x="2.5" y="5" width="15" height="11" rx="2" stroke="currentColor" strokeWidth="1.4" />
       <path d="M2.5 9H17.5" stroke="currentColor" strokeWidth="1.4" />
       <path
         d="M14 11.5V14M12.75 12.75H15.25"
@@ -287,10 +279,7 @@ export function DashboardBalancesPage({
                         </p>
                         <p className={styles.amountLabel}>{token.symbol}</p>
                       </div>
-                      <button
-                        className={styles.sendRowBtn}
-                        onClick={() => onTabChange("transfer")}
-                      >
+                      <button className={styles.sendRowBtn} onClick={() => onTabChange("transfer")}>
                         Send →
                       </button>
                     </div>
