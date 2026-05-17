@@ -11,7 +11,7 @@ interface SnapState {
   fingerprintAllowedOrigins: string[];
 }
 
-const EMPTY_STATE: SnapState = { fingerprintAllowedOrigins: [] };
+const MAX_ALLOWED_ORIGINS = 200;
 
 async function loadState(): Promise<SnapState> {
   const stored = (await snap.request({
@@ -40,10 +40,12 @@ export async function isFingerprintOriginAllowed(origin: string): Promise<boolea
 
 export async function allowFingerprintOrigin(origin: string): Promise<void> {
   const state = await loadState();
-  if (!state.fingerprintAllowedOrigins.includes(origin)) {
-    state.fingerprintAllowedOrigins.push(origin);
-    await saveState(state);
+  if (state.fingerprintAllowedOrigins.includes(origin)) return;
+  // Bounded FIFO so a long-lived install can't grow the allowlist unbounded.
+  if (state.fingerprintAllowedOrigins.length >= MAX_ALLOWED_ORIGINS) {
+    state.fingerprintAllowedOrigins.shift();
   }
+  state.fingerprintAllowedOrigins.push(origin);
+  await saveState(state);
 }
 
-export { EMPTY_STATE };

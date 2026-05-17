@@ -3,6 +3,7 @@ import {
   validateKeyIndex,
   parseSignHash,
   parseTopologyHash,
+  validateMetadata,
 } from "../src/validation.js";
 import { hexToBytes } from "@noble/hashes/utils";
 
@@ -80,6 +81,19 @@ describe("parseTopologyHash", () => {
     expect(parseTopologyHash(mh)).toEqual(hexToBytes(mh));
   });
 
+  it("accepts the minimum byte length", () => {
+    expect(parseTopologyHash("ab")).toEqual(hexToBytes("ab"));
+  });
+
+  it("accepts the maximum byte length", () => {
+    const max = "ab".repeat(128);
+    expect(parseTopologyHash(max)).toEqual(hexToBytes(max));
+  });
+
+  it("rejects one byte over the maximum", () => {
+    expect(() => parseTopologyHash("ab".repeat(129))).toThrow(/topology hash/);
+  });
+
   it("rejects empty", () => {
     expect(() => parseTopologyHash("")).toThrow();
   });
@@ -90,5 +104,61 @@ describe("parseTopologyHash", () => {
 
   it("rejects non-hex", () => {
     expect(() => parseTopologyHash("zzzz")).toThrow(/hex/);
+  });
+
+  it("rejects odd-length", () => {
+    expect(() => parseTopologyHash("abc")).toThrow();
+  });
+});
+
+describe("validateMetadata", () => {
+  const valid = {
+    operation: "Transfer",
+    tokenSymbol: "DEMO",
+    amount: "100",
+    recipient: "alice::abcd",
+    sender: "bob::1234",
+  };
+
+  it("passes through a valid object", () => {
+    expect(validateMetadata(valid)).toEqual(valid);
+  });
+
+  it("returns undefined for undefined/null", () => {
+    expect(validateMetadata(undefined)).toBeUndefined();
+    expect(validateMetadata(null)).toBeUndefined();
+  });
+
+  it("makes recipient and sender optional", () => {
+    const partial = { operation: "Transfer", tokenSymbol: "DEMO", amount: "100" };
+    expect(validateMetadata(partial)).toEqual({
+      operation: "Transfer",
+      tokenSymbol: "DEMO",
+      amount: "100",
+      recipient: undefined,
+      sender: undefined,
+    });
+  });
+
+  it("rejects non-object", () => {
+    expect(() => validateMetadata("a string")).toThrow(/metadata/);
+    expect(() => validateMetadata(42)).toThrow(/metadata/);
+    expect(() => validateMetadata([])).toThrow(/metadata/);
+  });
+
+  it("rejects missing required field", () => {
+    const missing = { tokenSymbol: "DEMO", amount: "100" };
+    expect(() => validateMetadata(missing)).toThrow(/operation/);
+  });
+
+  it("rejects non-string fields", () => {
+    expect(() => validateMetadata({ ...valid, operation: 5 })).toThrow(/operation/);
+    expect(() => validateMetadata({ ...valid, recipient: {} })).toThrow(/recipient/);
+  });
+
+  it("rejects fields exceeding the length cap", () => {
+    expect(() => validateMetadata({ ...valid, tokenSymbol: "x".repeat(201) })).toThrow(
+      /tokenSymbol/,
+    );
   });
 });

@@ -162,6 +162,38 @@ describe("canton_signHash", () => {
     );
   });
 
+  it("rejects metadata with a non-string field", async () => {
+    const { request } = await installSnap();
+
+    const result = await request({
+      method: "canton_signHash",
+      params: {
+        hash: testHash,
+        metadata: { operation: 42, tokenSymbol: "DEMO", amount: "100" },
+      },
+    });
+
+    expect(result).toRespondWithError(
+      expect.objectContaining({ message: expect.stringContaining("operation") }),
+    );
+  });
+
+  it("rejects metadata with an oversized string", async () => {
+    const { request } = await installSnap();
+
+    const result = await request({
+      method: "canton_signHash",
+      params: {
+        hash: testHash,
+        metadata: { operation: "Transfer", tokenSymbol: "x".repeat(201), amount: "100" },
+      },
+    });
+
+    expect(result).toRespondWithError(
+      expect.objectContaining({ message: expect.stringContaining("tokenSymbol") }),
+    );
+  });
+
   it("shows metadata in dialog when provided", async () => {
     const { request } = await installSnap();
 

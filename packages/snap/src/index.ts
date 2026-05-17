@@ -18,7 +18,12 @@ import {
   getFingerprintDialog,
 } from "./dialogs";
 import { bytesToHex } from "@noble/hashes/utils";
-import { validateKeyIndex, parseSignHash, parseTopologyHash } from "./validation";
+import {
+  validateKeyIndex,
+  parseSignHash,
+  parseTopologyHash,
+  validateMetadata,
+} from "./validation";
 import { allowFingerprintOrigin, isFingerprintOriginAllowed } from "./state";
 import type {
   GetPublicKeyParams,
@@ -71,13 +76,14 @@ async function handleGetPublicKey(
 async function handleSignHash(origin: string, params: SignHashParams): Promise<SignResponse> {
   const hashBytes = parseSignHash(params.hash);
   const keyIndex = validateKeyIndex(params.keyIndex);
+  const metadata = validateMetadata(params.metadata);
   const hashHex = bytesToHex(hashBytes);
 
   const approved = await snap.request({
     method: "snap_dialog",
     params: {
       type: "confirmation",
-      content: signTransactionDialog(origin, hashHex, params.metadata),
+      content: signTransactionDialog(origin, hashHex, metadata),
     },
   });
   if (!approved) throw new Error("User rejected signing");
