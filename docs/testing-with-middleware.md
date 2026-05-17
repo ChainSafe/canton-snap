@@ -43,7 +43,7 @@ cp packages/snap/.env.example packages/snap/.env
 cp packages/dapp/.env.example packages/dapp/.env
 ```
 
-Edit each `.env` as needed. `VITE_SNAP_PORT` must match in both files (default: `4040`).
+Edit each `.env` as needed. For local snap dev set `VITE_SNAP_ID=local:http://localhost:4040` in `packages/dapp/.env`; the port must match `VITE_SNAP_PORT` in `packages/snap/.env` (default: `4040`).
 
 ---
 
