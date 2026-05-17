@@ -12,9 +12,12 @@ import type { SignHashMetadata } from "./types";
 
 const MAX_KEY_INDEX = 1000;
 const SIGN_HASH_BYTES = 32;
-const TOPOLOGY_HASH_MIN_BYTES = 1;
-const TOPOLOGY_HASH_MAX_BYTES = 128;
 const MAX_METADATA_FIELD_LENGTH = 200;
+
+// Canton topology hashes are SHA-256 multihashes: 0x12 (sha2-256 algorithm
+// code) + 0x20 (32-byte digest length) + 32 bytes of digest = 34 bytes total.
+const MULTIHASH_SHA256_PREFIX = new Uint8Array([0x12, 0x20]);
+const TOPOLOGY_HASH_BYTES = 34;
 
 function stripHexPrefix(hex: string): string {
   return hex.startsWith("0x") || hex.startsWith("0X") ? hex.slice(2) : hex;
@@ -69,14 +72,14 @@ export function validateMetadata(value: unknown): SignHashMetadata | undefined {
 export function parseTopologyHash(value: unknown): Uint8Array {
   if (typeof value !== "string") throw new Error("hash is required");
   const stripped = stripHexPrefix(value);
-  if (stripped.length === 0 || stripped.length % 2 !== 0) {
-    throw new Error("hash must be a non-empty even-length hex string");
-  }
-  const byteLength = stripped.length / 2;
-  if (byteLength < TOPOLOGY_HASH_MIN_BYTES || byteLength > TOPOLOGY_HASH_MAX_BYTES) {
+  if (stripped.length !== TOPOLOGY_HASH_BYTES * 2) {
     throw new Error(
-      `topology hash must be ${TOPOLOGY_HASH_MIN_BYTES}–${TOPOLOGY_HASH_MAX_BYTES} bytes`,
+      `topology hash must be a SHA-256 multihash (${TOPOLOGY_HASH_BYTES} bytes / ${TOPOLOGY_HASH_BYTES * 2} hex chars)`,
     );
   }
-  return hexToBytes(stripped);
+  const bytes = hexToBytes(stripped);
+  if (bytes[0] !== MULTIHASH_SHA256_PREFIX[0] || bytes[1] !== MULTIHASH_SHA256_PREFIX[1]) {
+    throw new Error("topology hash must use the SHA-256 multihash prefix 0x1220");
+  }
+  return bytes;
 }

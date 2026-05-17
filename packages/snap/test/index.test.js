@@ -265,16 +265,16 @@ describe("canton_signTopology", () => {
     );
   });
 
-  it("rejects oversized topology hash", async () => {
+  it("rejects a non-multihash topology hash", async () => {
     const { request } = await installSnap();
 
     const result = await request({
       method: "canton_signTopology",
-      params: { hash: "ab".repeat(200) }, // 200 bytes, exceeds 128
+      params: { hash: "ab".repeat(34) }, // right length, wrong prefix
     });
 
     expect(result).toRespondWithError(
-      expect.objectContaining({ message: expect.stringContaining("topology hash") }),
+      expect.objectContaining({ message: expect.stringContaining("multihash") }),
     );
   });
 });
@@ -300,7 +300,7 @@ describe("canton_getFingerprint", () => {
     );
   });
 
-  it("returns silently on subsequent calls from the same origin", async () => {
+  it("returns silently on subsequent calls from the same origin AND keyIndex", async () => {
     const { request } = await installSnap();
 
     // First call — approve once
@@ -308,9 +308,31 @@ describe("canton_getFingerprint", () => {
     await (await first.getInterface()).ok();
     await first;
 
-    // Second call — no dialog
+    // Same keyIndex — no dialog
     const second = await request({ method: "canton_getFingerprint", params: { keyIndex: 0 } });
     expect(second).toRespondWith(
+      expect.objectContaining({
+        fingerprint: expect.stringMatching(/^1220[0-9a-f]{64}$/),
+      }),
+    );
+  });
+
+  it("re-prompts for a different keyIndex from the same origin", async () => {
+    const { request } = await installSnap();
+
+    // Approve keyIndex 0
+    const r0 = request({ method: "canton_getFingerprint", params: { keyIndex: 0 } });
+    await (await r0.getInterface()).ok();
+    await r0;
+
+    // keyIndex 1 must still prompt — origin-wide approval would let the dApp
+    // enumerate every Canton identity silently.
+    const r1 = request({ method: "canton_getFingerprint", params: { keyIndex: 1 } });
+    const ui = await r1.getInterface();
+    expect(ui.type).toBe("confirmation");
+    await ui.ok();
+    const result = await r1;
+    expect(result).toRespondWith(
       expect.objectContaining({
         fingerprint: expect.stringMatching(/^1220[0-9a-f]{64}$/),
       }),

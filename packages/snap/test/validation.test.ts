@@ -76,34 +76,42 @@ describe("parseSignHash", () => {
 });
 
 describe("parseTopologyHash", () => {
-  it("accepts a multihash", () => {
-    const mh = "1220" + "ab".repeat(32);
-    expect(parseTopologyHash(mh)).toEqual(hexToBytes(mh));
+  const validMh = "1220" + "ab".repeat(32); // sha2-256 multihash, 34 bytes
+
+  it("accepts a SHA-256 multihash with the correct prefix and length", () => {
+    expect(parseTopologyHash(validMh)).toEqual(hexToBytes(validMh));
   });
 
-  it("accepts the minimum byte length", () => {
-    expect(parseTopologyHash("ab")).toEqual(hexToBytes("ab"));
+  it("accepts an 0x-prefixed multihash", () => {
+    expect(parseTopologyHash("0x" + validMh)).toEqual(hexToBytes(validMh));
   });
 
-  it("accepts the maximum byte length", () => {
-    const max = "ab".repeat(128);
-    expect(parseTopologyHash(max)).toEqual(hexToBytes(max));
+  it("rejects a multihash with the wrong algorithm code", () => {
+    // 0x1320 = sha2-512 prefix, would have length 66 anyway; force length 34.
+    const wrongAlgo = "1320" + "ab".repeat(32);
+    expect(() => parseTopologyHash(wrongAlgo)).toThrow(/multihash/);
   });
 
-  it("rejects one byte over the maximum", () => {
-    expect(() => parseTopologyHash("ab".repeat(129))).toThrow(/topology hash/);
+  it("rejects a multihash with the wrong digest length", () => {
+    // Correct algo byte but length byte != 0x20.
+    const wrongLen = "1210" + "ab".repeat(32);
+    expect(() => parseTopologyHash(wrongLen)).toThrow(/multihash/);
+  });
+
+  it("rejects a too-short hash", () => {
+    expect(() => parseTopologyHash("ab")).toThrow(/multihash/);
+  });
+
+  it("rejects a too-long hash", () => {
+    expect(() => parseTopologyHash("1220" + "ab".repeat(33))).toThrow(/multihash/);
   });
 
   it("rejects empty", () => {
-    expect(() => parseTopologyHash("")).toThrow();
-  });
-
-  it("rejects oversize", () => {
-    expect(() => parseTopologyHash("ab".repeat(200))).toThrow(/topology hash/);
+    expect(() => parseTopologyHash("")).toThrow(/multihash/);
   });
 
   it("rejects non-hex", () => {
-    expect(() => parseTopologyHash("zzzz")).toThrow(/hex/);
+    expect(() => parseTopologyHash("z".repeat(68))).toThrow(/hex/);
   });
 
   it("rejects odd-length", () => {
