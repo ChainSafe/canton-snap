@@ -110,18 +110,50 @@ npm run test:snap              # Full snap integration tests (jest + snaps-jest)
 
 ## Snap Permissions
 
-- `snap_getBip44Entropy` (coinType 60) — derive Canton keys from seed
-- `snap_dialog` — show confirmation dialogs
+- `snap_getEntropy` — derive snap-scoped Canton signing keys
+- `snap_dialog` — confirmation dialogs
 - `snap_manageState` — persist registered fingerprints
-- **No network access** — the snap is a pure signing oracle
+- `endowment:rpc` (`dapps: true`) — accept RPC from dApps
+- No network access
 
 ## Dependencies
 
 **Snap (`packages/snap`):**
 - [`@noble/curves`](https://github.com/paulmillr/noble-curves) — secp256k1 ECDSA (audited, pure JS)
 - [`@noble/hashes`](https://github.com/paulmillr/noble-hashes) — SHA-256
-- [`@metamask/key-tree`](https://github.com/MetaMask/key-tree) — BIP-44 key derivation
 - [`@metamask/snaps-sdk`](https://github.com/MetaMask/snaps) — Snap API types and UI components
 
 **dApp (`packages/dapp`):**
 - [React 19](https://react.dev) + [Vite](https://vitejs.dev) — UI framework and build tool
+
+## Release
+
+Snap releases are driven by [release-please](https://github.com/googleapis/release-please) and published to npm via [Trusted Publishing](https://docs.npmjs.com/trusted-publishers) — no `NPM_TOKEN` in the repo.
+
+Scope: only `packages/snap`. Commits that don't touch `packages/snap/` are ignored. The dApp will have its own pipeline later.
+
+1. Land conventional commits (`feat:`, `fix:`, `feat!:`) touching `packages/snap/`.
+2. `Release Please` opens a release PR (`chore(main): release snap X.Y.Z`).
+3. Merge it → tag `snap-vX.Y.Z`, GitHub release, `npm publish` with provenance.
+
+Manual trigger: Actions → Release Please → Run workflow.
+
+## Installing the Published Snap
+
+Snap ID: `npm:@chainsafe/canton-snap`. Works with standard MetaMask (no Flask).
+
+```ts
+const SNAP_ID = "npm:@chainsafe/canton-snap";
+
+await window.ethereum.request({
+  method: "wallet_requestSnaps",
+  params: { [SNAP_ID]: { version: "^0.2.0" } },
+});
+
+await window.ethereum.request({
+  method: "wallet_invokeSnap",
+  params: { snapId: SNAP_ID, request: { method: "canton_getFingerprint" } },
+});
+```
+
+Check install status with `wallet_getSnaps`.
