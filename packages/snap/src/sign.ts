@@ -9,6 +9,7 @@
  */
 
 import { secp256k1 } from "@noble/curves/secp256k1";
+import { hexToBytes } from "./hex";
 
 /**
  * Sign a 32-byte hash and return an ASN.1 DER-encoded ECDSA signature.
@@ -81,10 +82,3 @@ function encodeDERInteger(value: bigint): Uint8Array {
   return result;
 }
 
-function hexToBytes(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}

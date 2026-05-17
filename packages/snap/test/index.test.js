@@ -41,20 +41,21 @@ describe("canton_getPublicKey", () => {
     );
   });
 
-  it("returns same key for same index across calls", async () => {
+  it("rejects invalid keyIndex", async () => {
     const { request } = await installSnap();
 
-    // First call
-    const resp1 = request({ method: "canton_getFingerprint", params: { keyIndex: 0 } });
-    const fp1 = await resp1;
-
-    // Second call
-    const resp2 = request({ method: "canton_getFingerprint", params: { keyIndex: 0 } });
-    const fp2 = await resp2;
-
-    // Both should succeed with the same fingerprint
-    expect(fp1).toRespondWith(expect.objectContaining({ fingerprint: expect.any(String) }));
-    expect(fp2).toRespondWith(expect.objectContaining({ fingerprint: expect.any(String) }));
+    // NaN / Infinity are excluded because the JSON-RPC transport drops them
+    // before they reach the snap; the validator still catches them in-process
+    // (exercised via direct unit test on validation.ts).
+    for (const bad of [-1, 0.5, 100000, "0"]) {
+      const result = await request({
+        method: "canton_getPublicKey",
+        params: { keyIndex: bad },
+      });
+      expect(result).toRespondWithError(
+        expect.objectContaining({ message: expect.stringContaining("keyIndex") }),
+      );
+    }
   });
 });
 
@@ -115,6 +116,33 @@ describe("canton_signHash", () => {
     );
   });
 
+  it("rejects malformed hex", async () => {
+    const { request } = await installSnap();
+
+    for (const bad of ["z".repeat(64), testHash + "ab", "abc", ""]) {
+      const result = await request({
+        method: "canton_signHash",
+        params: { hash: bad },
+      });
+      expect(result).toRespondWithError(
+        expect.objectContaining({ message: expect.stringMatching(/hash|hex/) }),
+      );
+    }
+  });
+
+  it("rejects wrong-length hash", async () => {
+    const { request } = await installSnap();
+
+    const result = await request({
+      method: "canton_signHash",
+      params: { hash: "ab".repeat(16) }, // 16 bytes, not 32
+    });
+
+    expect(result).toRespondWithError(
+      expect.objectContaining({ message: expect.stringContaining("32 bytes") }),
+    );
+  });
+
   it("accepts 0x-prefixed hash", async () => {
     const { request } = await installSnap();
 
@@ -164,7 +192,7 @@ describe("canton_signHash", () => {
 });
 
 describe("canton_signTopology", () => {
-  const testHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+  const testHash = "1220e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
   it("returns DER signature after user approval", async () => {
     const { request } = await installSnap();
@@ -204,17 +232,35 @@ describe("canton_signTopology", () => {
       }),
     );
   });
-});
 
-describe("canton_getFingerprint", () => {
-  it("returns fingerprint without dialog", async () => {
+  it("rejects oversized topology hash", async () => {
     const { request } = await installSnap();
 
     const result = await request({
+      method: "canton_signTopology",
+      params: { hash: "ab".repeat(200) }, // 200 bytes, exceeds 128
+    });
+
+    expect(result).toRespondWithError(
+      expect.objectContaining({ message: expect.stringContaining("topology hash") }),
+    );
+  });
+});
+
+describe("canton_getFingerprint", () => {
+  it("requires consent on first call from an origin", async () => {
+    const { request } = await installSnap();
+
+    const response = request({
       method: "canton_getFingerprint",
       params: { keyIndex: 0 },
     });
 
+    const ui = await response.getInterface();
+    expect(ui.type).toBe("confirmation");
+    await ui.ok();
+
+    const result = await response;
     expect(result).toRespondWith(
       expect.objectContaining({
         fingerprint: expect.stringMatching(/^1220[0-9a-f]{64}$/),
@@ -222,25 +268,37 @@ describe("canton_getFingerprint", () => {
     );
   });
 
-  it("returns different fingerprint for different key index", async () => {
+  it("returns silently on subsequent calls from the same origin", async () => {
     const { request } = await installSnap();
 
-    const result0 = await request({
+    // First call — approve once
+    const first = request({ method: "canton_getFingerprint", params: { keyIndex: 0 } });
+    await (await first.getInterface()).ok();
+    await first;
+
+    // Second call — no dialog
+    const second = await request({ method: "canton_getFingerprint", params: { keyIndex: 0 } });
+    expect(second).toRespondWith(
+      expect.objectContaining({
+        fingerprint: expect.stringMatching(/^1220[0-9a-f]{64}$/),
+      }),
+    );
+  });
+
+  it("throws when user rejects fingerprint disclosure", async () => {
+    const { request } = await installSnap();
+
+    const response = request({
       method: "canton_getFingerprint",
       params: { keyIndex: 0 },
     });
-    const result1 = await request({
-      method: "canton_getFingerprint",
-      params: { keyIndex: 1 },
-    });
 
-    expect(result0).toRespondWith(expect.objectContaining({ fingerprint: expect.any(String) }));
-    expect(result1).toRespondWith(expect.objectContaining({ fingerprint: expect.any(String) }));
+    const ui = await response.getInterface();
+    await ui.cancel();
 
-    // Different key indices should produce different fingerprints
-    // We can't easily extract values from the matcher result, but we verify
-    // both succeed and rely on the getPublicKey test for determinism
-    expect(result0).not.toEqual(result1);
+    expect(await response).toRespondWithError(
+      expect.objectContaining({ message: expect.stringContaining("rejected") }),
+    );
   });
 });
 

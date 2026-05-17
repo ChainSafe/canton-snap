@@ -7,6 +7,7 @@
 
 import { sha256 } from "@noble/hashes/sha256";
 import { compressedPubKeyToSPKIDer } from "./spki";
+import { bytesToHex } from "./hex";
 
 /**
  * Compute the Canton key fingerprint from SPKI DER bytes.
@@ -53,8 +54,3 @@ export function fingerprintFromCompressedPubKey(compressedPubKey: Uint8Array): s
   return fingerprintFromSPKI(spkiDer);
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
