@@ -9,7 +9,7 @@
  */
 
 import { secp256k1 } from "@noble/curves/secp256k1";
-import { hexToBytes } from "./hex";
+import { hexToBytes } from "@noble/hashes/utils";
 
 /**
  * Sign a 32-byte hash and return an ASN.1 DER-encoded ECDSA signature.

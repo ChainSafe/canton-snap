@@ -10,7 +10,11 @@
 
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha256";
-import { hexToBytes, stripHexPrefix } from "./hex";
+import { hexToBytes } from "@noble/hashes/utils";
+
+function stripHexPrefix(hex: string): string {
+  return hex.startsWith("0x") || hex.startsWith("0X") ? hex.slice(2) : hex;
+}
 
 export interface DerivedKey {
   privateKey: Uint8Array;

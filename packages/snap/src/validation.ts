@@ -1,15 +1,22 @@
 /**
  * RPC parameter validation. Runs before any dialog or key derivation so
- * that malformed input is rejected without paying the cost of rendering
+ * malformed input is rejected without paying the cost of rendering
  * arbitrary user-supplied content.
+ *
+ * Hex parsing uses @noble/hashes' strict `hexToBytes`, which throws on
+ * non-hex characters and on odd-length input.
  */
 
-import { hexToBytes, stripHexPrefix } from "./hex";
+import { hexToBytes } from "@noble/hashes/utils";
 
 const MAX_KEY_INDEX = 1000;
 const SIGN_HASH_BYTES = 32;
 const TOPOLOGY_HASH_MIN_BYTES = 1;
 const TOPOLOGY_HASH_MAX_BYTES = 128;
+
+function stripHexPrefix(hex: string): string {
+  return hex.startsWith("0x") || hex.startsWith("0X") ? hex.slice(2) : hex;
+}
 
 export function validateKeyIndex(value: unknown): number {
   const i = value ?? 0;

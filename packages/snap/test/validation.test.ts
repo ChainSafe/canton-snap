@@ -4,7 +4,7 @@ import {
   parseSignHash,
   parseTopologyHash,
 } from "../src/validation.js";
-import { hexToBytes } from "../src/hex.js";
+import { hexToBytes } from "@noble/hashes/utils";
 
 describe("validateKeyIndex", () => {
   it("treats undefined and null as 0", () => {

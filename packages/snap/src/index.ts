@@ -17,7 +17,7 @@ import {
   signTopologyDialog,
   getFingerprintDialog,
 } from "./dialogs";
-import { bytesToHex } from "./hex";
+import { bytesToHex } from "@noble/hashes/utils";
 import { validateKeyIndex, parseSignHash, parseTopologyHash } from "./validation";
 import { allowFingerprintOrigin, isFingerprintOriginAllowed } from "./state";
 import type {
