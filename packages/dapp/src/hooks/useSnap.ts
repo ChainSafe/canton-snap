@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { sha256, getBytes } from "ethers";
 import { installSnap, getInstalledSnap, invokeSnap } from "../lib/ethereum";
 
 export interface SnapPublicKey {
@@ -16,6 +15,16 @@ export interface SignHashMetadata {
   sender?: string;
 }
 
+export interface PreparedTransaction extends SignHashMetadata {
+  schema: "canton-snap.prepared-transaction.v1";
+  transactionHash: string;
+  details?: Record<string, string>;
+  network?: string;
+  transferId?: string;
+  expiresAt?: string;
+  partyId?: string;
+}
+
 export interface SignHashResult {
   derSignature: string;
   fingerprint: string;
@@ -30,7 +39,7 @@ export interface SnapState {
   install: () => Promise<boolean>;
   getPublicKey: (keyIndex?: number) => Promise<SnapPublicKey>;
   signTopology: (hash: string) => Promise<string>;
-  signHash: (hash: string, metadata?: SignHashMetadata) => Promise<SignHashResult>;
+  signHash: (preparedTransaction: PreparedTransaction) => Promise<SignHashResult>;
 }
 
 export function useSnap(): SnapState {
@@ -79,11 +88,8 @@ export function useSnap(): SnapState {
   }, []);
 
   const signHash = useCallback(
-    async (hash: string, metadata?: SignHashMetadata): Promise<SignHashResult> => {
-      // Canton returns a multihash from PrepareSubmission. Match Go's keys.SignDER:
-      // sha256 the raw multihash bytes so the snap signs the correct 32-byte digest.
-      const digest = sha256(getBytes(hash));
-      return invokeSnap<SignHashResult>("canton_signHash", { hash: digest, metadata });
+    async (preparedTransaction: PreparedTransaction): Promise<SignHashResult> => {
+      return invokeSnap<SignHashResult>("canton_signHash", { preparedTransaction });
     },
     [],
   );

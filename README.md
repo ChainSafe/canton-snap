@@ -12,6 +12,7 @@ MetaMask (encrypted vault, holds seed)
     └─ Canton Snap (sandboxed)
          ├─ Derives key via snap_getEntropy (salt = "canton-network-key-<index>")
          ├─ Hashed (SHA-256) to a secp256k1 private key, with rejection sampling
+         ├─ Verifies prepared transaction envelopes before signing
          ├─ Signs SHA-256 ECDSA DER (low-S, RFC 6979 deterministic k)
          ├─ Shows confirmation dialog (origin + keyIndex + fingerprint visible)
          └─ Returns signature to dApp
@@ -27,18 +28,18 @@ The **Canton dApp** (`packages/dapp`) is the browser frontend. It drives MetaMas
 |--------|---------|--------|
 | `canton_getPublicKey` | Export compressed pubkey + SPKI DER + fingerprint | Yes |
 | `canton_signTopology` | Sign topology hash during registration | Yes |
-| `canton_signHash` | Sign a 32-byte hash, return DER signature | Yes |
-| `canton_getFingerprint` | Quick fingerprint lookup | No |
+| `canton_signHash` | Verify a canonical prepared transaction envelope, sign its derived digest, return DER signature | Yes |
+| `canton_getFingerprint` | Quick fingerprint lookup | First use per origin + key index |
 
 ## Project Structure
 
 ```
 canton-snap/
 ├── packages/
-│   ├── snap/                       # MetaMask Snap — pure signing oracle
+│   ├── snap/                       # MetaMask Snap — verified prepared-transaction signer
 │   │   ├── src/
 │   │   │   ├── index.ts            # onRpcRequest handler
-│   │   │   ├── keyDerivation.ts    # BIP-44 key derivation from MetaMask seed
+│   │   │   ├── keyDerivation.ts    # snap_getEntropy key derivation
 │   │   │   ├── dialogs.ts          # Confirmation dialog builders
 │   │   │   ├── types.ts            # RPC param/response interfaces
 │   │   │   ├── spki.ts             # Compressed pubkey → SPKI DER
@@ -70,28 +71,41 @@ canton-snap/
 
 ## Development
 
-**Requires [MetaMask Flask](https://metamask.io/flask/)** — local snaps are rejected by the standard MetaMask extension. Flask is needed until the snap is published to npm. Run it in a dedicated browser profile where the standard MetaMask extension is not installed to avoid `window.ethereum` conflicts.
+The dApp can run against either the published snap on npm (default) or a locally served snap. The mode is controlled by `VITE_SNAP_ID` in `packages/dapp/.env`.
+
+### Mode A — published snap (default, standard MetaMask)
+
+Leave `VITE_SNAP_ID` unset. The dApp uses `npm:@chainsafe/canton-snap` and works with the standard MetaMask extension.
 
 ```bash
 npm install
+cp packages/dapp/.env.example packages/dapp/.env
+npm run dev:dapp
+```
 
-# Copy env templates for each package
+### Mode B — local snap (MetaMask Flask)
+
+Set `VITE_SNAP_ID=local:http://localhost:4040` in `packages/dapp/.env`. Requires [MetaMask Flask](https://metamask.io/flask/) in a dedicated browser profile (standard MetaMask rejects local snaps, and both extensions injecting `window.ethereum` will conflict).
+
+```bash
+npm install
 cp packages/snap/.env.example packages/snap/.env
 cp packages/dapp/.env.example packages/dapp/.env
+# in packages/dapp/.env, uncomment VITE_SNAP_ID=local:http://localhost:4040
 
-# Build snap + dApp
 npm run build
-
-# Start both servers (snap on 4040, dApp on 3000)
-npm run serve
-
-# Or individually:
-npm run serve:snap             # snap dev server
-npm run dev:dapp               # dApp Vite dev server
+npm run serve                  # snap on 4040, dApp on 3000
+# or individually:
+npm run serve:snap
+npm run dev:dapp
 npm run watch:snap             # snap with hot-reload
 ```
 
-`VITE_SNAP_PORT` must match in both `.env` files (default: `4040`).
+The port in `VITE_SNAP_ID` must match `VITE_SNAP_PORT` in `packages/snap/.env` (default `4040`).
+
+### Prepared Transaction Signing
+
+`canton_signHash` no longer accepts a raw digest. It requires a `preparedTransaction` envelope with schema `canton-snap.prepared-transaction.v1`. The Snap canonicalizes every envelope field shown in the dialog, including optional string-only `details`, verifies `transactionHash == 0x1220 + sha256(canonicalEnvelope)`, then signs `sha256(transactionHash)`. Middleware must return this envelope as `prepared_transaction`; older middleware responses without it are refused instead of blind-signed.
 
 See [`docs/testing-with-middleware.md`](docs/testing-with-middleware.md) for the full local setup guide including middleware integration.
 

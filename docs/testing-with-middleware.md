@@ -43,7 +43,7 @@ cp packages/snap/.env.example packages/snap/.env
 cp packages/dapp/.env.example packages/dapp/.env
 ```
 
-Edit each `.env` as needed. `VITE_SNAP_PORT` must match in both files (default: `4040`).
+Edit each `.env` as needed. For local snap dev set `VITE_SNAP_ID=local:http://localhost:4040` in `packages/dapp/.env`; the port must match `VITE_SNAP_PORT` in `packages/snap/.env` (default: `4040`).
 
 ---
 
@@ -64,7 +64,7 @@ Open the dApp at **http://localhost:3000** — in the browser profile where Meta
 
 ## Architecture
 
-The snap is a pure signing oracle — it never contacts the middleware directly.
+The snap verifies prepared transaction envelopes and signs their derived digest — it never contacts the middleware directly.
 
 ```
 Canton dApp (browser)
@@ -134,7 +134,7 @@ npm run test:snap     # snap integration tests only (jest + @metamask/snaps-jest
 
 **MetaMask Flask required** — Until the snap is published to npm and reviewed by MetaMask, only MetaMask Flask users can install it.
 
-**Snap not published** — The snap runs only as `local:http://localhost:4040`. Publishing requires an npm release and MetaMask's snap review.
+**Local snap mode** — Local development uses `local:http://localhost:4040` and requires MetaMask Flask. Published snap mode uses `npm:@chainsafe/canton-snap` with standard MetaMask.
 
 **Each developer runs their own snap server** — The `local:` snap ID is bound to localhost; teammates cannot share one instance.
 
@@ -184,5 +184,5 @@ npm run test:snap     # snap integration tests only (jest + @metamask/snaps-jest
 |---|---|---|
 | `canton_getPublicKey` | Yes | Key derivation + SPKI + fingerprint |
 | `canton_signTopology` | Yes | Sign Canton topology multihash |
-| `canton_signHash` | Yes | Sign 32-byte pre-hashed digest |
-| `canton_getFingerprint` | No | Fingerprint lookup only |
+| `canton_signHash` | Yes | Verify prepared transaction envelope and sign derived digest |
+| `canton_getFingerprint` | First use per origin + key index | Fingerprint lookup only |

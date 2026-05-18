@@ -108,13 +108,13 @@
   <button onclick="getFingerprint()">Get Fingerprint</button>
   <div id="fpResult" class="result" hidden></div>
 
-  <h2>canton_signHash (Transfer)</h2>
-  <label>Hash (hex): <input id="signHashInput" placeholder="32-byte hex hash (with or without 0x)" value="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"></label>
+  <h2>canton_signHash (Prepared Transaction)</h2>
+  <label>Payload nonce: <input id="signPayloadNonce" value="test-1"></label>
   <label>Operation: <input id="signOp" value="Transfer"></label>
   <label>Token: <input id="signToken" value="DEMO"></label>
   <label>Amount: <input id="signAmount" value="100"></label>
   <label>Recipient: <input id="signRecipient" placeholder="0x..."></label>
-  <button onclick="signHash()">Sign Hash</button>
+  <button onclick="signHash()">Sign Prepared Transaction</button>
   <div id="signResult" class="result" hidden></div>
 
   <script>
@@ -152,6 +152,43 @@
       el.hidden = false;
       el.className = 'result ' + (isError ? 'error' : 'success');
       el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    function canonicalJson(value) {
+      if (value === null) return 'null';
+      if (typeof value === 'string') return JSON.stringify(value);
+      if (typeof value === 'boolean') return value ? 'true' : 'false';
+      if (typeof value === 'number') return JSON.stringify(value);
+      if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(',')}]`;
+      const keys = Object.keys(value).sort();
+      return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+    }
+
+    function bytesToHex(bytes) {
+      return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function sha256Hex(text) {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return bytesToHex(new Uint8Array(digest));
+    }
+
+    async function buildPreparedTransaction(metadata) {
+      const input = {
+        schema: 'canton-snap.prepared-transaction.v1',
+        operation: metadata.operation,
+        tokenSymbol: metadata.tokenSymbol,
+        amount: metadata.amount,
+        details: {
+          Command: metadata.operation.toLowerCase(),
+          Nonce: document.getElementById('signPayloadNonce').value,
+        },
+      };
+      if (metadata.recipient) input.recipient = metadata.recipient;
+      return {
+        ...input,
+        transactionHash: `1220${await sha256Hex(canonicalJson(input))}`,
+      };
     }
 
     class AlreadyRegisteredError extends Error {
@@ -333,14 +370,14 @@
 
     async function signHash() {
       try {
-        const hash = document.getElementById('signHashInput').value;
         const metadata = {
           operation: document.getElementById('signOp').value,
           tokenSymbol: document.getElementById('signToken').value,
           amount: document.getElementById('signAmount').value,
           recipient: document.getElementById('signRecipient').value || undefined,
         };
-        const result = await invokeSnap('canton_signHash', { hash, metadata });
+        const preparedTransaction = await buildPreparedTransaction(metadata);
+        const result = await invokeSnap('canton_signHash', { preparedTransaction });
         show('signResult', result);
       } catch (e) {
         show('signResult', e.message, true);

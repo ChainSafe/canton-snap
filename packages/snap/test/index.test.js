@@ -1,4 +1,41 @@
 import { installSnap } from "@metamask/snaps-jest";
+import { sha256 } from "@noble/hashes/sha2";
+import { bytesToHex } from "@noble/hashes/utils";
+
+// Keep in sync with packages/snap/src/constants.ts. The jest config can't
+// transpile-import a .ts module without extra glue, so we restate the
+// string here and trust the snap to reject a stale value.
+const PREPARED_SCHEMA = "canton-snap.prepared-transaction.v1";
+
+function canonicalJson(value) {
+  if (value === null) return "null";
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  const keys = Object.keys(value).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+}
+
+function preparedTransaction(overrides = {}) {
+  const { transactionHash, ...inputOverrides } = overrides;
+  const input = {
+    schema: PREPARED_SCHEMA,
+    operation: "Transfer",
+    tokenSymbol: "DEMO",
+    amount: "100",
+    recipient: "0xabcdef",
+    sender: "0x123456",
+    details: { Command: "transfer", Nonce: "test-1" },
+    ...inputOverrides,
+  };
+  const canonical = canonicalJson(input);
+  return {
+    ...input,
+    transactionHash:
+      transactionHash ?? "1220" + bytesToHex(sha256(new TextEncoder().encode(canonical))),
+  };
+}
 
 describe("canton_getPublicKey", () => {
   it("returns public key info after user approval", async () => {
@@ -60,14 +97,12 @@ describe("canton_getPublicKey", () => {
 });
 
 describe("canton_signHash", () => {
-  const testHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-
   it("returns DER signature after user approval", async () => {
     const { request } = await installSnap();
 
     const response = request({
       method: "canton_signHash",
-      params: { hash: testHash },
+      params: { preparedTransaction: preparedTransaction() },
     });
 
     const ui = await response.getInterface();
@@ -88,7 +123,7 @@ describe("canton_signHash", () => {
 
     const response = request({
       method: "canton_signHash",
-      params: { hash: testHash },
+      params: { preparedTransaction: preparedTransaction() },
     });
 
     const ui = await response.getInterface();
@@ -101,54 +136,61 @@ describe("canton_signHash", () => {
     );
   });
 
-  it("throws when hash is missing", async () => {
+  it("rejects raw hash signing without a prepared transaction", async () => {
     const { request } = await installSnap();
 
     const result = await request({
       method: "canton_signHash",
-      params: {},
+      params: { hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
     });
 
     expect(result).toRespondWithError(
       expect.objectContaining({
-        message: expect.stringContaining("hash"),
+        message: expect.stringContaining("preparedTransaction"),
       }),
     );
   });
 
-  it("rejects malformed hex", async () => {
+  it("rejects malformed prepared transaction hashes", async () => {
     const { request } = await installSnap();
 
-    for (const bad of ["z".repeat(64), testHash + "ab", "abc", ""]) {
+    for (const bad of ["z".repeat(68), "1220" + "ab".repeat(33), "abc", ""]) {
       const result = await request({
         method: "canton_signHash",
-        params: { hash: bad },
+        params: { preparedTransaction: preparedTransaction({ transactionHash: bad }) },
       });
       expect(result).toRespondWithError(
-        expect.objectContaining({ message: expect.stringMatching(/hash|hex/) }),
+        expect.objectContaining({ message: expect.stringMatching(/transactionHash|hex/) }),
       );
     }
   });
 
-  it("rejects wrong-length hash", async () => {
+  it("rejects prepared transaction hash mismatches", async () => {
     const { request } = await installSnap();
 
     const result = await request({
       method: "canton_signHash",
-      params: { hash: "ab".repeat(16) }, // 16 bytes, not 32
+      params: {
+        preparedTransaction: preparedTransaction({
+          transactionHash: "1220" + "ab".repeat(32),
+        }),
+      },
     });
 
     expect(result).toRespondWithError(
-      expect.objectContaining({ message: expect.stringContaining("32 bytes") }),
+      expect.objectContaining({ message: expect.stringContaining("does not match") }),
     );
   });
 
-  it("accepts 0x-prefixed hash", async () => {
+  it("accepts 0x-prefixed prepared transaction hashes", async () => {
     const { request } = await installSnap();
+    const prepared = preparedTransaction();
 
     const response = request({
       method: "canton_signHash",
-      params: { hash: "0x" + testHash },
+      params: {
+        preparedTransaction: { ...prepared, transactionHash: "0x" + prepared.transactionHash },
+      },
     });
 
     const ui = await response.getInterface();
@@ -162,14 +204,13 @@ describe("canton_signHash", () => {
     );
   });
 
-  it("rejects metadata with a non-string field", async () => {
+  it("rejects prepared transaction metadata with a non-string field", async () => {
     const { request } = await installSnap();
 
     const result = await request({
       method: "canton_signHash",
       params: {
-        hash: testHash,
-        metadata: { operation: 42, tokenSymbol: "DEMO", amount: "100" },
+        preparedTransaction: preparedTransaction({ operation: 42 }),
       },
     });
 
@@ -178,14 +219,13 @@ describe("canton_signHash", () => {
     );
   });
 
-  it("rejects metadata with an oversized string", async () => {
+  it("rejects prepared transaction metadata with an oversized string", async () => {
     const { request } = await installSnap();
 
     const result = await request({
       method: "canton_signHash",
       params: {
-        hash: testHash,
-        metadata: { operation: "Transfer", tokenSymbol: "x".repeat(201), amount: "100" },
+        preparedTransaction: preparedTransaction({ tokenSymbol: "x".repeat(201) }),
       },
     });
 
@@ -194,21 +234,12 @@ describe("canton_signHash", () => {
     );
   });
 
-  it("shows metadata in dialog when provided", async () => {
+  it("shows verified prepared transaction metadata in dialog", async () => {
     const { request } = await installSnap();
 
     const response = request({
       method: "canton_signHash",
-      params: {
-        hash: testHash,
-        metadata: {
-          operation: "Transfer",
-          tokenSymbol: "DEMO",
-          amount: "100",
-          recipient: "0xabcdef",
-          sender: "0x123456",
-        },
-      },
+      params: { preparedTransaction: preparedTransaction() },
     });
 
     const ui = await response.getInterface();

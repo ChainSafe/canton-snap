@@ -3,8 +3,7 @@
  *
  * Every dialog surfaces the calling origin, the keyIndex being used,
  * and the corresponding Canton fingerprint so the user can verify the
- * full context of what they are approving. Caller-supplied content
- * (hashes, metadata) is shown but labelled as un-attested by the snap.
+ * full context of what they are approving.
  */
 
 import { Box, Heading, Text, Divider, Copyable } from "@metamask/snaps-sdk/jsx";
@@ -35,44 +34,37 @@ export function signTransactionDialog(
   origin: string,
   keyIndex: number,
   fingerprint: string,
-  hash: string,
-  metadata?: SignHashMetadata,
+  transactionHash: string,
+  metadata: SignHashMetadata,
+  details?: Record<string, string>,
 ) {
   const children: JSXElement[] = [
     Heading({ children: "Sign Canton Transaction" }),
     ...contextLines(origin, keyIndex, fingerprint),
     Divider({}),
+    Text({
+      children:
+        "These fields were used to compute the prepared transaction hash you're about to sign. Confirm them against the dApp UI before approving.",
+    }),
+    Text({ children: `Operation: ${metadata.operation}` }),
+    Text({ children: `Token: ${metadata.tokenSymbol}` }),
+    Text({ children: `Amount: ${metadata.amount}` }),
   ];
 
-  if (metadata) {
-    children.push(
-      Text({
-        children:
-          "⚠ The fields below are supplied by the dApp and are NOT verified by the snap. Confirm them in the dApp UI before approving.",
-      }),
-    );
-    children.push(Text({ children: `Operation: ${metadata.operation}` }));
-    children.push(Text({ children: `Token: ${metadata.tokenSymbol}` }));
-    children.push(Text({ children: `Amount: ${metadata.amount}` }));
-    if (metadata.recipient) {
-      children.push(Text({ children: `To: ${metadata.recipient}` }));
-    }
-    if (metadata.sender) {
-      children.push(Text({ children: `From: ${metadata.sender}` }));
-    }
-    children.push(Divider({}));
-    children.push(Text({ children: "Hash to sign:" }));
-    children.push(Copyable({ value: hash }));
-  } else {
-    children.push(
-      Text({
-        children:
-          "⚠ RAW HASH SIGNING — the dApp did not provide any transaction context. Only approve if you initiated this from the dApp and have verified the hash there.",
-      }),
-    );
-    children.push(Text({ children: "Hash to sign:" }));
-    children.push(Copyable({ value: hash }));
+  if (metadata.recipient) {
+    children.push(Text({ children: `To: ${metadata.recipient}` }));
   }
+  if (metadata.sender) {
+    children.push(Text({ children: `From: ${metadata.sender}` }));
+  }
+  if (details) {
+    for (const [label, value] of Object.entries(details)) {
+      children.push(Text({ children: `${label}: ${value}` }));
+    }
+  }
+  children.push(Divider({}));
+  children.push(Text({ children: "Prepared transaction hash:" }));
+  children.push(Copyable({ value: transactionHash }));
 
   return Box({ children });
 }

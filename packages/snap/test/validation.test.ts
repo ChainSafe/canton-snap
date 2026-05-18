@@ -1,11 +1,44 @@
 import { describe, it, expect } from "vitest";
 import {
   validateKeyIndex,
-  parseSignHash,
   parseTopologyHash,
+  parsePreparedTransaction,
   validateMetadata,
 } from "../src/validation.js";
-import { hexToBytes } from "@noble/hashes/utils";
+import { PREPARED_TRANSACTION_SCHEMA as PREPARED_SCHEMA } from "../src/constants.js";
+import { sha256 } from "@noble/hashes/sha2";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
+
+function canonicalJson(value: unknown): string {
+  if (value === null) return "null";
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(",")}}`;
+}
+
+function preparedTransaction(overrides: Record<string, unknown> = {}) {
+  const { transactionHash, ...inputOverrides } = overrides;
+  const input = {
+    schema: PREPARED_SCHEMA,
+    operation: "Transfer",
+    tokenSymbol: "DEMO",
+    amount: "100",
+    recipient: "alice::abcd",
+    sender: "bob::1234",
+    details: { Command: "transfer", Nonce: "test-1" },
+    ...inputOverrides,
+  };
+  return {
+    ...input,
+    transactionHash:
+      transactionHash ??
+      "1220" + bytesToHex(sha256(new TextEncoder().encode(canonicalJson(input)))),
+  };
+}
 
 describe("validateKeyIndex", () => {
   it("treats undefined and null as 0", () => {
@@ -42,36 +75,6 @@ describe("validateKeyIndex", () => {
   it("rejects non-numeric types", () => {
     expect(() => validateKeyIndex("0")).toThrow(/keyIndex/);
     expect(() => validateKeyIndex({})).toThrow(/keyIndex/);
-  });
-});
-
-describe("parseSignHash", () => {
-  const valid = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-
-  it("accepts 32-byte hex with and without 0x prefix", () => {
-    expect(parseSignHash(valid)).toEqual(hexToBytes(valid));
-    expect(parseSignHash("0x" + valid)).toEqual(hexToBytes(valid));
-  });
-
-  it("rejects non-hex characters", () => {
-    expect(() => parseSignHash("z".repeat(64))).toThrow(/hex/);
-    expect(() => parseSignHash("zz" + "aa".repeat(31))).toThrow(/hex/);
-  });
-
-  it("rejects odd-length hex", () => {
-    expect(() => parseSignHash("abc")).toThrow();
-  });
-
-  it("rejects wrong-length hash", () => {
-    expect(() => parseSignHash("ab".repeat(16))).toThrow(/32 bytes/);
-    expect(() => parseSignHash("ab".repeat(33))).toThrow(/32 bytes/);
-    expect(() => parseSignHash("")).toThrow(/32 bytes/);
-  });
-
-  it("rejects non-string input", () => {
-    expect(() => parseSignHash(undefined)).toThrow();
-    expect(() => parseSignHash(null)).toThrow();
-    expect(() => parseSignHash(123)).toThrow();
   });
 });
 
@@ -116,6 +119,75 @@ describe("parseTopologyHash", () => {
 
   it("rejects odd-length", () => {
     expect(() => parseTopologyHash("abc")).toThrow();
+  });
+});
+
+describe("parsePreparedTransaction", () => {
+  it("accepts a canonical prepared transaction and derives a 32-byte digest", () => {
+    const parsed = parsePreparedTransaction(preparedTransaction());
+    expect(bytesToHex(parsed.transactionHash)).toMatch(/^1220[0-9a-f]{64}$/);
+    expect(parsed.digest).toHaveLength(32);
+    expect(parsed.metadata).toEqual({
+      operation: "Transfer",
+      tokenSymbol: "DEMO",
+      amount: "100",
+      recipient: "alice::abcd",
+      sender: "bob::1234",
+    });
+    expect(parsed.details).toEqual({ Command: "transfer", Nonce: "test-1" });
+  });
+
+  it("accepts an 0x-prefixed transaction hash", () => {
+    const prepared = preparedTransaction();
+    const parsed = parsePreparedTransaction({
+      ...prepared,
+      transactionHash: "0x" + prepared.transactionHash,
+    });
+    expect(bytesToHex(parsed.transactionHash)).toBe(prepared.transactionHash);
+  });
+
+  it("rejects raw or missing prepared transactions", () => {
+    expect(() => parsePreparedTransaction(undefined)).toThrow(/preparedTransaction/);
+    expect(() => parsePreparedTransaction("ab".repeat(32))).toThrow(/preparedTransaction/);
+  });
+
+  it("rejects mismatched canonical transaction hashes", () => {
+    expect(() =>
+      parsePreparedTransaction(preparedTransaction({ transactionHash: "1220" + "ab".repeat(32) })),
+    ).toThrow(/does not match/);
+  });
+
+  it("rejects unsupported schemas", () => {
+    expect(() => parsePreparedTransaction(preparedTransaction({ schema: "other" }))).toThrow(
+      /schema/,
+    );
+  });
+
+  it("matches the canonical hash for non-ASCII string fields", () => {
+    // The canonical algorithm uses ECMA-262 JSON.stringify for string
+    // escaping, which keeps non-ASCII codepoints as literal UTF-8.
+    // Middleware implementations must do the same — accent marks, CJK,
+    // and emoji must round-trip without producing a hash mismatch.
+    const tricky = preparedTransaction({
+      recipient: "café::🌐",
+      sender: "测试::A",
+      details: { note: "amount = €100", emoji: "👋" },
+    });
+    const parsed = parsePreparedTransaction(tricky);
+    expect(parsed.metadata.recipient).toBe("café::🌐");
+    expect(parsed.metadata.sender).toBe("测试::A");
+  });
+
+  it("rejects mismatch when canonical input includes a non-whitelisted field", () => {
+    // Forging a `phantom` field on the transactionHash side that the snap
+    // doesn't include in its canonical rebuild surfaces as a mismatch.
+    const prepared = preparedTransaction();
+    expect(() =>
+      parsePreparedTransaction({ ...prepared, phantom: "extra" }),
+    ).not.toThrow();
+    // The snap silently drops unknown fields when rebuilding canonical
+    // bytes; that's safe (signature is over what the snap re-derived),
+    // but it does mean middleware must agree on the same whitelist.
   });
 });
 

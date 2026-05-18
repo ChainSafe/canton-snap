@@ -3,7 +3,7 @@
  */
 
 import type { OnRpcRequestHandler } from "@metamask/snaps-sdk";
-import { sha256 } from "@noble/hashes/sha256";
+import { sha256 } from "@noble/hashes/sha2";
 import { bytesToHex } from "@noble/hashes/utils";
 import { deriveCantonKey } from "./keyDerivation";
 import { compressedPubKeyToSPKIDer } from "./spki";
@@ -15,13 +15,9 @@ import {
   signTopologyDialog,
   getFingerprintDialog,
 } from "./dialogs";
-import {
-  validateKeyIndex,
-  parseSignHash,
-  parseTopologyHash,
-  validateMetadata,
-} from "./validation";
+import { validateKeyIndex, parseTopologyHash, parsePreparedTransaction } from "./validation";
 import { allowFingerprint, isFingerprintAllowed } from "./state";
+import { assertSigningOrigin } from "./origin";
 import type {
   GetPublicKeyParams,
   GetPublicKeyResponse,
@@ -85,10 +81,9 @@ async function handleGetPublicKey(
 }
 
 async function handleSignHash(origin: string, params: SignHashParams): Promise<SignResponse> {
-  const hashBytes = parseSignHash(params.hash);
+  assertSigningOrigin(origin);
+  const preparedTransaction = parsePreparedTransaction(params.preparedTransaction);
   const keyIndex = validateKeyIndex(params.keyIndex);
-  const metadata = validateMetadata(params.metadata);
-  const hashHex = bytesToHex(hashBytes);
 
   const { privateKey, fingerprint } = await deriveFull(keyIndex);
 
@@ -96,12 +91,19 @@ async function handleSignHash(origin: string, params: SignHashParams): Promise<S
     method: "snap_dialog",
     params: {
       type: "confirmation",
-      content: signTransactionDialog(origin, keyIndex, fingerprint, hashHex, metadata),
+      content: signTransactionDialog(
+        origin,
+        keyIndex,
+        fingerprint,
+        preparedTransaction.transactionHashHex,
+        preparedTransaction.metadata,
+        preparedTransaction.details,
+      ),
     },
   });
   if (!approved) throw new Error("User rejected signing");
 
-  const derSig = signHashDER(privateKey, hashBytes);
+  const derSig = signHashDER(privateKey, preparedTransaction.digest);
   return { derSignature: "0x" + bytesToHex(derSig), fingerprint };
 }
 
@@ -109,6 +111,7 @@ async function handleSignTopology(
   origin: string,
   params: SignTopologyParams,
 ): Promise<SignResponse> {
+  assertSigningOrigin(origin);
   const multiHashBytes = parseTopologyHash(params.hash);
   const keyIndex = validateKeyIndex(params.keyIndex);
   const hashHex = bytesToHex(multiHashBytes);

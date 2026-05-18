@@ -5,7 +5,7 @@
  * keys.CantonKeyPair.Fingerprint() — used for Canton party identification.
  */
 
-import { sha256 } from "@noble/hashes/sha256";
+import { sha256 } from "@noble/hashes/sha2";
 import { compressedPubKeyToSPKIDer } from "./spki";
 import { bytesToHex } from "@noble/hashes/utils";
 
@@ -53,4 +53,3 @@ export function fingerprintFromCompressedPubKey(compressedPubKey: Uint8Array): s
   const spkiDer = compressedPubKeyToSPKIDer(compressedPubKey);
   return fingerprintFromSPKI(spkiDer);
 }
-
