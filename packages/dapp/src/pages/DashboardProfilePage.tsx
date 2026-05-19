@@ -114,21 +114,6 @@ export function DashboardProfilePage({
                 <span className={styles.btnActionSub}>Transfer on Canton Network</span>
               </div>
             </button>
-            <button className={styles.btnBridge} disabled>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M2 7H14M11 4L14 7L11 10M18 13H6M9 10L6 13L9 16"
-                  stroke="var(--text-secondary)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div>
-                <span className={styles.btnBridgeTitle}>Bridge assets</span>
-                <span className={styles.btnBridgeSub}>Move between networks</span>
-              </div>
-            </button>
           </div>
         </div>
 

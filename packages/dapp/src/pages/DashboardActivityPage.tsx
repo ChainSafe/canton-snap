@@ -21,8 +21,6 @@ interface ActivityRow extends TransferLog {
   token: TokenConfig;
 }
 
-type FilterTab = "transfers" | "bridge";
-
 type FetchState =
   | { url: string; address: string; rows: ActivityRow[]; error: null }
   | { url: string; address: string; rows: null; error: string };
@@ -117,7 +115,6 @@ function SearchIcon() {
 
 export function DashboardActivityPage({ address, activeTab, onTabChange, onDisconnect }: Props) {
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
-  const [filterTab, setFilterTab] = useState<FilterTab>("transfers");
   const [search, setSearch] = useState("");
 
   const loading = fetchState?.url !== NETWORK.middlewareUrl || fetchState?.address !== address;
@@ -199,40 +196,17 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
         <div className={styles.pageHeader}>
           <div className={styles.pageTitles}>
             <h1 className={styles.pageTitle}>Activity</h1>
-            <p className={styles.pageSubtitle}>
-              Token transfers and bridge events for this wallet.
-            </p>
+            <p className={styles.pageSubtitle}>Token transfers for this wallet.</p>
           </div>
-          <label
-            className={`${styles.searchBar} ${filterTab === "bridge" ? styles.searchBarDisabled : ""}`}
-          >
+          <label className={styles.searchBar}>
             <SearchIcon />
             <input
               className={styles.searchInput}
               placeholder="Search by tx hash, address, or token…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              disabled={filterTab === "bridge"}
             />
           </label>
-        </div>
-
-        {/* Filter tabs */}
-        <div className={styles.filters}>
-          <div className={styles.filterTabs}>
-            {(["transfers", "bridge"] as FilterTab[]).map((tab) => (
-              <button
-                key={tab}
-                className={`${styles.filterTab} ${filterTab === tab ? styles.filterTabActive : ""}`}
-                onClick={() => setFilterTab(tab)}
-              >
-                {tab === "transfers" ? "Transfers" : "Bridge"}
-                {!loading && fetchState?.rows && tab === "transfers" && (
-                  <span className={styles.filterTabCount}>{filtered.length}</span>
-                )}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Column headers */}
@@ -253,19 +227,13 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
             </div>
           )}
 
-          {!loading && filterTab === "transfers" && fetchState?.error && (
+          {!loading && fetchState?.error && (
             <div className={styles.centred}>
               <p className={styles.errorText}>{fetchState.error}</p>
             </div>
           )}
 
-          {!loading && filterTab === "bridge" && (
-            <div className={styles.centred}>
-              <p className={styles.hint}>Bridge activity coming soon.</p>
-            </div>
-          )}
-
-          {!loading && filterTab === "transfers" && fetchState?.rows && filtered.length === 0 && (
+          {!loading && fetchState?.rows && filtered.length === 0 && (
             <div className={styles.centred}>
               <p className={styles.hint}>
                 {search.trim()
@@ -276,7 +244,6 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
           )}
 
           {!loading &&
-            filterTab === "transfers" &&
             fetchState?.rows &&
             filtered.length > 0 &&
             groups.map(({ key, rows }) => (
@@ -353,7 +320,7 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
               </div>
             ))}
 
-          {!loading && filterTab === "transfers" && fetchState?.rows && filtered.length > 0 && (
+          {!loading && fetchState?.rows && filtered.length > 0 && (
             <div className={styles.footer}>
               <span className={styles.footerCount}>
                 Showing {filtered.length} transfer{filtered.length !== 1 ? "s" : ""}

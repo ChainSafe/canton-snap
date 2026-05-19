@@ -28,13 +28,41 @@ type Page =
   | "registration-done"
   | "dashboard";
 
+const DASHBOARD_TABS: readonly DashboardTab[] = ["profile", "balances", "transfer", "activity"];
+
+function readTabFromHash(): DashboardTab {
+  const h = window.location.hash.replace(/^#/, "");
+  return (DASHBOARD_TABS as readonly string[]).includes(h) ? (h as DashboardTab) : "profile";
+}
+
 export default function App() {
   const [page, setPage] = useState<Page>("landing");
   const [mode, setMode] = useState<"custodial" | "noncustodial">("custodial");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
-  const [dashboardTab, setDashboardTab] = useState<DashboardTab>("profile");
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>(readTabFromHash);
+
+  // Mirror dashboardTab into the URL hash so a refresh on /#balances stays on
+  // Balances instead of snapping back to Profile. Only mutate the hash while
+  // we're actually on the dashboard — on landing/registration the hash is
+  // irrelevant and clobbering it would surprise the user.
+  useEffect(() => {
+    if (page !== "dashboard") return;
+    const want = `#${dashboardTab}`;
+    if (window.location.hash !== want) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${want}`);
+    }
+  }, [page, dashboardTab]);
+
+  // Browser back/forward across tabs.
+  useEffect(() => {
+    function onHashChange() {
+      setDashboardTab(readTabFromHash());
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const mm = useMetaMask();
   const reg = useRegistration(NETWORK.middlewareUrl);

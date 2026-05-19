@@ -68,27 +68,6 @@ function TransferIcon() {
   );
 }
 
-function BridgeIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path
-        d="M3 8H15M12 5L15 8L12 11"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M17 12H5M8 15L5 12L8 9"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function ActivityIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -102,7 +81,6 @@ const NAV = [
   { id: "profile" as DashboardTab, label: "Profile", Icon: ProfileIcon },
   { id: "balances" as DashboardTab, label: "Balances", Icon: BalancesIcon },
   { id: "transfer" as DashboardTab, label: "Transfer", Icon: TransferIcon },
-  { id: "bridge", label: "Bridge", Icon: BridgeIcon, disabled: true },
   { id: "activity" as DashboardTab, label: "Activity", Icon: ActivityIcon },
 ];
 
@@ -143,24 +121,14 @@ export function DashboardLayout({
         </div>
         <div className={styles.sidebarDivider} />
         <nav className={styles.sidebarNav}>
-          {NAV.map(({ id, label, Icon, disabled }) => {
+          {NAV.map(({ id, label, Icon }) => {
             const isActive = id === activeTab;
-            const isDisabled = disabled === true;
             return (
               <button
                 key={id}
                 className={cn(styles.navItem, isActive && styles.navItemActive)}
-                disabled={isDisabled}
                 aria-current={isActive ? "page" : undefined}
-                onClick={() => {
-                  if (
-                    id === "profile" ||
-                    id === "balances" ||
-                    id === "transfer" ||
-                    id === "activity"
-                  )
-                    onTabChange(id);
-                }}
+                onClick={() => onTabChange(id)}
               >
                 <Icon />
                 <span>{label}</span>
