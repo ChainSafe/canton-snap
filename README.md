@@ -12,7 +12,6 @@ MetaMask (encrypted vault, holds seed)
     └─ Canton Snap (sandboxed)
          ├─ Derives key via snap_getEntropy (salt = "canton-network-key-<index>")
          ├─ Hashed (SHA-256) to a secp256k1 private key, with rejection sampling
-         ├─ Verifies prepared transaction envelopes before signing
          ├─ Signs SHA-256 ECDSA DER (low-S, RFC 6979 deterministic k)
          ├─ Shows confirmation dialog (origin + keyIndex + fingerprint visible)
          └─ Returns signature to dApp
@@ -28,7 +27,7 @@ The **Canton dApp** (`packages/dapp`) is the browser frontend. It drives MetaMas
 |--------|---------|--------|
 | `canton_getPublicKey` | Export compressed pubkey + SPKI DER + fingerprint | Yes |
 | `canton_signTopology` | Sign topology hash during registration | Yes |
-| `canton_signHash` | Verify a canonical prepared transaction envelope, sign its derived digest, return DER signature | Yes |
+| `canton_signHash` | Sign a 32-byte transaction hash with optional metadata for the dialog | Yes |
 | `canton_getFingerprint` | Quick fingerprint lookup | First use per origin + key index |
 
 ## Project Structure
@@ -36,7 +35,7 @@ The **Canton dApp** (`packages/dapp`) is the browser frontend. It drives MetaMas
 ```
 canton-snap/
 ├── packages/
-│   ├── snap/                       # MetaMask Snap — verified prepared-transaction signer
+│   ├── snap/                       # MetaMask Snap — Canton transaction signer
 │   │   ├── src/
 │   │   │   ├── index.ts            # onRpcRequest handler
 │   │   │   ├── keyDerivation.ts    # snap_getEntropy key derivation
@@ -102,10 +101,6 @@ npm run watch:snap             # snap with hot-reload
 ```
 
 The port in `VITE_SNAP_ID` must match `VITE_SNAP_PORT` in `packages/snap/.env` (default `4040`).
-
-### Prepared Transaction Signing
-
-`canton_signHash` no longer accepts a raw digest. It requires a `preparedTransaction` envelope with schema `canton-snap.prepared-transaction.v1`. The Snap canonicalizes every envelope field shown in the dialog, including optional string-only `details`, verifies `transactionHash == 0x1220 + sha256(canonicalEnvelope)`, then signs `sha256(transactionHash)`. Middleware must return this envelope as `prepared_transaction`; older middleware responses without it are refused instead of blind-signed.
 
 See [`docs/testing-with-middleware.md`](docs/testing-with-middleware.md) for the full local setup guide including middleware integration.
 

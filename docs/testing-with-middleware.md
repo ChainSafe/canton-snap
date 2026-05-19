@@ -64,7 +64,7 @@ Open the dApp at **http://localhost:3000** — in the browser profile where Meta
 
 ## Architecture
 
-The snap verifies prepared transaction envelopes and signs their derived digest — it never contacts the middleware directly.
+The snap signs the 32-byte transaction hash returned by the middleware — it never contacts the middleware directly.
 
 ```
 Canton dApp (browser)
@@ -184,5 +184,5 @@ npm run test:snap     # snap integration tests only (jest + @metamask/snaps-jest
 |---|---|---|
 | `canton_getPublicKey` | Yes | Key derivation + SPKI + fingerprint |
 | `canton_signTopology` | Yes | Sign Canton topology multihash |
-| `canton_signHash` | Yes | Verify prepared transaction envelope and sign derived digest |
+| `canton_signHash` | Yes | Sign a 32-byte Canton transaction hash with optional metadata |
 | `canton_getFingerprint` | First use per origin + key index | Fingerprint lookup only |

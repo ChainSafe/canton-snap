@@ -3,8 +3,9 @@ export interface GetPublicKeyParams {
 }
 
 export interface SignHashParams {
+  hash: string;
   keyIndex?: number;
-  preparedTransaction: PreparedTransaction;
+  metadata?: SignHashMetadata;
 }
 
 export interface SignHashMetadata {
@@ -13,16 +14,6 @@ export interface SignHashMetadata {
   amount: string;
   recipient?: string;
   sender?: string;
-}
-
-export interface PreparedTransaction extends SignHashMetadata {
-  schema: "canton-snap.prepared-transaction.v1";
-  transactionHash: string;
-  details?: Record<string, string>;
-  network?: string;
-  transferId?: string;
-  expiresAt?: string;
-  partyId?: string;
 }
 
 export interface SignTopologyParams {

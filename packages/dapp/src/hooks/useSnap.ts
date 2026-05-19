@@ -15,16 +15,6 @@ export interface SignHashMetadata {
   sender?: string;
 }
 
-export interface PreparedTransaction extends SignHashMetadata {
-  schema: "canton-snap.prepared-transaction.v1";
-  transactionHash: string;
-  details?: Record<string, string>;
-  network?: string;
-  transferId?: string;
-  expiresAt?: string;
-  partyId?: string;
-}
-
 export interface SignHashResult {
   derSignature: string;
   fingerprint: string;
@@ -39,7 +29,7 @@ export interface SnapState {
   install: () => Promise<boolean>;
   getPublicKey: (keyIndex?: number) => Promise<SnapPublicKey>;
   signTopology: (hash: string) => Promise<string>;
-  signHash: (preparedTransaction: PreparedTransaction) => Promise<SignHashResult>;
+  signHash: (hash: string, metadata?: SignHashMetadata) => Promise<SignHashResult>;
 }
 
 export function useSnap(): SnapState {
@@ -88,8 +78,8 @@ export function useSnap(): SnapState {
   }, []);
 
   const signHash = useCallback(
-    async (preparedTransaction: PreparedTransaction): Promise<SignHashResult> => {
-      return invokeSnap<SignHashResult>("canton_signHash", { preparedTransaction });
+    async (hash: string, metadata?: SignHashMetadata): Promise<SignHashResult> => {
+      return invokeSnap<SignHashResult>("canton_signHash", { hash, metadata });
     },
     [],
   );

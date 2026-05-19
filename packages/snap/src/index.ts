@@ -15,7 +15,7 @@ import {
   signTopologyDialog,
   getFingerprintDialog,
 } from "./dialogs";
-import { validateKeyIndex, parseTopologyHash, parsePreparedTransaction } from "./validation";
+import { validateKeyIndex, parseTopologyHash, parseSignHash, validateMetadata } from "./validation";
 import { allowFingerprint, isFingerprintAllowed } from "./state";
 import { assertSigningOrigin } from "./origin";
 import type {
@@ -82,8 +82,10 @@ async function handleGetPublicKey(
 
 async function handleSignHash(origin: string, params: SignHashParams): Promise<SignResponse> {
   assertSigningOrigin(origin);
-  const preparedTransaction = parsePreparedTransaction(params.preparedTransaction);
+  const hashBytes = parseSignHash(params.hash);
   const keyIndex = validateKeyIndex(params.keyIndex);
+  const metadata = validateMetadata(params.metadata);
+  const hashHex = bytesToHex(hashBytes);
 
   const { privateKey, fingerprint } = await deriveFull(keyIndex);
 
@@ -91,19 +93,12 @@ async function handleSignHash(origin: string, params: SignHashParams): Promise<S
     method: "snap_dialog",
     params: {
       type: "confirmation",
-      content: signTransactionDialog(
-        origin,
-        keyIndex,
-        fingerprint,
-        preparedTransaction.transactionHashHex,
-        preparedTransaction.metadata,
-        preparedTransaction.details,
-      ),
+      content: signTransactionDialog(origin, keyIndex, fingerprint, hashHex, metadata),
     },
   });
   if (!approved) throw new Error("User rejected signing");
 
-  const derSig = signHashDER(privateKey, preparedTransaction.digest);
+  const derSig = signHashDER(privateKey, hashBytes);
   return { derSignature: "0x" + bytesToHex(derSig), fingerprint };
 }
 

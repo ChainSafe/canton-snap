@@ -6,22 +6,6 @@ export interface PrepareResult {
   transactionHash: string;
   partyId: string;
   expiresAt: string;
-  preparedTransaction: PreparedTransaction;
-}
-
-export interface PreparedTransaction {
-  schema: "canton-snap.prepared-transaction.v1";
-  transactionHash: string;
-  operation: string;
-  tokenSymbol: string;
-  amount: string;
-  details?: Record<string, string>;
-  recipient?: string;
-  sender?: string;
-  network?: string;
-  transferId?: string;
-  expiresAt?: string;
-  partyId?: string;
 }
 
 // Server-truncated party identifiers (e.g. `user_2dA…4680b7ec`). The endpoint
@@ -66,13 +50,11 @@ export async function prepareTransfer(
   });
   if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
   const data = await res.json();
-  const preparedTransaction = requirePreparedTransaction(data.prepared_transaction);
   return {
     transferId: data.transfer_id as string,
-    transactionHash: preparedTransaction.transactionHash,
+    transactionHash: data.transaction_hash as string,
     partyId: data.party_id as string,
     expiresAt: data.expires_at as string,
-    preparedTransaction,
   };
 }
 
@@ -146,13 +128,11 @@ export async function prepareAcceptTransfer(
   );
   if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
   const data = await res.json();
-  const preparedTransaction = requirePreparedTransaction(data.prepared_transaction);
   return {
     transferId: data.transfer_id as string,
-    transactionHash: preparedTransaction.transactionHash,
+    transactionHash: data.transaction_hash as string,
     partyId: data.party_id as string,
     expiresAt: data.expires_at as string,
-    preparedTransaction,
   };
 }
 
@@ -174,69 +154,4 @@ export async function executeAcceptTransfer(
     },
   );
   if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function requireString(record: Record<string, unknown>, field: string): string {
-  const value = record[field];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`Middleware returned invalid prepared_transaction.${field}`);
-  }
-  return value;
-}
-
-function optionalString(record: Record<string, unknown>, field: string): string | undefined {
-  const value = record[field];
-  if (value === undefined) return undefined;
-  if (typeof value !== "string") {
-    throw new Error(`Middleware returned invalid prepared_transaction.${field}`);
-  }
-  return value;
-}
-
-function requirePreparedTransaction(value: unknown): PreparedTransaction {
-  if (!isRecord(value)) {
-    throw new Error(
-      "Middleware did not return a secure prepared_transaction envelope; update canton-middleware before using snap signing.",
-    );
-  }
-  if (value.schema !== "canton-snap.prepared-transaction.v1") {
-    throw new Error("Middleware returned an unsupported prepared_transaction schema");
-  }
-  return {
-    schema: "canton-snap.prepared-transaction.v1",
-    transactionHash: requireString(value, "transactionHash"),
-    operation: requireString(value, "operation"),
-    tokenSymbol: requireString(value, "tokenSymbol"),
-    amount: requireString(value, "amount"),
-    details: optionalStringRecord(value, "details"),
-    recipient: optionalString(value, "recipient"),
-    sender: optionalString(value, "sender"),
-    network: optionalString(value, "network"),
-    transferId: optionalString(value, "transferId"),
-    expiresAt: optionalString(value, "expiresAt"),
-    partyId: optionalString(value, "partyId"),
-  };
-}
-
-function optionalStringRecord(
-  record: Record<string, unknown>,
-  field: string,
-): Record<string, string> | undefined {
-  const value = record[field];
-  if (value === undefined) return undefined;
-  if (!isRecord(value)) {
-    throw new Error(`Middleware returned invalid prepared_transaction.${field}`);
-  }
-  const result: Record<string, string> = {};
-  for (const [key, detail] of Object.entries(value)) {
-    if (typeof detail !== "string") {
-      throw new Error(`Middleware returned invalid prepared_transaction.${field}.${key}`);
-    }
-    result[key] = detail;
-  }
-  return result;
 }

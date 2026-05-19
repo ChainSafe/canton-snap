@@ -35,35 +35,37 @@ export function signTransactionDialog(
   keyIndex: number,
   fingerprint: string,
   transactionHash: string,
-  metadata: SignHashMetadata,
-  details?: Record<string, string>,
+  metadata?: SignHashMetadata,
 ) {
   const children: JSXElement[] = [
     Heading({ children: "Sign Canton Transaction" }),
     ...contextLines(origin, keyIndex, fingerprint),
     Divider({}),
-    Text({
-      children:
-        "These fields were used to compute the prepared transaction hash you're about to sign. Confirm them against the dApp UI before approving.",
-    }),
-    Text({ children: `Operation: ${metadata.operation}` }),
-    Text({ children: `Token: ${metadata.tokenSymbol}` }),
-    Text({ children: `Amount: ${metadata.amount}` }),
   ];
 
-  if (metadata.recipient) {
-    children.push(Text({ children: `To: ${metadata.recipient}` }));
+  if (metadata) {
+    children.push(
+      Text({
+        children:
+          "Transaction details (reported by the dApp; the snap cannot yet verify these against the hash):",
+      }),
+      Text({ children: `Operation: ${metadata.operation}` }),
+      Text({ children: `Token: ${metadata.tokenSymbol}` }),
+      Text({ children: `Amount: ${metadata.amount}` }),
+    );
+    if (metadata.recipient) children.push(Text({ children: `To: ${metadata.recipient}` }));
+    if (metadata.sender) children.push(Text({ children: `From: ${metadata.sender}` }));
+  } else {
+    children.push(
+      Text({
+        children:
+          "⚠ RAW HASH SIGNING — the dApp did not provide any transaction context. Approve only if you trust this dApp.",
+      }),
+    );
   }
-  if (metadata.sender) {
-    children.push(Text({ children: `From: ${metadata.sender}` }));
-  }
-  if (details) {
-    for (const [label, value] of Object.entries(details)) {
-      children.push(Text({ children: `${label}: ${value}` }));
-    }
-  }
+
   children.push(Divider({}));
-  children.push(Text({ children: "Prepared transaction hash:" }));
+  children.push(Text({ children: "Hash to sign:" }));
   children.push(Copyable({ value: transactionHash }));
 
   return Box({ children });
