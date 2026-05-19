@@ -118,10 +118,10 @@ export default function App() {
     setPage("landing");
   }
 
-  function handleCustodial() {
+  const handleCustodial = useCallback(() => {
     setMode("custodial");
     setPage("custodial-pending");
-  }
+  }, []);
 
   function handleNonCustodial() {
     setMode("noncustodial");
@@ -136,10 +136,9 @@ export default function App() {
     if (NON_CUSTODIAL_ENABLED) {
       setPage("registration-choice");
     } else {
-      setMode("custodial");
-      setPage("custodial-pending");
+      handleCustodial();
     }
-  }, []);
+  }, [handleCustodial]);
 
   const address = mm.address ?? "";
   const snapInstalled = reg.snap.installed || reg.snap.alreadyInstalled;

@@ -130,38 +130,40 @@ export function DashboardProfilePage({
               <p className={styles.connMeta}>{shortenAddress(address)}</p>
             </div>
 
-            <div>
-              <p className={styles.sectionLabel}>CANTON SNAP</p>
-              <div className={styles.connStatus}>
-                <span
-                  className={cn(
-                    styles.connDot,
-                    snapInstalled ? styles.connDotGreen : styles.connDotAmber,
-                  )}
-                />
-                <span className={styles.connLabel}>
-                  {snapInstalled
-                    ? `Installed${snapVersion ? ` · v${snapVersion}` : ""}`
-                    : "Not installed"}
-                </span>
+            {isNonCustodial && (
+              <div>
+                <p className={styles.sectionLabel}>CANTON SNAP</p>
+                <div className={styles.connStatus}>
+                  <span
+                    className={cn(
+                      styles.connDot,
+                      snapInstalled ? styles.connDotGreen : styles.connDotAmber,
+                    )}
+                  />
+                  <span className={styles.connLabel}>
+                    {snapInstalled
+                      ? `Installed${snapVersion ? ` · v${snapVersion}` : ""}`
+                      : "Not installed"}
+                  </span>
+                </div>
+                {!snapInstalled && (
+                  <button
+                    className={styles.reinstallBtn}
+                    disabled={reinstalling}
+                    onClick={async () => {
+                      setReinstalling(true);
+                      try {
+                        await onInstallSnap();
+                      } finally {
+                        setReinstalling(false);
+                      }
+                    }}
+                  >
+                    {reinstalling ? "Installing…" : "Re-install snap →"}
+                  </button>
+                )}
               </div>
-              {!snapInstalled && isNonCustodial && (
-                <button
-                  className={styles.reinstallBtn}
-                  disabled={reinstalling}
-                  onClick={async () => {
-                    setReinstalling(true);
-                    try {
-                      await onInstallSnap();
-                    } finally {
-                      setReinstalling(false);
-                    }
-                  }}
-                >
-                  {reinstalling ? "Installing…" : "Re-install snap →"}
-                </button>
-              )}
-            </div>
+            )}
 
             <div>
               <p className={styles.sectionLabel}>MIDDLEWARE</p>
