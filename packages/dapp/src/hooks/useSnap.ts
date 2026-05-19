@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { installSnap, getInstalledSnap, invokeSnap } from "../lib/ethereum";
+import { NON_CUSTODIAL_ENABLED } from "../lib/features";
 
 export interface SnapPublicKey {
   compressedPubKey: string;
@@ -39,8 +40,13 @@ export function useSnap(): SnapState {
   const [version, setVersion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if snap was installed from a previous session
+  // Check if snap was installed from a previous session. Skip entirely when
+  // the non-custodial flow is disabled: standard MetaMask rejects
+  // wallet_getSnaps with RPC 4100, which is harmless (we catch it) but
+  // pollutes the console and confuses MetaMask's stream middleware. Custodial
+  // builds never need to know about the snap.
   useEffect(() => {
+    if (!NON_CUSTODIAL_ENABLED) return;
     getInstalledSnap().then((snap) => {
       if (snap) {
         setInstalled(true);

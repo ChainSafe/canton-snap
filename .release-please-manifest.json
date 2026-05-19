@@ -1,3 +1,4 @@
 {
-  "packages/snap": "0.2.0"
+  "packages/snap": "0.2.0",
+  "packages/dapp": "0.1.0"
 }

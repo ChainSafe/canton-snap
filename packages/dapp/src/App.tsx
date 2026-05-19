@@ -3,6 +3,7 @@ import { useMetaMask } from "./hooks/useMetaMask";
 import { useRegistration } from "./hooks/useRegistration";
 import { useAutoNetworkSwitch } from "./hooks/useAutoNetworkSwitch";
 import { NETWORK } from "./lib/config";
+import { NON_CUSTODIAL_ENABLED } from "./lib/features";
 import { personalSign } from "./lib/ethereum";
 import { getUser, SessionExpiredError, type UserProfile } from "./lib/middleware";
 import { getSession, storeSession, clearSession, clearAllSessions } from "./lib/session";
@@ -27,13 +28,45 @@ type Page =
   | "registration-done"
   | "dashboard";
 
+const DASHBOARD_TABS: readonly DashboardTab[] = ["profile", "balances", "transfer", "activity"];
+
+function readTabFromHash(): DashboardTab {
+  const h = window.location.hash.replace(/^#/, "");
+  return (DASHBOARD_TABS as readonly string[]).includes(h) ? (h as DashboardTab) : "profile";
+}
+
 export default function App() {
   const [page, setPage] = useState<Page>("landing");
   const [mode, setMode] = useState<"custodial" | "noncustodial">("custodial");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
-  const [dashboardTab, setDashboardTab] = useState<DashboardTab>("profile");
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>(readTabFromHash);
+
+  // Mirror dashboardTab into the URL hash so a refresh on /#balances stays on
+  // Balances instead of snapping back to Profile. Only mutate the hash while
+  // we're actually on the dashboard — on landing/registration the hash is
+  // irrelevant and clobbering it would surprise the user.
+  useEffect(() => {
+    if (page !== "dashboard") return;
+    const want = `#${dashboardTab}`;
+    if (window.location.hash !== want) {
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}${want}`,
+      );
+    }
+  }, [page, dashboardTab]);
+
+  // Browser back/forward across tabs.
+  useEffect(() => {
+    function onHashChange() {
+      setDashboardTab(readTabFromHash());
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const mm = useMetaMask();
   const reg = useRegistration(NETWORK.middlewareUrl);
@@ -89,15 +122,27 @@ export default function App() {
     setPage("landing");
   }
 
-  function handleCustodial() {
+  const handleCustodial = useCallback(() => {
     setMode("custodial");
     setPage("custodial-pending");
-  }
+  }, []);
 
   function handleNonCustodial() {
     setMode("noncustodial");
     setPage(reg.snap.alreadyInstalled ? "noncustodial-sign" : "noncustodial-install");
   }
+
+  // v1.0 ships custodial-only: skip the registration-choice screen and go
+  // straight to the custodial flow. The non-custodial pages stay in the
+  // bundle behind NON_CUSTODIAL_ENABLED so a build with the flag set
+  // re-enables the full chooser without code changes.
+  const goRegister = useCallback(() => {
+    if (NON_CUSTODIAL_ENABLED) {
+      setPage("registration-choice");
+    } else {
+      handleCustodial();
+    }
+  }, [handleCustodial]);
 
   const address = mm.address ?? "";
   const snapInstalled = reg.snap.installed || reg.snap.alreadyInstalled;
@@ -158,7 +203,7 @@ export default function App() {
               setProfile(existing);
               setPage("dashboard");
             } else {
-              setPage("registration-choice");
+              goRegister();
             }
           } catch (e) {
             if (e instanceof SessionExpiredError) {
@@ -179,7 +224,7 @@ export default function App() {
                   setProfile(existing);
                   setPage("dashboard");
                 } else {
-                  setPage("registration-choice");
+                  goRegister();
                 }
               } catch (e2) {
                 setConnectError((e2 as Error).message);
@@ -193,7 +238,7 @@ export default function App() {
     );
   }
 
-  if (page === "registration-choice") {
+  if (page === "registration-choice" && NON_CUSTODIAL_ENABLED) {
     return (
       <RegistrationChoicePage
         address={address}
@@ -210,14 +255,14 @@ export default function App() {
         address={address}
         pending={reg.pending}
         error={reg.error}
-        onBack={() => setPage("registration-choice")}
+        onBack={NON_CUSTODIAL_ENABLED ? () => setPage("registration-choice") : undefined}
         onRegister={handleRegisterCustodial}
         onDisconnect={handleDisconnect}
       />
     );
   }
 
-  if (page === "noncustodial-install") {
+  if (page === "noncustodial-install" && NON_CUSTODIAL_ENABLED) {
     return (
       <NonCustodialRegistrationPage
         address={address}
@@ -238,7 +283,7 @@ export default function App() {
     );
   }
 
-  if (page === "noncustodial-sign") {
+  if (page === "noncustodial-sign" && NON_CUSTODIAL_ENABLED) {
     return (
       <NonCustodialRegistrationPage
         address={address}

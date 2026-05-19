@@ -10,7 +10,9 @@ interface Props {
   address: string;
   pending: boolean;
   error: string | null;
-  onBack: () => void;
+  // Optional: when omitted (custodial-only build), the back link is hidden
+  // and the user can only cancel via disconnect.
+  onBack?: () => void;
   onRegister: () => void;
   onDisconnect: () => void;
 }
@@ -51,11 +53,13 @@ export function CustodialRegistrationPage({
       <AmbientOrb opacity={0.14} size={840} y="62%" />
       <TopBar address={address} onDisconnect={onDisconnect} />
 
-      <div className={styles.backBar}>
-        <button className="back-link" onClick={onBack}>
-          ← Back to registration
-        </button>
-      </div>
+      {onBack && (
+        <div className={styles.backBar}>
+          <button className="back-link" onClick={onBack}>
+            ← Back to registration
+          </button>
+        </div>
+      )}
 
       <main className={styles.main}>
         <div className={cn("card", styles.card)}>
@@ -96,10 +100,15 @@ export function CustodialRegistrationPage({
 
           {!error && (
             <p className={styles.waitingText}>
-              Waiting for signature…{" "}
-              <Button variant="ghost" onClick={onBack}>
-                Cancel
-              </Button>
+              Waiting for signature…
+              {onBack && (
+                <>
+                  {" "}
+                  <Button variant="ghost" onClick={onBack}>
+                    Cancel
+                  </Button>
+                </>
+              )}
             </p>
           )}
         </div>

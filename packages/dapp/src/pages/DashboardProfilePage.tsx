@@ -114,21 +114,6 @@ export function DashboardProfilePage({
                 <span className={styles.btnActionSub}>Transfer on Canton Network</span>
               </div>
             </button>
-            <button className={styles.btnBridge} disabled>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M2 7H14M11 4L14 7L11 10M18 13H6M9 10L6 13L9 16"
-                  stroke="var(--text-secondary)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div>
-                <span className={styles.btnBridgeTitle}>Bridge assets</span>
-                <span className={styles.btnBridgeSub}>Move between networks</span>
-              </div>
-            </button>
           </div>
         </div>
 
@@ -145,38 +130,40 @@ export function DashboardProfilePage({
               <p className={styles.connMeta}>{shortenAddress(address)}</p>
             </div>
 
-            <div>
-              <p className={styles.sectionLabel}>CANTON SNAP</p>
-              <div className={styles.connStatus}>
-                <span
-                  className={cn(
-                    styles.connDot,
-                    snapInstalled ? styles.connDotGreen : styles.connDotAmber,
-                  )}
-                />
-                <span className={styles.connLabel}>
-                  {snapInstalled
-                    ? `Installed${snapVersion ? ` · v${snapVersion}` : ""}`
-                    : "Not installed"}
-                </span>
+            {isNonCustodial && (
+              <div>
+                <p className={styles.sectionLabel}>CANTON SNAP</p>
+                <div className={styles.connStatus}>
+                  <span
+                    className={cn(
+                      styles.connDot,
+                      snapInstalled ? styles.connDotGreen : styles.connDotAmber,
+                    )}
+                  />
+                  <span className={styles.connLabel}>
+                    {snapInstalled
+                      ? `Installed${snapVersion ? ` · v${snapVersion}` : ""}`
+                      : "Not installed"}
+                  </span>
+                </div>
+                {!snapInstalled && (
+                  <button
+                    className={styles.reinstallBtn}
+                    disabled={reinstalling}
+                    onClick={async () => {
+                      setReinstalling(true);
+                      try {
+                        await onInstallSnap();
+                      } finally {
+                        setReinstalling(false);
+                      }
+                    }}
+                  >
+                    {reinstalling ? "Installing…" : "Re-install snap →"}
+                  </button>
+                )}
               </div>
-              {!snapInstalled && isNonCustodial && (
-                <button
-                  className={styles.reinstallBtn}
-                  disabled={reinstalling}
-                  onClick={async () => {
-                    setReinstalling(true);
-                    try {
-                      await onInstallSnap();
-                    } finally {
-                      setReinstalling(false);
-                    }
-                  }}
-                >
-                  {reinstalling ? "Installing…" : "Re-install snap →"}
-                </button>
-              )}
-            </div>
+            )}
 
             <div>
               <p className={styles.sectionLabel}>MIDDLEWARE</p>

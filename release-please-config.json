@@ -19,6 +19,12 @@
           "jsonpath": "$.version"
         }
       ]
+    },
+    "packages/dapp": {
+      "component": "dapp",
+      "package-name": "@chainsafe/canton-dapp",
+      "changelog-path": "CHANGELOG.md",
+      "include-paths": ["packages/dapp"]
     }
   },
   "changelog-sections": [
