@@ -10,15 +10,14 @@ import {
   formatTokenAmount,
   encodeTransfer,
   parseTokenAmount,
-  ethChainId,
 } from "../lib/ethrpc";
 import { prepareTransfer, executeTransfer, type PrepareResult } from "../lib/transfer";
 import {
-  addEthChain,
   sendEthTransaction,
   shortenAddress,
   toChecksumAddress,
 } from "../lib/ethereum";
+import { ensureChainAdded } from "../lib/network";
 import { TOKEN_COLORS } from "../lib/tokens";
 import { useSnap } from "../hooks/useSnap";
 import { cn } from "../lib/cn";
@@ -391,15 +390,7 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
     setPending(true);
     setError(null);
     try {
-      const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
-      const chainId = await ethChainId(rpcUrl);
-
-      await addEthChain({
-        chainId,
-        chainName: NETWORK.name,
-        rpcUrls: [rpcUrl],
-        nativeCurrency: NETWORK.nativeCurrency,
-      });
+      await ensureChainAdded(NETWORK);
 
       const amountBigInt = parseTokenAmount(amount, selectedToken.decimals);
       const data = encodeTransfer(recipient, amountBigInt);
