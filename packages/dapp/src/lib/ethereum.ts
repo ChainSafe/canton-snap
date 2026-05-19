@@ -1,6 +1,10 @@
 import { getAddress } from "ethers";
 
-export const SNAP_ID = `local:http://localhost:${import.meta.env.VITE_SNAP_PORT ?? 8080}`;
+const PUBLISHED_SNAP_ID = "npm:@chainsafe/canton-snap";
+const PUBLISHED_SNAP_VERSION = "^0.2.0";
+
+export const SNAP_ID = import.meta.env.VITE_SNAP_ID ?? PUBLISHED_SNAP_ID;
+const SNAP_VERSION = SNAP_ID.startsWith("npm:") ? PUBLISHED_SNAP_VERSION : undefined;
 
 declare global {
   interface Window {
@@ -42,7 +46,7 @@ export async function personalSign(message: string, address: string): Promise<st
 export async function installSnap(): Promise<void> {
   await getEthereum().request({
     method: "wallet_requestSnaps",
-    params: { [SNAP_ID]: {} },
+    params: { [SNAP_ID]: SNAP_VERSION ? { version: SNAP_VERSION } : {} },
   });
 }
 

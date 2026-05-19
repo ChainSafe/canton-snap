@@ -67,28 +67,37 @@ canton-snap/
 
 ## Development
 
-**Requires [MetaMask Flask](https://metamask.io/flask/)** — local snaps are rejected by the standard MetaMask extension. Flask is needed until the snap is published to npm. Run it in a dedicated browser profile where the standard MetaMask extension is not installed to avoid `window.ethereum` conflicts.
+The dApp can run against either the published snap on npm (default) or a locally served snap. The mode is controlled by `VITE_SNAP_ID` in `packages/dapp/.env`.
+
+### Mode A — published snap (default, standard MetaMask)
+
+Leave `VITE_SNAP_ID` unset. The dApp uses `npm:@chainsafe/canton-snap` and works with the standard MetaMask extension.
 
 ```bash
 npm install
+cp packages/dapp/.env.example packages/dapp/.env
+npm run dev:dapp
+```
 
-# Copy env templates for each package
+### Mode B — local snap (MetaMask Flask)
+
+Set `VITE_SNAP_ID=local:http://localhost:4040` in `packages/dapp/.env`. Requires [MetaMask Flask](https://metamask.io/flask/) in a dedicated browser profile (standard MetaMask rejects local snaps, and both extensions injecting `window.ethereum` will conflict).
+
+```bash
+npm install
 cp packages/snap/.env.example packages/snap/.env
 cp packages/dapp/.env.example packages/dapp/.env
+# in packages/dapp/.env, uncomment VITE_SNAP_ID=local:http://localhost:4040
 
-# Build snap + dApp
 npm run build
-
-# Start both servers (snap on 4040, dApp on 3000)
-npm run serve
-
-# Or individually:
-npm run serve:snap             # snap dev server
-npm run dev:dapp               # dApp Vite dev server
+npm run serve                  # snap on 4040, dApp on 3000
+# or individually:
+npm run serve:snap
+npm run dev:dapp
 npm run watch:snap             # snap with hot-reload
 ```
 
-`VITE_SNAP_PORT` must match in both `.env` files (default: `4040`).
+The port in `VITE_SNAP_ID` must match `VITE_SNAP_PORT` in `packages/snap/.env` (default `4040`).
 
 See [`docs/testing-with-middleware.md`](docs/testing-with-middleware.md) for the full local setup guide including middleware integration.
 
