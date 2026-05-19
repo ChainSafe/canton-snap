@@ -3,6 +3,7 @@ import { useMetaMask } from "./hooks/useMetaMask";
 import { useRegistration } from "./hooks/useRegistration";
 import { useAutoNetworkSwitch } from "./hooks/useAutoNetworkSwitch";
 import { NETWORK } from "./lib/config";
+import { NON_CUSTODIAL_ENABLED } from "./lib/features";
 import { personalSign } from "./lib/ethereum";
 import { getUser, SessionExpiredError, type UserProfile } from "./lib/middleware";
 import { getSession, storeSession, clearSession, clearAllSessions } from "./lib/session";
@@ -99,6 +100,19 @@ export default function App() {
     setPage(reg.snap.alreadyInstalled ? "noncustodial-sign" : "noncustodial-install");
   }
 
+  // v1.0 ships custodial-only: skip the registration-choice screen and go
+  // straight to the custodial flow. The non-custodial pages stay in the
+  // bundle behind NON_CUSTODIAL_ENABLED so a build with the flag set
+  // re-enables the full chooser without code changes.
+  const goRegister = useCallback(() => {
+    if (NON_CUSTODIAL_ENABLED) {
+      setPage("registration-choice");
+    } else {
+      setMode("custodial");
+      setPage("custodial-pending");
+    }
+  }, []);
+
   const address = mm.address ?? "";
   const snapInstalled = reg.snap.installed || reg.snap.alreadyInstalled;
   const snapVersion = reg.snap.version;
@@ -158,7 +172,7 @@ export default function App() {
               setProfile(existing);
               setPage("dashboard");
             } else {
-              setPage("registration-choice");
+              goRegister();
             }
           } catch (e) {
             if (e instanceof SessionExpiredError) {
@@ -179,7 +193,7 @@ export default function App() {
                   setProfile(existing);
                   setPage("dashboard");
                 } else {
-                  setPage("registration-choice");
+                  goRegister();
                 }
               } catch (e2) {
                 setConnectError((e2 as Error).message);
@@ -193,7 +207,7 @@ export default function App() {
     );
   }
 
-  if (page === "registration-choice") {
+  if (page === "registration-choice" && NON_CUSTODIAL_ENABLED) {
     return (
       <RegistrationChoicePage
         address={address}
@@ -210,14 +224,14 @@ export default function App() {
         address={address}
         pending={reg.pending}
         error={reg.error}
-        onBack={() => setPage("registration-choice")}
+        onBack={NON_CUSTODIAL_ENABLED ? () => setPage("registration-choice") : undefined}
         onRegister={handleRegisterCustodial}
         onDisconnect={handleDisconnect}
       />
     );
   }
 
-  if (page === "noncustodial-install") {
+  if (page === "noncustodial-install" && NON_CUSTODIAL_ENABLED) {
     return (
       <NonCustodialRegistrationPage
         address={address}
@@ -238,7 +252,7 @@ export default function App() {
     );
   }
 
-  if (page === "noncustodial-sign") {
+  if (page === "noncustodial-sign" && NON_CUSTODIAL_ENABLED) {
     return (
       <NonCustodialRegistrationPage
         address={address}
