@@ -87,6 +87,11 @@ async function handleSignHash(origin: string, params: SignHashParams): Promise<S
   const metadata = validateMetadata(params.metadata);
   const hashHex = bytesToHex(hashBytes);
 
+  // Canton's EC_DSA_SHA_256 algorithm: sign sha256(hash), not the hash bytes
+  // directly. Matches CantonKeyPair.SignDER() in the Go SDK, which always
+  // sha256-hashes its input before ECDSA-signing.
+  const digest = sha256(hashBytes);
+
   const { privateKey, fingerprint } = await deriveFull(keyIndex);
 
   const approved = await snap.request({
@@ -98,7 +103,7 @@ async function handleSignHash(origin: string, params: SignHashParams): Promise<S
   });
   if (!approved) throw new Error("User rejected signing");
 
-  const derSig = signHashDER(privateKey, hashBytes);
+  const derSig = signHashDER(privateKey, digest);
   return { derSignature: "0x" + bytesToHex(derSig), fingerprint };
 }
 
