@@ -358,7 +358,7 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
     try {
       setSignPhase("signing");
       const { derSignature, fingerprint } = await snap.signHash(prepared.transactionHash, {
-        operation: "transfer",
+        operation: "Transfer",
         tokenSymbol: selectedToken.symbol,
         amount,
         recipient,

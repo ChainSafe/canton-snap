@@ -8,7 +8,7 @@
     "directory": "packages/snap"
   },
   "source": {
-    "shasum": "HIDNkgcijyLhBFbs5jUjPBMgHEwr1/APbqB5KTpZPq0=",
+    "shasum": "FKijExPsqFhOTSZYWXzPGhNp2QqB07aJofVrN0lOvIQ=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",

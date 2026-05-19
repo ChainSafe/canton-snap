@@ -259,9 +259,10 @@ export function DashboardBalancesPage({
         );
         setAcceptState((s) => ({ ...s, [cid]: "signing" }));
         const { derSignature, fingerprint } = await snap.signHash(prep.transactionHash, {
-          operation: "accept",
+          operation: "Accept transfer",
           tokenSymbol: offer.symbol ?? offer.instrumentId,
           amount: offer.amount,
+          recipient: offer.receiverPartyId,
           sender: offer.senderPartyId,
         });
         setAcceptState((s) => ({ ...s, [cid]: "executing" }));

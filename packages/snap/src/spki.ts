@@ -40,6 +40,12 @@ export function compressedPubKeyToSPKIDer(compressedPubKey: Uint8Array): Uint8Ar
   if (compressedPubKey.length !== 33) {
     throw new Error(`expected 33-byte compressed public key, got ${compressedPubKey.length}`);
   }
+  const prefix = compressedPubKey[0];
+  if (prefix !== 0x02 && prefix !== 0x03) {
+    throw new Error(
+      `compressed public key must start with 0x02 or 0x03, got 0x${prefix.toString(16).padStart(2, "0")}`,
+    );
+  }
 
   // Decompress to uncompressed form (65 bytes: 0x04 || x || y)
   const point = secp256k1.ProjectivePoint.fromHex(compressedPubKey);

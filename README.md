@@ -10,11 +10,14 @@ Derives secp256k1 keys from the user's MetaMask seed phrase and signs Canton tra
 MetaMask (encrypted vault, holds seed)
     │
     └─ Canton Snap (sandboxed)
-         ├─ Derives key at m/44'/60'/1'/0/0
-         ├─ Signs with SHA-256 + ECDSA + DER
-         ├─ Shows confirmation dialog
+         ├─ Derives key via snap_getEntropy (salt = "canton-network-key-<index>")
+         ├─ Hashed (SHA-256) to a secp256k1 private key, with rejection sampling
+         ├─ Signs SHA-256 ECDSA DER (low-S, RFC 6979 deterministic k)
+         ├─ Shows confirmation dialog (origin + keyIndex + fingerprint visible)
          └─ Returns signature to dApp
 ```
+
+Keys are **scoped to the snap ID**, not derived from a BIP-44 path. The same MetaMask seed will produce a different Canton identity under `local:http://localhost:4040` vs `npm:@chainsafe/canton-snap`. The published snap is the recoverable identity; local dev keys are independent. There is no migration path between snap IDs — re-register the new identity with Canton if the snap ID changes.
 
 The **Canton dApp** (`packages/dapp`) is the browser frontend. It drives MetaMask + the snap for key operations, and talks to the Canton middleware REST API for registration and transaction flows.
 
@@ -24,18 +27,18 @@ The **Canton dApp** (`packages/dapp`) is the browser frontend. It drives MetaMas
 |--------|---------|--------|
 | `canton_getPublicKey` | Export compressed pubkey + SPKI DER + fingerprint | Yes |
 | `canton_signTopology` | Sign topology hash during registration | Yes |
-| `canton_signHash` | Sign a 32-byte hash, return DER signature | Yes |
-| `canton_getFingerprint` | Quick fingerprint lookup | No |
+| `canton_signHash` | Sign a 32-byte transaction hash with optional metadata for the dialog | Yes |
+| `canton_getFingerprint` | Quick fingerprint lookup | First use per origin + key index |
 
 ## Project Structure
 
 ```
 canton-snap/
 ├── packages/
-│   ├── snap/                       # MetaMask Snap — pure signing oracle
+│   ├── snap/                       # MetaMask Snap — Canton transaction signer
 │   │   ├── src/
 │   │   │   ├── index.ts            # onRpcRequest handler
-│   │   │   ├── keyDerivation.ts    # BIP-44 key derivation from MetaMask seed
+│   │   │   ├── keyDerivation.ts    # snap_getEntropy key derivation
 │   │   │   ├── dialogs.ts          # Confirmation dialog builders
 │   │   │   ├── types.ts            # RPC param/response interfaces
 │   │   │   ├── spki.ts             # Compressed pubkey → SPKI DER

@@ -88,6 +88,20 @@ describe("edge cases", () => {
     expect(() => compressedPubKeyToSPKIDer(new Uint8Array(32))).toThrow();
   });
 
+  it("rejects compressed key with invalid prefix", () => {
+    const bad = new Uint8Array(33);
+    bad[0] = 0x04; // 0x04 is the uncompressed prefix, not valid for 33-byte keys
+    expect(() => compressedPubKeyToSPKIDer(bad)).toThrow(/0x02 or 0x03/);
+  });
+
+  it("accepts both valid compressed prefixes", () => {
+    // 33 bytes starting with 0x02 or 0x03 may still fail at the curve check,
+    // but the prefix gate itself must pass. Use a real key from the vectors.
+    const real = hexToBytes(vectors.vectors[0].compressed_public_key);
+    expect(real[0] === 0x02 || real[0] === 0x03).toBe(true);
+    expect(() => compressedPubKeyToSPKIDer(real)).not.toThrow();
+  });
+
   it("rejects wrong-length private key", () => {
     expect(() => signHashDER(new Uint8Array(31), new Uint8Array(32))).toThrow();
   });

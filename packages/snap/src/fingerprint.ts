@@ -5,8 +5,9 @@
  * keys.CantonKeyPair.Fingerprint() — used for Canton party identification.
  */
 
-import { sha256 } from "@noble/hashes/sha256";
+import { sha256 } from "@noble/hashes/sha2";
 import { compressedPubKeyToSPKIDer } from "./spki";
+import { bytesToHex } from "@noble/hashes/utils";
 
 /**
  * Compute the Canton key fingerprint from SPKI DER bytes.
@@ -51,10 +52,4 @@ export function fingerprintFromSPKI(spkiDer: Uint8Array): string {
 export function fingerprintFromCompressedPubKey(compressedPubKey: Uint8Array): string {
   const spkiDer = compressedPubKeyToSPKIDer(compressedPubKey);
   return fingerprintFromSPKI(spkiDer);
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
