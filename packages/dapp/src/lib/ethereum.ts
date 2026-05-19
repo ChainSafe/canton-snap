@@ -78,6 +78,13 @@ export async function addEthChain(params: {
   await getEthereum().request({ method: "wallet_addEthereumChain", params: [params] });
 }
 
+export async function switchEthChain(chainId: string): Promise<void> {
+  await getEthereum().request({
+    method: "wallet_switchEthereumChain",
+    params: [{ chainId }],
+  });
+}
+
 export async function watchAsset(params: {
   address: string;
   symbol: string;

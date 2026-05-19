@@ -108,12 +108,6 @@
   background: var(--teal-gradient);
 }
 
-.btnBridge {
-  composes: btnAction;
-  background: #232640;
-  border: 1px solid var(--border-muted) !important;
-}
-
 .btnActionTitle {
   font-size: 14px;
   font-weight: 700;
@@ -124,20 +118,6 @@
 .btnActionSub {
   font-size: 11px;
   color: rgba(10, 11, 20, 0.65);
-  display: block;
-  margin-top: 2px;
-}
-
-.btnBridgeTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: block;
-}
-
-.btnBridgeSub {
-  font-size: 11px;
-  color: var(--text-secondary);
   display: block;
   margin-top: 2px;
 }
