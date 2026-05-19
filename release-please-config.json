@@ -12,6 +12,7 @@
       "package-name": "@chainsafe/canton-snap",
       "changelog-path": "CHANGELOG.md",
       "include-paths": ["packages/snap"],
+      "release-as": "0.2.1",
       "extra-files": [
         {
           "type": "json",
