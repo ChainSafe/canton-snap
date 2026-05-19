@@ -10,5 +10,4 @@
  * profile.keyMode, not this flag.
  */
 
-export const NON_CUSTODIAL_ENABLED =
-  import.meta.env.VITE_ENABLE_NON_CUSTODIAL === "true";
+export const NON_CUSTODIAL_ENABLED = import.meta.env.VITE_ENABLE_NON_CUSTODIAL === "true";

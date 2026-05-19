@@ -51,7 +51,11 @@ export default function App() {
     if (page !== "dashboard") return;
     const want = `#${dashboardTab}`;
     if (window.location.hash !== want) {
-      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${want}`);
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}${want}`,
+      );
     }
   }, [page, dashboardTab]);
 

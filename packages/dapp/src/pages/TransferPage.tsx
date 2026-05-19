@@ -12,11 +12,7 @@ import {
   parseTokenAmount,
 } from "../lib/ethrpc";
 import { prepareTransfer, executeTransfer, type PrepareResult } from "../lib/transfer";
-import {
-  sendEthTransaction,
-  shortenAddress,
-  toChecksumAddress,
-} from "../lib/ethereum";
+import { sendEthTransaction, shortenAddress, toChecksumAddress } from "../lib/ethereum";
 import { ensureChainAdded } from "../lib/network";
 import { TOKEN_COLORS } from "../lib/tokens";
 import { useSnap } from "../hooks/useSnap";
