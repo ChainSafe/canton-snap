@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'dapp-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. dapp-v1.1.0)'
+        required: true
 
 concurrency:
   group: dapp-docker-${{ github.ref }}
@@ -18,6 +23,11 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
