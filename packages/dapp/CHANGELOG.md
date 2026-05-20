@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.0.0...dapp-v1.1.0) (2026-05-20)
+
+
+### Features
+
+* **dapp:** add Dockerfile, nginx config, and CI pipeline for Kubernetes deployment ([#57](https://github.com/ChainSafe/canton-snap/issues/57)) ([9a16f6e](https://github.com/ChainSafe/canton-snap/commit/9a16f6ea3d0fde135bacb2b86ed557b6ae64e3fa))
+
 ## [1.0.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v0.1.0...dapp-v1.0.0) (2026-05-19)
 
 
