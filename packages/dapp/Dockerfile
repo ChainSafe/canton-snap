@@ -10,15 +10,19 @@ RUN npm ci
 # Copy dapp source (snap source not needed for dapp build)
 COPY packages/dapp packages/dapp
 
-# Write placeholder env values — replaced at container startup via entrypoint.sh
+# Write placeholder env values — replaced at container startup via docker-entrypoint.d
 RUN printf 'VITE_MIDDLEWARE_URL=__VITE_MIDDLEWARE_URL__\nVITE_NETWORK=__VITE_NETWORK__\n' > .env
 
 RUN npm run build:dapp
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
-COPY --from=builder /app/packages/dapp/dist /usr/share/nginx/html
+# Remove the root-owned html dir so the COPY below creates a nginx-owned one,
+# allowing sed -i (which needs to create temp files in the directory) to succeed.
+USER root
+RUN rm -rf /usr/share/nginx/html
+COPY --chown=nginx:nginx --from=builder /app/packages/dapp/dist /usr/share/nginx/html
+USER nginx
 COPY packages/dapp/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --chmod=0755 packages/dapp/docker-entrypoint.sh /docker-entrypoint.sh
+COPY --chmod=0755 packages/dapp/docker-entrypoint.sh /docker-entrypoint.d/40-env-injection.sh
 
 EXPOSE 8080
-ENTRYPOINT ["/docker-entrypoint.sh"]

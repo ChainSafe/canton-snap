@@ -24,5 +24,3 @@ find /usr/share/nginx/html \( -name '*.js' -o -name '*.html' -o -name '*.css' \)
     -e "s|__VITE_MIDDLEWARE_URL__|${ESC_URL}|g" \
     -e "s|__VITE_NETWORK__|${ESC_NETWORK}|g" \
   {} +
-
-exec nginx -g 'daemon off;'
