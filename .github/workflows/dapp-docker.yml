@@ -36,14 +36,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute image version
+        id: version
+        env:
+          INPUT: ${{ github.event.inputs.tag }}
+          REF: ${{ github.ref_name }}
+        run: |
+          if [ -n "$INPUT" ]; then
+            VERSION="${INPUT#dapp-v}"
+          elif [[ "$REF" == dapp-v* ]]; then
+            VERSION="${REF#dapp-v}"
+          else
+            VERSION=""
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "$VERSION" != *-* ]]; then
+            echo "is_latest=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_latest=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/chainsafe/canton-dapp
           tags: |
-            type=match,pattern=dapp-v(.*),group=1
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
+            type=raw,value=latest,enable=${{ steps.version.outputs.is_latest == 'true' && steps.version.outputs.version != '' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
