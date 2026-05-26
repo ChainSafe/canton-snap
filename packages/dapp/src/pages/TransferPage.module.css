@@ -673,6 +673,16 @@
   box-shadow: 0 0 48px rgba(0, 212, 164, 0.28);
 }
 
+.checkCirclePending {
+  background: linear-gradient(135deg, #ffd47a 0%, var(--amber) 100%);
+  box-shadow: 0 0 48px rgba(255, 184, 77, 0.28);
+}
+
+.checkCircleFailed {
+  background: linear-gradient(135deg, #ff8a8a 0%, var(--red) 100%);
+  box-shadow: 0 0 48px rgba(255, 107, 107, 0.28);
+}
+
 .doneTitle {
   font-size: 26px;
   font-weight: 700;

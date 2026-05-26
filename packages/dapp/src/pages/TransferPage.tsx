@@ -9,15 +9,20 @@ import {
   getTokenBalance,
   formatTokenAmount,
   encodeTransfer,
+  getTransactionReceipt,
   parseTokenAmount,
 } from "../lib/ethrpc";
 import { prepareTransfer, executeTransfer, type PrepareResult } from "../lib/transfer";
 import { sendEthTransaction, shortenAddress, toChecksumAddress } from "../lib/ethereum";
 import { ensureChainAdded } from "../lib/network";
 import { TOKEN_COLORS } from "../lib/tokens";
+import { recordPendingTx, removePendingTx, markPendingFailed } from "../lib/pendingTxs";
 import { useSnap } from "../hooks/useSnap";
 import { cn } from "../lib/cn";
 import styles from "./TransferPage.module.css";
+
+type ReceiptStatus = "pending" | "success" | "failed";
+const RECEIPT_POLL_INTERVAL_MS = 3000;
 
 type Step = "details" | "sign" | "done";
 type SignPhase = "idle" | "preparing" | "awaiting-snap" | "signing" | "executing";
@@ -235,6 +240,8 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
   const [signPhase, setSignPhase] = useState<SignPhase>("idle");
   const [prepared, setPrepared] = useState<PrepareResult | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [receiptStatus, setReceiptStatus] = useState<ReceiptStatus>("pending");
+  const [revertReason, setRevertReason] = useState<string | undefined>();
 
   const snap = useSnap();
   const isNonCustodial = keyMode === "external";
@@ -369,6 +376,16 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
         fingerprint,
       );
 
+      recordPendingTx(address, {
+        txHash: prepared.transactionHash,
+        tokenAddress: selectedToken.address.toLowerCase(),
+        tokenSymbol: selectedToken.symbol,
+        tokenDecimals: selectedToken.decimals,
+        amount: parseTokenAmount(amount, selectedToken.decimals).toString(),
+        from: address.toLowerCase(),
+        to: recipient.toLowerCase(),
+        submittedAt: Math.floor(Date.now() / 1000),
+      });
       setReceipt({ txHash: prepared.transactionHash, token: selectedToken, amount, to: recipient });
       setStep("done");
     } catch (e: unknown) {
@@ -392,6 +409,16 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
       const data = encodeTransfer(recipient, amountBigInt);
       const txHash = await sendEthTransaction({ from: address, to: selectedToken.address, data });
 
+      recordPendingTx(address, {
+        txHash,
+        tokenAddress: selectedToken.address.toLowerCase(),
+        tokenSymbol: selectedToken.symbol,
+        tokenDecimals: selectedToken.decimals,
+        amount: amountBigInt.toString(),
+        from: address.toLowerCase(),
+        to: recipient.toLowerCase(),
+        submittedAt: Math.floor(Date.now() / 1000),
+      });
       setReceipt({ txHash, token: selectedToken, amount, to: recipient });
       setStep("done");
     } catch (e: unknown) {
@@ -409,7 +436,43 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
     setSignPhase("idle");
     setError(null);
     setReceipt(null);
+    setReceiptStatus("pending");
+    setRevertReason(undefined);
   }
+
+  // Poll eth_getTransactionReceipt while the Done step is showing a pending tx.
+  // canton-middleware PR #281 made tx submission async, so the receipt arrives
+  // a few seconds after the hash returns. Mirrors the polling on the Activity
+  // tab so the pending entry there clears in lockstep with the UI here.
+  useEffect(() => {
+    if (step !== "done" || !receipt || receiptStatus !== "pending") return;
+    const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const r = await getTransactionReceipt(rpcUrl, receipt!.txHash);
+        if (cancelled || !r) return;
+        if (r.status === "success") {
+          removePendingTx(address, receipt!.txHash);
+          setReceiptStatus("success");
+        } else {
+          markPendingFailed(address, receipt!.txHash, r.revertReason);
+          setRevertReason(r.revertReason);
+          setReceiptStatus("failed");
+        }
+      } catch {
+        // transient — try again on next tick
+      }
+    }
+
+    void poll();
+    const id = window.setInterval(() => void poll(), RECEIPT_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [step, receipt, receiptStatus, address]);
 
   async function handlePaste() {
     try {
@@ -708,20 +771,51 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
         {/* ── Done step ── */}
         {step === "done" && receipt && (
           <PageCard className={styles.doneCard}>
-            <div className={styles.checkCircle}>
-              <svg width="28" height="20" viewBox="0 0 28 20" fill="none">
-                <path
-                  d="M2 10L10 18L26 2"
-                  stroke="#0a0b14"
-                  strokeWidth="3.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+            <div
+              className={cn(
+                styles.checkCircle,
+                receiptStatus === "pending" && styles.checkCirclePending,
+                receiptStatus === "failed" && styles.checkCircleFailed,
+              )}
+            >
+              {receiptStatus === "pending" ? (
+                <Spinner />
+              ) : receiptStatus === "failed" ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M6 6L18 18M18 6L6 18"
+                    stroke="#0a0b14"
+                    strokeWidth="3.4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              ) : (
+                <svg width="28" height="20" viewBox="0 0 28 20" fill="none">
+                  <path
+                    d="M2 10L10 18L26 2"
+                    stroke="#0a0b14"
+                    strokeWidth="3.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
             </div>
 
-            <p className={styles.doneTitle}>Transfer sent</p>
-            <p className={styles.doneSubtitle}>Transfer confirmed on Canton Network.</p>
+            <p className={styles.doneTitle}>
+              {receiptStatus === "pending"
+                ? "Transfer submitted"
+                : receiptStatus === "failed"
+                  ? "Transfer failed"
+                  : "Transfer sent"}
+            </p>
+            <p className={styles.doneSubtitle}>
+              {receiptStatus === "pending"
+                ? "Awaiting confirmation on Canton Network…"
+                : receiptStatus === "failed"
+                  ? (revertReason ?? "Reverted on Canton Network.")
+                  : "Transfer confirmed on Canton Network."}
+            </p>
 
             <div className={styles.receipt}>
               <div className={styles.receiptRow}>
@@ -739,8 +833,14 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
                 <span className={styles.receiptValue}>{receipt.txHash}</span>
               </div>
               <div className={styles.receiptRow}>
-                <span className={styles.receiptLabel}>Completed</span>
-                <span className={styles.receiptValue}>Just now</span>
+                <span className={styles.receiptLabel}>Status</span>
+                <span className={styles.receiptValue}>
+                  {receiptStatus === "pending"
+                    ? "Pending"
+                    : receiptStatus === "failed"
+                      ? "Failed"
+                      : "Confirmed"}
+                </span>
               </div>
             </div>
 

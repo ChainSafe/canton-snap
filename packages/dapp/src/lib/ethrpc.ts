@@ -60,6 +60,49 @@ export async function ethChainId(rpcUrl: string): Promise<string> {
   return json.result as string;
 }
 
+export interface TxReceipt {
+  status: "success" | "failed";
+  blockNumber: number;
+  revertReason?: string;
+}
+
+// Returns null while the tx is still pending in the mempool. canton-middleware
+// PR #281 made `eth_sendRawTransaction` async, so a hash is returned before the
+// receipt exists. `revertReason` is a non-standard field surfaced for
+// status=0 receipts so we can show the Canton-side error.
+export async function getTransactionReceipt(
+  rpcUrl: string,
+  txHash: string,
+): Promise<TxReceipt | null> {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "eth_getTransactionReceipt",
+      params: [txHash],
+      id: ++_rpcId,
+    }),
+  });
+  if (!res.ok) throw new Error(`RPC error ${res.status}: ${await res.text()}`);
+  const json = (await res.json()) as {
+    result?: {
+      status?: string;
+      blockNumber?: string;
+      revertReason?: string;
+    } | null;
+    error?: { message: string };
+  };
+  if (json.error) throw new Error(json.error.message);
+  if (!json.result) return null;
+  const status = json.result.status === "0x1" ? "success" : "failed";
+  return {
+    status,
+    blockNumber: json.result.blockNumber ? parseInt(json.result.blockNumber, 16) : 0,
+    revertReason: json.result.revertReason,
+  };
+}
+
 interface RawLog {
   address: string;
   topics: string[];

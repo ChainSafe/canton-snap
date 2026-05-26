@@ -4,7 +4,18 @@ import { DashboardLayout, type DashboardTab } from "../components/DashboardLayou
 import { Spinner } from "../components/Spinner";
 import { NETWORK } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
-import { getTransferLogs, formatTokenAmount, type TransferLog } from "../lib/ethrpc";
+import {
+  getTransferLogs,
+  getTransactionReceipt,
+  formatTokenAmount,
+  type TransferLog,
+} from "../lib/ethrpc";
+import {
+  getPendingTxs,
+  removePendingTx,
+  markPendingFailed,
+  type PendingTx,
+} from "../lib/pendingTxs";
 import { TOKEN_COLORS } from "../lib/tokens";
 import { toChecksumAddress, shortenAddress } from "../lib/ethereum";
 import { CopyButton } from "../components/CopyButton";
@@ -17,13 +28,42 @@ interface Props {
   onDisconnect: () => void;
 }
 
+type RowStatus = "confirmed" | "pending" | "failed";
+
 interface ActivityRow extends TransferLog {
   token: TokenConfig;
+  status: RowStatus;
+  revertReason?: string;
 }
 
 type FetchState =
   | { url: string; address: string; rows: ActivityRow[]; error: null }
   | { url: string; address: string; rows: null; error: string };
+
+const RECEIPT_POLL_INTERVAL_MS = 4000;
+
+function pendingToRow(p: PendingTx): ActivityRow {
+  return {
+    txHash: p.txHash,
+    // Pending entries have no block yet; sentinel keeps sort order (newest first).
+    blockNumber: Number.MAX_SAFE_INTEGER,
+    logIndex: 0,
+    timestamp: p.submittedAt,
+    direction: "sent",
+    tokenAddress: p.tokenAddress,
+    amount: BigInt(p.amount),
+    from: p.from,
+    to: p.to,
+    token: {
+      address: p.tokenAddress,
+      name: p.tokenSymbol,
+      symbol: p.tokenSymbol,
+      decimals: p.tokenDecimals,
+    },
+    status: p.status === "failed" ? "failed" : "pending",
+    revertReason: p.revertReason,
+  };
+}
 
 // Jan 1 2020 in Unix seconds — anything before this is a synthetic/bogus timestamp
 const MIN_REAL_TIMESTAMP = 1577836800;
@@ -117,6 +157,20 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
   const [search, setSearch] = useState("");
 
+  // Bump to re-read the pending store (localStorage) or re-fetch confirmed logs.
+  // Pending is derived state, not local state — the source of truth is
+  // localStorage. Components that mutate the store (TransferPage, the polling
+  // callback below) write to localStorage, then we read it back here.
+  const [pendingTick, setPendingTick] = useState(0);
+  const [logsTick, setLogsTick] = useState(0);
+
+  const pending = useMemo(
+    () => getPendingTxs(address),
+    // pendingTick re-runs the read when the store mutates
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [address, pendingTick],
+  );
+
   const loading = fetchState?.url !== NETWORK.middlewareUrl || fetchState?.address !== address;
 
   useEffect(() => {
@@ -133,14 +187,29 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
           address,
         );
         const rows: ActivityRow[] = logs
-          .map((log) => {
+          .map((log): ActivityRow | null => {
             const token = tokenByAddress.get(log.tokenAddress);
             if (!token) return null;
-            return { ...log, token };
+            return { ...log, token, status: "confirmed" };
           })
           .filter((r): r is ActivityRow => r !== null);
 
-        if (!cancelled) setFetchState({ url: NETWORK.middlewareUrl, address, rows, error: null });
+        if (cancelled) return;
+
+        // Drop pending entries whose confirmed Transfer log just arrived —
+        // covers reloads after the receipt landed and any poll the user
+        // missed because the tab was hidden.
+        const confirmedHashes = new Set(rows.map((r) => r.txHash.toLowerCase()));
+        let removed = false;
+        for (const p of getPendingTxs(address)) {
+          if (confirmedHashes.has(p.txHash.toLowerCase())) {
+            removePendingTx(address, p.txHash);
+            removed = true;
+          }
+        }
+
+        setFetchState({ url: NETWORK.middlewareUrl, address, rows, error: null });
+        if (removed) setPendingTick((t) => t + 1);
       } catch (e: unknown) {
         if (!cancelled)
           setFetchState({
@@ -156,26 +225,87 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
     return () => {
       cancelled = true;
     };
-  }, [address]);
+  }, [address, logsTick]);
+
+  // Poll receipts for entries still in "pending" status. Once a receipt arrives:
+  //   status=1 → remove (a confirmed log will appear on next refresh)
+  //   status=0 → mark failed and keep so the user sees the outcome
+  const hasUnresolved = pending.some((p) => p.status === "pending");
+
+  useEffect(() => {
+    if (!hasUnresolved) return;
+
+    const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
+    let cancelled = false;
+
+    async function poll() {
+      const snapshot = getPendingTxs(address).filter((p) => p.status === "pending");
+      if (snapshot.length === 0) return;
+      const results = await Promise.all(
+        snapshot.map(async (p) => {
+          try {
+            return [p, await getTransactionReceipt(rpcUrl, p.txHash)] as const;
+          } catch {
+            return [p, null] as const;
+          }
+        }),
+      );
+      if (cancelled) return;
+
+      let resolvedAny = false;
+      for (const [p, receipt] of results) {
+        if (!receipt) continue;
+        resolvedAny = true;
+        if (receipt.status === "success") {
+          removePendingTx(address, p.txHash);
+        } else {
+          markPendingFailed(address, p.txHash, receipt.revertReason);
+        }
+      }
+      if (resolvedAny) {
+        setPendingTick((t) => t + 1);
+        setLogsTick((t) => t + 1);
+      }
+    }
+
+    void poll();
+    const id = window.setInterval(() => void poll(), RECEIPT_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [hasUnresolved, address]);
+
+  const merged = useMemo(() => {
+    const confirmed = fetchState?.rows ?? [];
+    const confirmedHashes = new Set(confirmed.map((r) => r.txHash.toLowerCase()));
+    const pendingRows = pending
+      .filter((p) => !confirmedHashes.has(p.txHash.toLowerCase()))
+      .map(pendingToRow);
+    // Pending rows use MAX_SAFE_INTEGER as blockNumber so they sort to the top.
+    return [...pendingRows, ...confirmed].sort(
+      (a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex,
+    );
+  }, [fetchState, pending]);
 
   const filtered = useMemo(() => {
-    const rows = fetchState?.rows ?? [];
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
+    if (!q) return merged;
+    return merged.filter(
       (r) =>
         r.txHash.toLowerCase().includes(q) ||
         r.from.toLowerCase().includes(q) ||
         r.to.toLowerCase().includes(q) ||
         r.token.symbol.toLowerCase().includes(q),
     );
-  }, [fetchState, search]);
+  }, [merged, search]);
 
-  // Group rows by calendar day
+  // Group rows by calendar day. Pending entries land in their own group at the
+  // top since their block-relative timestamp isn't tied to a confirmed block.
   const groups = useMemo(() => {
     const map = new Map<string, ActivityRow[]>();
     for (const row of filtered) {
-      const key = dayKey(row.timestamp);
+      const key = row.status === "confirmed" ? dayKey(row.timestamp) : "__pending__";
       const arr = map.get(key) ?? [];
       arr.push(row);
       map.set(key, arr);
@@ -248,16 +378,22 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
             filtered.length > 0 &&
             groups.map(({ key, rows }) => (
               <div key={key}>
-                <div className={styles.dayGroup}>{dayLabel(rows[0].timestamp)}</div>
+                <div className={styles.dayGroup}>
+                  {key === "__pending__" ? "PENDING" : dayLabel(rows[0].timestamp)}
+                </div>
                 {rows.map((row, i) => {
                   const isSent = row.direction === "sent";
                   const counterparty = toChecksumAddress(isSent ? row.to : row.from);
                   const shortTx = `${row.txHash.slice(0, 10)}…${row.txHash.slice(-8)}`;
+                  const isPending = row.status === "pending";
+                  const isFailed = row.status === "failed";
 
                   return (
                     <div key={`${row.txHash}-${row.logIndex}`}>
                       {i > 0 && <div className={styles.rowDivider} />}
-                      <div className={styles.activityRow}>
+                      <div
+                        className={`${styles.activityRow} ${isPending ? styles.rowPending : ""} ${isFailed ? styles.rowFailed : ""}`}
+                      >
                         {/* Type */}
                         <div className={styles.typeCell}>
                           <div
@@ -265,7 +401,25 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
                           >
                             {isSent ? <ArrowUpIcon /> : <ArrowDownIcon />}
                           </div>
-                          <span className={styles.typeLabel}>{isSent ? "Sent" : "Received"}</span>
+                          <div className={styles.typeStack}>
+                            <span className={styles.typeLabel}>
+                              {isSent ? "Sent" : "Received"}
+                            </span>
+                            {isPending && (
+                              <span className={`${styles.statusPill} ${styles.statusPillPending}`}>
+                                <span className={styles.statusDot} />
+                                Pending
+                              </span>
+                            )}
+                            {isFailed && (
+                              <span
+                                className={`${styles.statusPill} ${styles.statusPillFailed}`}
+                                title={row.revertReason}
+                              >
+                                Failed
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Token */}
@@ -308,9 +462,13 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
                         <div className={styles.whenCell}>
                           <span className={styles.whenRelative}>{relativeTime(row.timestamp)}</span>
                           <span className={styles.whenAbsolute}>
-                            {row.timestamp >= MIN_REAL_TIMESTAMP
-                              ? timeUTC(row.timestamp)
-                              : `Block #${row.blockNumber}`}
+                            {isPending
+                              ? "Awaiting receipt"
+                              : isFailed
+                                ? "Reverted"
+                                : row.timestamp >= MIN_REAL_TIMESTAMP
+                                  ? timeUTC(row.timestamp)
+                                  : `Block #${row.blockNumber}`}
                           </span>
                         </div>
                       </div>
