@@ -282,9 +282,15 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
     const pendingRows = pending
       .filter((p) => !confirmedHashes.has(p.txHash.toLowerCase()))
       .map(pendingToRow);
-    // Pending rows use MAX_SAFE_INTEGER as blockNumber so they sort to the top.
+    // Sort by timestamp (newest first) so failed entries fall into their
+    // historical day group rather than always sorting to the top. Within the
+    // same block, logIndex breaks ties. blockNumber is a tertiary key for the
+    // rare case of two confirmed blocks sharing a timestamp.
     return [...pendingRows, ...confirmed].sort(
-      (a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex,
+      (a, b) =>
+        b.timestamp - a.timestamp ||
+        b.blockNumber - a.blockNumber ||
+        b.logIndex - a.logIndex,
     );
   }, [fetchState, pending]);
 
@@ -300,12 +306,13 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
     );
   }, [merged, search]);
 
-  // Group rows by calendar day. Pending entries land in their own group at the
-  // top since their block-relative timestamp isn't tied to a confirmed block.
+  // Group rows by calendar day. Only in-flight pending entries land in the
+  // dedicated PENDING group; failed entries fall into their submission-day
+  // group so the resolved-but-unsuccessful history stays chronological.
   const groups = useMemo(() => {
     const map = new Map<string, ActivityRow[]>();
     for (const row of filtered) {
-      const key = row.status === "confirmed" ? dayKey(row.timestamp) : "__pending__";
+      const key = row.status === "pending" ? "__pending__" : dayKey(row.timestamp);
       const arr = map.get(key) ?? [];
       arr.push(row);
       map.set(key, arr);

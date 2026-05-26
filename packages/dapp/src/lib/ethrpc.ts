@@ -92,7 +92,8 @@ export async function getTransactionReceipt(
       revertReason?: string;
     } | null;
     error?: { message: string };
-  };
+  } | null;
+  if (!json || typeof json !== "object") throw new Error("Invalid RPC response");
   if (json.error) throw new Error(json.error.message);
   if (!json.result) return null;
   const status = json.result.status === "0x1" ? "success" : "failed";
