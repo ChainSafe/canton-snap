@@ -288,9 +288,7 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
     // rare case of two confirmed blocks sharing a timestamp.
     return [...pendingRows, ...confirmed].sort(
       (a, b) =>
-        b.timestamp - a.timestamp ||
-        b.blockNumber - a.blockNumber ||
-        b.logIndex - a.logIndex,
+        b.timestamp - a.timestamp || b.blockNumber - a.blockNumber || b.logIndex - a.logIndex,
     );
   }, [fetchState, pending]);
 
@@ -409,9 +407,7 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
                             {isSent ? <ArrowUpIcon /> : <ArrowDownIcon />}
                           </div>
                           <div className={styles.typeStack}>
-                            <span className={styles.typeLabel}>
-                              {isSent ? "Sent" : "Received"}
-                            </span>
+                            <span className={styles.typeLabel}>{isSent ? "Sent" : "Received"}</span>
                             {isPending && (
                               <span className={`${styles.statusPill} ${styles.statusPillPending}`}>
                                 <span className={styles.statusDot} />
