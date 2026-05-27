@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Cross-validation tests against Go-generated test vectors.
  *

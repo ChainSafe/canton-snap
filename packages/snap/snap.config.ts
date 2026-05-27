@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { SnapConfig } from "@metamask/snaps-cli";
 import { config as loadEnv } from "dotenv";
 import { resolve } from "path";

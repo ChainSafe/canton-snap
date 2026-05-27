@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Polyfill globalThis.crypto for the snaps-jest simulation environment.
 // The real MetaMask Snap runtime provides crypto natively, but the
 // test simulator (snaps-jest) does not include it by default.

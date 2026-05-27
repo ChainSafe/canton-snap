@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Canton Snap — MetaMask Snap for non-custodial Canton Network signing.
  */

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { useCallback, useEffect, useState } from "react";
 import { watchAsset } from "../lib/ethereum";
 import { ensureChainAdded } from "../lib/network";

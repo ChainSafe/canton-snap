@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { useEffect, useRef, useState } from "react";
 import { TopBar } from "../components/TopBar";
 import { AmbientOrb } from "../components/AmbientOrb";

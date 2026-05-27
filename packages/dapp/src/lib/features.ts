@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Build-time feature flags. Read from Vite env so each deployment can opt in
  * without rebuilding the source.

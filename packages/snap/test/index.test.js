@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { installSnap } from "@metamask/snaps-jest";
 
 const validHash = "ab".repeat(32);

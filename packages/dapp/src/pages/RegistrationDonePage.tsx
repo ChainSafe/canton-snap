@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { TopBar } from "../components/TopBar";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { Button } from "../components/Button";

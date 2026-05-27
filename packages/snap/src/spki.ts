@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * SPKI DER encoding for secp256k1 public keys.
  *

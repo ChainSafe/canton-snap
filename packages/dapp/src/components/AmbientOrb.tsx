@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 interface AmbientOrbProps {
   color?: string;
   opacity?: number;
