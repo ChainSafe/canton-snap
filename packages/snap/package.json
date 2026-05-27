@@ -19,7 +19,7 @@
     "url": "git+https://github.com/ChainSafe/canton-snap.git",
     "directory": "packages/snap"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "ChainSafe Systems",
   "main": "dist/bundle.js",
   "files": [

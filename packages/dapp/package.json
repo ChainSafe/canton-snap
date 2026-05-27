@@ -26,5 +26,6 @@
     "vite": "^6.3.0",
     "vitest": "^3.2.4"
   },
-  "notes": "Run 'npm install' in this directory to set up the build toolchain before development."
+  "notes": "Run 'npm install' in this directory to set up the build toolchain before development.",
+  "license": "Apache-2.0"
 }
