@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 const SESSION_PREFIX = "canton_session_";
 
 export interface Session {

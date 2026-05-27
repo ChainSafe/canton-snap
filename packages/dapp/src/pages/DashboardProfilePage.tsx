@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { useState, useEffect } from "react";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { CopyButton } from "../components/CopyButton";

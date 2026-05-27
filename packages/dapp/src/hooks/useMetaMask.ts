@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { useState, useCallback, useEffect } from "react";
 import { requestAccounts, getAccounts } from "../lib/ethereum";
 

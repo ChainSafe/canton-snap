@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { addEthChain, getEthereum, switchEthChain } from "./ethereum";
 import { ethChainId } from "./ethrpc";
 import type { NetworkConfig } from "./config";

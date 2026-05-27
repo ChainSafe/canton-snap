@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { useState, useEffect, useCallback } from "react";
 import { installSnap, getInstalledSnap, invokeSnap } from "../lib/ethereum";
 import { NON_CUSTODIAL_ENABLED } from "../lib/features";

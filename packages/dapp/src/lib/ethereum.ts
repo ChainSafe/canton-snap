@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { getAddress } from "ethers";
 
 const PUBLISHED_SNAP_ID = "npm:@chainsafe/canton-snap";

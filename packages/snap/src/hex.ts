@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Hex utilities shared by every input-parsing path in the snap.
  *

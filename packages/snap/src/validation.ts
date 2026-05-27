@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * RPC parameter validation. Runs before any dialog or key derivation so
  * malformed input is rejected without paying the cost of rendering

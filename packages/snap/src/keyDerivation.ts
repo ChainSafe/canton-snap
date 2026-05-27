@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Key derivation for Canton signing keys using snap_getEntropy.
  *

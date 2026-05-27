@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { CopyButton } from "./CopyButton";
 import { shortenAddress } from "../lib/ethereum";
 import styles from "./WalletMenu.module.css";

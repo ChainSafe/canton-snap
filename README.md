@@ -169,3 +169,10 @@ await window.ethereum.request({
 ```
 
 Check install status with `wallet_getSnaps`.
+
+## License
+
+This project is licensed under the Apache License, Version 2.0. See
+[LICENSE](LICENSE) for the full license text and [NOTICE](NOTICE) for
+attributions of third-party software included in or depended on by this
+project.
