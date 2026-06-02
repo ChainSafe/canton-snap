@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.1.0...dapp-v1.2.0) (2026-06-01)
+
+
+### Features
+
+* **dapp:** handle async eth_sendRawTransaction + tx status in Activity ([#63](https://github.com/ChainSafe/canton-snap/issues/63)) ([f812f38](https://github.com/ChainSafe/canton-snap/commit/f812f38b284209a6228598ae50e9292255f9979b))
+
+
+### Bug Fixes
+
+* **ci:** fix workflow_dispatch tag computation ([#61](https://github.com/ChainSafe/canton-snap/issues/61)) ([bd16650](https://github.com/ChainSafe/canton-snap/commit/bd166508d0c771114373f0042df6b195f5e2530f))
+
 ## [1.1.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.0.0...dapp-v1.1.0) (2026-05-20)
 
 
