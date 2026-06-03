@@ -78,7 +78,9 @@ function TokenAvatar({
           <CheckIcon size={9} />
         </span>
       )}
-      {status === "error" && <span className={cn(styles.avatarBadge, styles.avatarBadgeErr)}>!</span>}
+      {status === "error" && (
+        <span className={cn(styles.avatarBadge, styles.avatarBadgeErr)}>!</span>
+      )}
     </span>
   );
 }

@@ -166,16 +166,15 @@ export function useMetaMaskImport(network: NetworkConfig, address: string) {
       if (!address || tokens.length === 0) return;
       setImportingAll(true);
       try {
-        // Switch the chain once up front. Only skip the per-token chain check
-        // (which enables the concurrent/batched prompt) if this succeeded — on
-        // failure we let each importToken ensure the chain itself, trading the
-        // single-prompt batching for correctness.
-        let chainReady = false;
+        // Switch the chain once up front. If this fails (e.g. the user rejects
+        // the switch), abort — we can't add tokens to the wrong chain, and
+        // continuing would fire a concurrent chain-switch prompt per token.
+        // Succeeding here lets us pass skipEnsureChain to every importToken so
+        // the watchAsset requests fire together and MetaMask batches them.
         try {
           await ensureChainAdded(network);
-          chainReady = true;
         } catch {
-          // chainReady stays false — importToken will ensure the chain per token.
+          return;
         }
 
         const persisted = loadPersisted(address, network.id);
@@ -187,12 +186,14 @@ export function useMetaMaskImport(network: NetworkConfig, address: string) {
           setState((s) => ({
             tokens: {
               ...s.tokens,
-              ...Object.fromEntries(already.map((t) => [t.address, { status: "success" as const }])),
+              ...Object.fromEntries(
+                already.map((t) => [t.address, { status: "success" as const }]),
+              ),
             },
           }));
         }
 
-        await Promise.all(pending.map((t) => importToken(t, { skipEnsureChain: chainReady })));
+        await Promise.all(pending.map((t) => importToken(t, { skipEnsureChain: true })));
       } finally {
         setImportingAll(false);
       }
