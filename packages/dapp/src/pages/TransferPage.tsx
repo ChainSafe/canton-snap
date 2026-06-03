@@ -42,6 +42,8 @@ interface Props {
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
   keyMode: "custodial" | "external";
+  /** Token address to pre-select on mount (set when opened via a balances "Send →"). */
+  preselectTokenAddress?: string | null;
 }
 
 function TokenAvatar({ symbol }: { symbol: string }) {
@@ -229,7 +231,14 @@ function TokenDropdown({ tokens, selected, balances, onSelect }: TokenDropdownPr
   );
 }
 
-export function TransferPage({ address, activeTab, onTabChange, onDisconnect, keyMode }: Props) {
+export function TransferPage({
+  address,
+  activeTab,
+  onTabChange,
+  onDisconnect,
+  keyMode,
+  preselectTokenAddress,
+}: Props) {
   const [step, setStep] = useState<Step>("details");
   const [tokens, setTokens] = useState<TokenConfig[]>([]);
   const [tokensLoading, setTokensLoading] = useState(true);
@@ -259,7 +268,12 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
         const list = await getTokens(NETWORK.middlewareUrl);
         if (cancelled) return;
         setTokens(list);
-        if (list.length > 0) setSelectedToken(list[0]);
+        if (list.length > 0) {
+          const match = preselectTokenAddress
+            ? list.find((t) => t.address.toLowerCase() === preselectTokenAddress.toLowerCase())
+            : undefined;
+          setSelectedToken(match ?? list[0]);
+        }
         const entries = await Promise.all(
           list.map(async (t) => {
             try {
@@ -282,7 +296,7 @@ export function TransferPage({ address, activeTab, onTabChange, onDisconnect, ke
     return () => {
       cancelled = true;
     };
-  }, [address]);
+  }, [address, preselectTokenAddress]);
 
   // Auto-run prepare when entering sign step (non-custodial only).
   // Depends only on [step]: fires once on entry; form fields are captured via closure
