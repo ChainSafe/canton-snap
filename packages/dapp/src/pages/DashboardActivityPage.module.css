@@ -324,3 +324,58 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* ── Mobile: the 6-column table can't fit a phone, so hide the column
+   header and reflow each row into a compact 2-column card. ── */
+@media (max-width: 768px) {
+  .pageHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .searchBar {
+    width: 100%;
+  }
+
+  .colHeaders {
+    display: none;
+  }
+
+  .activityRow {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+    row-gap: 12px;
+    padding: 16px;
+  }
+
+  /* Row 1: type ┊ date — Row 2: token ┊ amount — Rows 3-4: to/from + tx full-width */
+  .typeCell {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .whenCell {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .tokenCell {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .amountCell {
+    grid-column: 2;
+    grid-row: 2;
+    align-items: flex-end;
+  }
+
+  .addrCell {
+    grid-column: 1 / -1;
+  }
+
+  .rowDivider {
+    margin: 0 16px;
+  }
+}

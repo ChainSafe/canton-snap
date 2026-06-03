@@ -276,3 +276,19 @@
   color: var(--amber);
   padding: 0 0 10px;
 }
+
+/* ── Mobile: the fixed 160px balance column crowds out the token name on a
+   phone — let balance and action size to content so the name keeps the
+   flexible track, and tighten the gaps. ── */
+@media (max-width: 560px) {
+  .colHeaders,
+  .tokenRow {
+    grid-template-columns: 1fr auto auto;
+    gap: 14px;
+  }
+
+  .card,
+  .offersCard {
+    padding: 0 16px;
+  }
+}

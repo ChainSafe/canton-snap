@@ -67,3 +67,19 @@
   color: var(--text-secondary);
   text-decoration: none;
 }
+
+/* ── Mobile: shrink the hero type and let the CTA fill the column. ── */
+@media (max-width: 560px) {
+  .title {
+    font-size: 32px;
+  }
+
+  .subtitle {
+    font-size: 15px;
+  }
+
+  .cta {
+    width: 100%;
+    max-width: 360px;
+  }
+}

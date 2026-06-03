@@ -98,3 +98,56 @@
 .pillAnchor {
   position: relative;
 }
+
+/* ── Mobile: stack the fixed-width sidebar above the content as a top bar,
+   with the nav laid out as a horizontal, scrollable tab strip. ── */
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebarLogo {
+    padding: 16px 20px 10px;
+  }
+
+  .sidebarDivider {
+    display: none;
+  }
+
+  .sidebarNav {
+    flex-direction: row;
+    padding: 0 12px 8px;
+    gap: 4px;
+    overflow-x: auto;
+  }
+
+  .navItem {
+    width: auto;
+    flex-shrink: 0;
+    height: 36px;
+    padding: 0 14px;
+    gap: 10px;
+  }
+
+  /* The active-state left accent bar is a vertical-nav affordance; drop it
+     in the horizontal strip where the pill background already marks active. */
+  .navItemActive::before {
+    display: none;
+  }
+
+  .main {
+    padding: 16px 20px 32px;
+  }
+
+  .mainHeader {
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+}

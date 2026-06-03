@@ -773,3 +773,31 @@
   font-family: var(--font-sans);
   cursor: pointer;
 }
+
+/* ── Mobile: stack the receipt rows and the two fixed-width Done buttons so
+   long values and the 280px buttons don't overflow a phone. ── */
+@media (max-width: 560px) {
+  .pageHeader {
+    flex-wrap: wrap;
+  }
+
+  .receiptRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .receiptValue {
+    text-align: left;
+    max-width: 100%;
+  }
+
+  .doneActions {
+    flex-direction: column;
+  }
+
+  .btnSendAnother,
+  .btnViewActivity {
+    width: 100%;
+  }
+}
