@@ -257,6 +257,12 @@ export function TransferPage({
   const snap = useSnap();
   const isNonCustodial = keyMode === "external";
 
+  // Pre-selection captured at mount — it's fixed for the lifetime of this
+  // page (only set when navigating in from a balances "Send →"). Held in a
+  // ref so the fetch effect can honour it without taking it as a dependency,
+  // which would otherwise refetch the token list/balances on every change.
+  const preselectRef = useRef(preselectTokenAddress);
+
   // Load token list then fetch all balances
   useEffect(() => {
     let cancelled = false;
@@ -269,8 +275,9 @@ export function TransferPage({
         if (cancelled) return;
         setTokens(list);
         if (list.length > 0) {
-          const match = preselectTokenAddress
-            ? list.find((t) => t.address.toLowerCase() === preselectTokenAddress.toLowerCase())
+          const pre = preselectRef.current;
+          const match = pre
+            ? list.find((t) => t.address.toLowerCase() === pre.toLowerCase())
             : undefined;
           setSelectedToken(match ?? list[0]);
         }
@@ -296,7 +303,7 @@ export function TransferPage({
     return () => {
       cancelled = true;
     };
-  }, [address, preselectTokenAddress]);
+  }, [address]);
 
   // Auto-run prepare when entering sign step (non-custodial only).
   // Depends only on [step]: fires once on entry; form fields are captured via closure
