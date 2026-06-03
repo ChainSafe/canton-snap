@@ -523,13 +523,17 @@ body {
 }
 
 /* ── Mobile: tighten the generous desktop side padding on the top bar and
-   fixed footer so content isn't pushed off-screen on small viewports. ── */
+   footer so content isn't pushed off-screen on small viewports. The footer
+   also drops its desktop fixed positioning — on a short viewport a fixed
+   footer overlaps the landing CTA/links; static lets it sit at the end of
+   the flex-column flow instead. ── */
 @media (max-width: 768px) {
   .topbar {
     padding: 16px 20px;
   }
 
   .footer {
+    position: static;
     padding: 16px 20px;
     gap: 12px;
   }

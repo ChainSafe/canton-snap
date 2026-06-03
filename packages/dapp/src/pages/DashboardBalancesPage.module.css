@@ -278,12 +278,14 @@
 }
 
 /* ── Mobile: the fixed 160px balance column crowds out the token name on a
-   phone — let balance and action size to content so the name keeps the
-   flexible track, and tighten the gaps. ── */
+   phone. Narrow the balance/action columns so the name keeps the flexible
+   track, and tighten the gaps. Keep them fixed (not auto) so the header and
+   every row stay vertically aligned and the empty header span doesn't
+   collapse to 0. ── */
 @media (max-width: 560px) {
   .colHeaders,
   .tokenRow {
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr 110px 80px;
     gap: 14px;
   }
 

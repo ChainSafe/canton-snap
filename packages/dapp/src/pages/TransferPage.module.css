@@ -800,4 +800,18 @@
   .btnViewActivity {
     width: 100%;
   }
+
+  /* Trim the wide desktop card padding so inputs/buttons get more usable
+     width on a phone. */
+  .card {
+    padding: 24px 16px;
+  }
+
+  .signCard {
+    padding: 32px 16px 24px;
+  }
+
+  .doneCard {
+    padding: 32px 16px;
+  }
 }
