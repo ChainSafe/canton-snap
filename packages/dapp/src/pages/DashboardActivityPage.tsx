@@ -86,7 +86,7 @@ function timeLocal(ts: number): string {
   // abbreviation, e.g. EDT/GMT+1). Day grouping below also uses local time,
   // so the time shown stays consistent with its day label.
   return new Date(ts * 1000).toLocaleTimeString("en-US", {
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
     timeZoneName: "short",
   });
