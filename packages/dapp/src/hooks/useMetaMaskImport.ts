@@ -76,6 +76,7 @@ function formatError(err: unknown): string {
 
 export function useMetaMaskImport(network: NetworkConfig, address: string) {
   const [state, setState] = useState<State>(() => hydrate(address, network.id));
+  const [importingAll, setImportingAll] = useState(false);
 
   // Re-hydrate when the account or network changes.
   useEffect(() => {
@@ -83,7 +84,11 @@ export function useMetaMaskImport(network: NetworkConfig, address: string) {
   }, [address, network.id]);
 
   const importToken = useCallback(
-    async (token: TokenConfig): Promise<boolean> => {
+    // `skipEnsureChain` lets importAll switch the chain once up front and then
+    // fire the per-token suggestions concurrently — without each call racing to
+    // re-check/switch the chain, which would stagger the watchAsset requests and
+    // defeat MetaMask's batching (see importAll).
+    async (token: TokenConfig, opts?: { skipEnsureChain?: boolean }): Promise<boolean> => {
       const persisted = loadPersisted(address, network.id);
       const wasAlreadyImported = persisted.has(token.address);
 
@@ -92,7 +97,7 @@ export function useMetaMaskImport(network: NetworkConfig, address: string) {
       }));
 
       try {
-        await ensureChainAdded(network);
+        if (!opts?.skipEnsureChain) await ensureChainAdded(network);
         const added = await watchAsset({
           address: token.address,
           symbol: token.symbol,
@@ -100,8 +105,14 @@ export function useMetaMaskImport(network: NetworkConfig, address: string) {
         });
 
         if (added) {
-          persisted.add(token.address);
-          savePersisted(address, network.id, persisted);
+          // Re-read the latest set at write time, then union. importAll fires
+          // several imports concurrently (one batched MetaMask prompt); each
+          // success handler must merge onto the others' writes rather than
+          // overwrite from the snapshot taken before the prompt — otherwise the
+          // last writer wins and only one token ends up persisted.
+          const latest = loadPersisted(address, network.id);
+          latest.add(token.address);
+          savePersisted(address, network.id, latest);
           setState((s) => ({
             tokens: { ...s.tokens, [token.address]: { status: "success" } },
           }));
@@ -143,8 +154,56 @@ export function useMetaMaskImport(network: NetworkConfig, address: string) {
     [address, network],
   );
 
+  // Import every token in one click — and in ONE MetaMask prompt. MetaMask
+  // aggregates wallet_watchAsset requests that are pending simultaneously into a
+  // single "add suggested tokens" screen listing every token. So we switch the
+  // chain once up front (its own prompt), then fire all the suggestions
+  // concurrently (skipEnsureChain so they aren't staggered by per-token chain
+  // checks). Awaiting them sequentially — as a naive loop would — keeps only one
+  // pending at a time and produces one popup per token instead.
+  const importAll = useCallback(
+    async (tokens: TokenConfig[]): Promise<void> => {
+      if (!address || tokens.length === 0) return;
+      setImportingAll(true);
+      try {
+        // Switch the chain once up front. Only skip the per-token chain check
+        // (which enables the concurrent/batched prompt) if this succeeded — on
+        // failure we let each importToken ensure the chain itself, trading the
+        // single-prompt batching for correctness.
+        let chainReady = false;
+        try {
+          await ensureChainAdded(network);
+          chainReady = true;
+        } catch {
+          // chainReady stays false — importToken will ensure the chain per token.
+        }
+
+        const persisted = loadPersisted(address, network.id);
+        const pending = tokens.filter((t) => !persisted.has(t.address));
+        const already = tokens.filter((t) => persisted.has(t.address));
+
+        // Reflect already-imported tokens as ✓ without re-prompting for them.
+        if (already.length > 0) {
+          setState((s) => ({
+            tokens: {
+              ...s.tokens,
+              ...Object.fromEntries(already.map((t) => [t.address, { status: "success" as const }])),
+            },
+          }));
+        }
+
+        await Promise.all(pending.map((t) => importToken(t, { skipEnsureChain: chainReady })));
+      } finally {
+        setImportingAll(false);
+      }
+    },
+    [address, network, importToken],
+  );
+
   return {
     tokenStates: state.tokens,
     importToken,
+    importAll,
+    importingAll,
   };
 }
