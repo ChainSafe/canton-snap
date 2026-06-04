@@ -19,8 +19,11 @@
   border-radius: var(--radius-lg);
   padding: 32px;
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 48px;
+  /* Quick-actions track scales with the viewport (instead of a fixed 300px
+     that holds its size then snaps to full-width) so the Send button shrinks
+     gradually as the window narrows, down to the 768px stack breakpoint. */
+  grid-template-columns: 1fr clamp(200px, 26%, 300px);
+  gap: clamp(24px, 4vw, 48px);
   margin-bottom: 24px;
 }
 

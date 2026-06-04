@@ -5,6 +5,7 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { CopyButton } from "../components/CopyButton";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { shortenAddress } from "../lib/ethereum";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { NETWORK } from "../lib/config";
 import { cn } from "../lib/cn";
 import { checkMiddlewareHealth } from "../lib/middleware";
@@ -37,6 +38,11 @@ export function DashboardProfilePage({
 
   const isNonCustodial = profile.keyMode === "external";
   const middlewareHealthy = healthCache?.url === NETWORK.middlewareUrl ? healthCache.healthy : null;
+
+  // On a phone the full party ID / fingerprint hashes wrap into an unreadable
+  // multi-line block. Show a shortened middle-ellipsis form; the copy buttons
+  // still carry the full value. Matches the 560px stack breakpoint in the CSS.
+  const isPhone = useMediaQuery("(max-width: 560px)");
 
   useEffect(() => {
     let cancelled = false;
@@ -75,7 +81,11 @@ export function DashboardProfilePage({
                   return (
                     <>
                       <p className={styles.partyId}>{head}</p>
-                      {cont && <p className={styles.partyIdCont}>{cont}</p>}
+                      {cont && (
+                        <p className={styles.partyIdCont}>
+                          {isPhone ? shortenAddress(cont, 6) : cont}
+                        </p>
+                      )}
                     </>
                   );
                 })()}
@@ -85,7 +95,11 @@ export function DashboardProfilePage({
 
             <p className={`${styles.sectionLabel} ${styles.sectionLabelTop}`}>FINGERPRINT</p>
             <div className={styles.fingerprintRow}>
-              <p className={styles.fingerprint}>{profile.fingerprint}</p>
+              <p className={styles.fingerprint}>
+                {isPhone && profile.fingerprint
+                  ? shortenAddress(profile.fingerprint, 6)
+                  : profile.fingerprint}
+              </p>
               {profile.fingerprint && <CopyButton text={profile.fingerprint} />}
               <span
                 className={cn(
