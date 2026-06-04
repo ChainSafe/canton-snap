@@ -44,6 +44,9 @@ export default function App() {
   const [connectError, setConnectError] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>(readTabFromHash);
+  // Token address to pre-select when opening the Transfer tab from a balances
+  // row's "Send →". Null on plain nav so Transfer falls back to the first token.
+  const [transferToken, setTransferToken] = useState<string | null>(null);
 
   // Mirror dashboardTab into the URL hash so a refresh on /#balances stays on
   // Balances instead of snapping back to Profile. Only mutate the hash while
@@ -120,9 +123,23 @@ export default function App() {
     mm.disconnect();
     setProfile(null);
     clearAllSessions();
+    setTransferToken(null);
     setDashboardTab("profile");
     setPage("landing");
   }
+
+  // Plain tab navigation (sidebar). Clears any pending pre-selection so the
+  // Transfer tab only honours a token when reached via a "Send →" row action.
+  const handleTabChange = useCallback((tab: DashboardTab) => {
+    setTransferToken(null);
+    setDashboardTab(tab);
+  }, []);
+
+  // "Send →" on a balances row: pre-select that token, then open Transfer.
+  const handleSendToken = useCallback((tokenAddress: string) => {
+    setTransferToken(tokenAddress);
+    setDashboardTab("transfer");
+  }, []);
 
   const handleCustodial = useCallback(() => {
     setMode("custodial");
@@ -330,16 +347,28 @@ export default function App() {
     const sharedProps = {
       address,
       activeTab: dashboardTab,
-      onTabChange: setDashboardTab,
+      onTabChange: handleTabChange,
       onDisconnect: handleDisconnect,
     };
 
     if (dashboardTab === "balances") {
-      return <DashboardBalancesPage {...sharedProps} keyMode={profile.keyMode} />;
+      return (
+        <DashboardBalancesPage
+          {...sharedProps}
+          keyMode={profile.keyMode}
+          onSendToken={handleSendToken}
+        />
+      );
     }
 
     if (dashboardTab === "transfer") {
-      return <TransferPage {...sharedProps} keyMode={profile.keyMode} />;
+      return (
+        <TransferPage
+          {...sharedProps}
+          keyMode={profile.keyMode}
+          preselectTokenAddress={transferToken}
+        />
+      );
     }
 
     if (dashboardTab === "activity") {

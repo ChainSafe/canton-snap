@@ -36,6 +36,8 @@ interface Props {
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
   keyMode: "custodial" | "external";
+  /** Open the Transfer tab with this token pre-selected. */
+  onSendToken: (tokenAddress: string) => void;
 }
 
 type OfferRowState = "idle" | "preparing" | "signing" | "executing";
@@ -176,6 +178,7 @@ export function DashboardBalancesPage({
   onTabChange,
   onDisconnect,
   keyMode,
+  onSendToken,
 }: Props) {
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
   const [offers, setOffers] = useState<OffersState | null>(null);
@@ -470,7 +473,10 @@ export function DashboardBalancesPage({
                         </p>
                         <p className={styles.amountLabel}>{token.symbol}</p>
                       </div>
-                      <button className={styles.sendRowBtn} onClick={() => onTabChange("transfer")}>
+                      <button
+                        className={styles.sendRowBtn}
+                        onClick={() => onSendToken(token.address)}
+                      >
                         Send →
                       </button>
                     </div>
