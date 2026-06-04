@@ -234,10 +234,21 @@
   cursor: not-allowed;
 }
 
-/* ── Mobile: the identity card's 1fr/300px split and the 3-up connection grid
-   don't fit a phone, and the 32px card padding eats the narrow width. Stack
-   everything into a single column and tighten the padding/gaps. Matches the
-   768px breakpoint where DashboardLayout switches to the top-nav strip. ── */
+/* ── Stack the identity card's party / quick-actions split into one column. ──
+   The two-column split only has room when the content area is wide. With the
+   240px sidebar + 48px main padding still present above the 768px nav
+   breakpoint, the party column gets crushed (~140px) on a tablet, so this
+   collapses at 1024px rather than 768px. */
+@media (max-width: 1024px) {
+  .identityCard {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+}
+
+/* ── Mobile: tighten the 32px card padding that eats the narrow width and
+   trim heading/connection spacing. Matches the 768px breakpoint where
+   DashboardLayout switches to the top-nav strip. ── */
 @media (max-width: 768px) {
   .pageSubtitle {
     margin-bottom: 24px;
@@ -246,11 +257,6 @@
   .identityCard,
   .connectionCard {
     padding: 24px;
-  }
-
-  .identityCard {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
   }
 
   .connectionGrid {
