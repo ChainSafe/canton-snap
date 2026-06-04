@@ -22,7 +22,7 @@
     },
     "packages/dapp": {
       "component": "dapp",
-      "package-name": "@chainsafe/canton-dapp",
+      "package-name": "@chainsafe/cantonium",
       "changelog-path": "CHANGELOG.md",
       "include-paths": ["packages/dapp"]
     }

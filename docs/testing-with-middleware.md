@@ -67,7 +67,7 @@ Open the dApp at **http://localhost:3000** — in the browser profile where Meta
 The snap signs the 32-byte transaction hash returned by the middleware — it never contacts the middleware directly.
 
 ```
-Canton dApp (browser)
+Cantonium (browser)
     │
     ├── wallet_invokeSnap ──────────────────► MetaMask Flask
     │                                              │
@@ -152,7 +152,7 @@ npm run test:snap     # snap integration tests only (jest + @metamask/snaps-jest
 
 | | |
 |---|---|
-| Canton dApp | http://localhost:3000 |
+| Cantonium | http://localhost:3000 |
 | Snap server | http://localhost:4040 (set via `VITE_SNAP_PORT` in `packages/snap/.env`) |
 | Snap ID | `local:http://localhost:4040` |
 | Middleware API | http://localhost:8081 |

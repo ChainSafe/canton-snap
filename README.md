@@ -19,7 +19,7 @@ MetaMask (encrypted vault, holds seed)
 
 Keys are **scoped to the snap ID**, not derived from a BIP-44 path. The same MetaMask seed will produce a different Canton identity under `local:http://localhost:4040` vs `npm:@chainsafe/canton-snap`. The published snap is the recoverable identity; local dev keys are independent. There is no migration path between snap IDs — re-register the new identity with Canton if the snap ID changes.
 
-The **Canton dApp** (`packages/dapp`) is the browser frontend. It drives MetaMask + the snap for key operations, and talks to the Canton middleware REST API for registration and transaction flows.
+The **Cantonium dApp** (`packages/dapp`) is the browser frontend. It drives MetaMask + the snap for key operations, and talks to the Canton middleware REST API for registration and transaction flows.
 
 ## Snap RPC Methods
 
@@ -51,7 +51,7 @@ canton-snap/
 │   │   │   └── setup.js
 │   │   ├── snap.manifest.json
 │   │   └── snap.config.ts
-│   └── dapp/                       # Canton dApp — React 19 + Vite
+│   └── dapp/                       # Cantonium — React 19 + Vite
 │       ├── src/
 │       │   ├── App.tsx             # State-based router
 │       │   ├── components/         # TopBar, WalletMenu, NetworkSwitcher, …

@@ -60,7 +60,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/chainsafe/canton-dapp
+          images: ghcr.io/chainsafe/cantonium
           tags: |
             type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
             type=raw,value=latest,enable=${{ steps.version.outputs.is_latest == 'true' && steps.version.outputs.version != '' }}
