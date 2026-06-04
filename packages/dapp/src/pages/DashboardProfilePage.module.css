@@ -71,6 +71,12 @@
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-secondary);
+  /* The fingerprint is one long unbreakable hash. Without this it sets the
+     min-content width of the 1fr identity column, growing the whole card past
+     its container and pushing Quick Actions off-screen (and overflowing the
+     card on mobile). min-width:0 lets the flex item shrink so the text breaks. */
+  min-width: 0;
+  word-break: break-all;
 }
 
 /* ── Quick actions ── */
@@ -197,4 +203,34 @@
 .reinstallBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ── Mobile: the identity card's 1fr/300px split and the 3-up connection grid
+   don't fit a phone, and the 32px card padding eats the narrow width. Stack
+   everything into a single column and tighten the padding/gaps. Matches the
+   768px breakpoint where DashboardLayout switches to the top-nav strip. ── */
+@media (max-width: 768px) {
+  .pageSubtitle {
+    margin-bottom: 24px;
+  }
+
+  .identityCard,
+  .connectionCard {
+    padding: 24px;
+  }
+
+  .identityCard {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .connectionGrid {
+    gap: 24px;
+  }
+}
+
+@media (max-width: 560px) {
+  .connectionGrid {
+    grid-template-columns: 1fr;
+  }
 }
