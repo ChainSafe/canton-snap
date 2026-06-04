@@ -5,6 +5,7 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { CopyButton } from "../components/CopyButton";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { shortenAddress } from "../lib/ethereum";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { NETWORK } from "../lib/config";
 import { cn } from "../lib/cn";
 import { checkMiddlewareHealth } from "../lib/middleware";
@@ -22,6 +23,21 @@ interface Props {
   onDisconnect: () => void;
 }
 
+/**
+ * Full-width middle-ellipsis for a long hash: the leading part fills the row
+ * and elides, the last `tail` chars stay pinned to the right edge. Lets the
+ * value span the same width as the card content (aligned with the action
+ * button) instead of leaving dead space, while still showing both ends.
+ */
+function MidTruncate({ value, tail = 6 }: { value: string; tail?: number }) {
+  return (
+    <>
+      <span className={styles.midStart}>{value.slice(0, -tail)}</span>
+      <span className={styles.midEnd}>{value.slice(-tail)}</span>
+    </>
+  );
+}
+
 export function DashboardProfilePage({
   address,
   profile,
@@ -37,6 +53,11 @@ export function DashboardProfilePage({
 
   const isNonCustodial = profile.keyMode === "external";
   const middlewareHealthy = healthCache?.url === NETWORK.middlewareUrl ? healthCache.healthy : null;
+
+  // On a phone the full party ID / fingerprint hashes wrap into an unreadable
+  // multi-line block. Show a shortened middle-ellipsis form; the copy buttons
+  // still carry the full value. Matches the 560px stack breakpoint in the CSS.
+  const isPhone = useMediaQuery("(max-width: 560px)");
 
   useEffect(() => {
     let cancelled = false;
@@ -66,7 +87,7 @@ export function DashboardProfilePage({
           <div>
             <p className={styles.sectionLabel}>CANTON PARTY</p>
             <div className={styles.partyIdRow}>
-              <div style={{ minWidth: 0 }}>
+              <div className={styles.partyIdCol}>
                 {(() => {
                   const sep = profile.cantonPartyId.indexOf("::");
                   const head =
@@ -75,7 +96,11 @@ export function DashboardProfilePage({
                   return (
                     <>
                       <p className={styles.partyId}>{head}</p>
-                      {cont && <p className={styles.partyIdCont}>{cont}</p>}
+                      {cont && (
+                        <p className={styles.partyIdCont}>
+                          {isPhone ? <MidTruncate value={cont} /> : cont}
+                        </p>
+                      )}
                     </>
                   );
                 })()}
@@ -85,7 +110,13 @@ export function DashboardProfilePage({
 
             <p className={`${styles.sectionLabel} ${styles.sectionLabelTop}`}>FINGERPRINT</p>
             <div className={styles.fingerprintRow}>
-              <p className={styles.fingerprint}>{profile.fingerprint}</p>
+              <p className={styles.fingerprint}>
+                {isPhone && profile.fingerprint ? (
+                  <MidTruncate value={profile.fingerprint} />
+                ) : (
+                  profile.fingerprint
+                )}
+              </p>
               {profile.fingerprint && <CopyButton text={profile.fingerprint} />}
               <span
                 className={cn(
