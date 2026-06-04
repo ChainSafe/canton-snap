@@ -10,6 +10,7 @@ import { getTokens, type TokenConfig } from "../lib/middleware";
 import { getTokenBalance, formatTokenAmount } from "../lib/ethrpc";
 import { TOKEN_COLORS } from "../lib/tokens";
 import { useMetaMaskImport, type ImportStatus } from "../hooks/useMetaMaskImport";
+import { ImportTokensBanner } from "../components/ImportTokensBanner";
 import { useSnap } from "../hooks/useSnap";
 import {
   listIncomingTransfers,
@@ -57,18 +58,23 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
-/** Wallet outline with a "+" — signals "add token". */
-function WalletPlusIcon() {
+/** MetaMask fox — signals "add this token to MetaMask". */
+function MetaMaskFoxIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect x="2.5" y="5" width="15" height="11" rx="2" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M2.5 9H17.5" stroke="currentColor" strokeWidth="1.4" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      {/* ears */}
+      <path d="M4 2.5 L10 6.5 L7.5 8 Z" fill="#E2761B" />
+      <path d="M20 2.5 L14 6.5 L16.5 8 Z" fill="#E2761B" />
+      {/* head */}
       <path
-        d="M14 11.5V14M12.75 12.75H15.25"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
+        d="M7.5 8 L10 6.5 H14 L16.5 8 L18 13.5 L15.5 17 L12 18.5 L8.5 17 L6 13.5 Z"
+        fill="#F6851B"
       />
+      {/* muzzle */}
+      <path d="M8.5 17 L12 18.5 L15.5 17 L14 14.6 H10 Z" fill="#F8E4D0" />
+      {/* eyes */}
+      <circle cx="10" cy="11.8" r="1.05" fill="#23262E" />
+      <circle cx="14" cy="11.8" r="1.05" fill="#23262E" />
     </svg>
   );
 }
@@ -161,7 +167,7 @@ function AddTokenIconButton({
       aria-label={`Add ${symbol} to MetaMask`}
       title={`Add ${symbol} to MetaMask`}
     >
-      <WalletPlusIcon />
+      <MetaMaskFoxIcon />
     </button>
   );
 }
@@ -307,6 +313,15 @@ export function DashboardBalancesPage({
   const offerItems = offers?.items ?? null;
   const hasOffers = !!offerItems && offerItems.length > 0;
 
+  // "Add to MetaMask" banner — shown until every listed token is marked
+  // imported. MetaMask exposes no way to query already-watched assets, so this
+  // relies on the hook's best-effort localStorage mirror; if nothing is known
+  // yet, the banner stays visible.
+  const tokenList = fetchState?.rows?.map((r) => r.token) ?? [];
+  const allImported =
+    tokenList.length > 0 &&
+    tokenList.every((t) => mmImport.tokenStates[t.address]?.status === "success");
+
   return (
     <>
       <AmbientOrb opacity={0.1} size={880} x="80%" y="33%" />
@@ -316,6 +331,17 @@ export function DashboardBalancesPage({
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}
       >
+        {/* ── Add tokens to MetaMask (until all imported) ── */}
+        {!loading && !allImported && tokenList.length > 0 && (
+          <ImportTokensBanner
+            variant="banner"
+            tokens={tokenList}
+            tokenStates={mmImport.tokenStates}
+            importingAll={mmImport.importingAll}
+            onImportAll={() => void mmImport.importAll(tokenList)}
+          />
+        )}
+
         {/* ── Pending offers (non-custodial, only when present) ── */}
         {isNonCustodial && hasOffers && offerItems && (
           <>

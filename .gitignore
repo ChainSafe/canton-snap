@@ -4,4 +4,6 @@ dist/
 .DS_Store
 .env
 .env.local
+
+# Claude Code local files
 .claude/

@@ -4,6 +4,7 @@ import { TopBar } from "../components/TopBar";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { Button } from "../components/Button";
 import { CopyButton } from "../components/CopyButton";
+import { MetaMaskImportPanel } from "../components/ImportTokensBanner";
 import { cn } from "../lib/cn";
 import styles from "./RegistrationDonePage.module.css";
 
@@ -82,6 +83,8 @@ export function RegistrationDonePage({
             </div>
           </div>
         )}
+
+        <MetaMaskImportPanel address={address} variant="card" />
 
         <Button className={styles.cta} onClick={onDashboard}>
           Go to dashboard →
