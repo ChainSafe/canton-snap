@@ -80,12 +80,14 @@ function relativeTime(ts: number): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function timeUTC(ts: number): string {
+function timeLocal(ts: number): string {
   if (!ts || ts < MIN_REAL_TIMESTAMP) return "";
+  // Render in the viewer's local timezone (timeZoneName shows the local
+  // abbreviation, e.g. EDT/GMT+1). Day grouping below also uses local time,
+  // so the time shown stays consistent with its day label.
   return new Date(ts * 1000).toLocaleTimeString("en-US", {
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
-    timeZone: "UTC",
     timeZoneName: "short",
   });
 }
@@ -472,7 +474,7 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
                               : isFailed
                                 ? "Reverted"
                                 : row.timestamp >= MIN_REAL_TIMESTAMP
-                                  ? timeUTC(row.timestamp)
+                                  ? timeLocal(row.timestamp)
                                   : `Block #${row.blockNumber}`}
                           </span>
                         </div>
