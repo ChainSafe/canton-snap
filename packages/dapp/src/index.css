@@ -108,8 +108,6 @@ body {
 .topbar-logo-icon {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-sm);
-  background: var(--teal-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
