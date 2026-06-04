@@ -23,6 +23,21 @@ interface Props {
   onDisconnect: () => void;
 }
 
+/**
+ * Full-width middle-ellipsis for a long hash: the leading part fills the row
+ * and elides, the last `tail` chars stay pinned to the right edge. Lets the
+ * value span the same width as the card content (aligned with the action
+ * button) instead of leaving dead space, while still showing both ends.
+ */
+function MidTruncate({ value, tail = 6 }: { value: string; tail?: number }) {
+  return (
+    <>
+      <span className={styles.midStart}>{value.slice(0, -tail)}</span>
+      <span className={styles.midEnd}>{value.slice(-tail)}</span>
+    </>
+  );
+}
+
 export function DashboardProfilePage({
   address,
   profile,
@@ -72,7 +87,7 @@ export function DashboardProfilePage({
           <div>
             <p className={styles.sectionLabel}>CANTON PARTY</p>
             <div className={styles.partyIdRow}>
-              <div style={{ minWidth: 0 }}>
+              <div className={styles.partyIdCol}>
                 {(() => {
                   const sep = profile.cantonPartyId.indexOf("::");
                   const head =
@@ -83,7 +98,7 @@ export function DashboardProfilePage({
                       <p className={styles.partyId}>{head}</p>
                       {cont && (
                         <p className={styles.partyIdCont}>
-                          {isPhone ? shortenAddress(cont, 6) : cont}
+                          {isPhone ? <MidTruncate value={cont} /> : cont}
                         </p>
                       )}
                     </>
@@ -96,9 +111,11 @@ export function DashboardProfilePage({
             <p className={`${styles.sectionLabel} ${styles.sectionLabelTop}`}>FINGERPRINT</p>
             <div className={styles.fingerprintRow}>
               <p className={styles.fingerprint}>
-                {isPhone && profile.fingerprint
-                  ? shortenAddress(profile.fingerprint, 6)
-                  : profile.fingerprint}
+                {isPhone && profile.fingerprint ? (
+                  <MidTruncate value={profile.fingerprint} />
+                ) : (
+                  profile.fingerprint
+                )}
               </p>
               {profile.fingerprint && <CopyButton text={profile.fingerprint} />}
               <span

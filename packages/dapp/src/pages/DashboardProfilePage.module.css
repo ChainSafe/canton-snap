@@ -46,6 +46,25 @@
   margin-bottom: 28px;
 }
 
+.partyIdCol {
+  min-width: 0;
+}
+
+/* Full-width middle-ellipsis (mobile): start grows + elides, tail pinned right.
+   Inert until the parent is a flex container (set per-row at the 560px
+   breakpoint), so desktop keeps the full, wrapped value. */
+.midStart {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.midEnd {
+  flex-shrink: 0;
+}
+
 .partyId {
   font-family: var(--font-mono);
   font-size: 19px;
@@ -235,5 +254,26 @@
 @media (max-width: 560px) {
   .connectionGrid {
     grid-template-columns: 1fr;
+  }
+
+  /* Let the party-ID / fingerprint values fill the row width (so they line up
+     with the full-width action button) and push the copy button / mode tag to
+     the right edge, instead of clustering left with dead space. */
+  .partyIdCol {
+    flex: 1;
+  }
+
+  .partyIdCont {
+    display: flex;
+  }
+
+  .fingerprintRow {
+    flex-wrap: nowrap;
+  }
+
+  .fingerprint {
+    display: flex;
+    flex: 1;
+    min-width: 0;
   }
 }
