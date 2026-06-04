@@ -3,7 +3,7 @@
 export function Logo() {
   return (
     <img
-      src="/chainsafe-logo.png"
+      src={`${import.meta.env.BASE_URL}chainsafe-logo.png`}
       alt="ChainSafe"
       width={32}
       height={32}
