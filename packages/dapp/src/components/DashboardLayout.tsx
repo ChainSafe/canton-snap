@@ -119,7 +119,7 @@ export function DashboardLayout({
           <div className="topbar-logo-icon">
             <Logo />
           </div>
-          <span className="topbar-logo-text">Canton dApp</span>
+          <span className="topbar-logo-text">EVM Middleware</span>
         </div>
         <div className={styles.sidebarDivider} />
         <nav className={styles.sidebarNav}>
