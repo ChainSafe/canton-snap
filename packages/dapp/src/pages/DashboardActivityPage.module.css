@@ -57,8 +57,11 @@
 /* ── Column headers (above card) ── */
 .colHeaders {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  column-gap: 32px;
+  /* Content-weighted tracks: TX HASH / TO-FROM are the widest, TYPE/TOKEN/
+     AMOUNT/DATE are narrower. Equal 1fr columns starved the hash columns and
+     made the rows overlap until ~1500px wide. Must match .activityRow. */
+  grid-template-columns: 0.95fr 0.7fr 0.85fr 1.15fr 1.35fr 0.9fr;
+  column-gap: 20px;
   padding: 0 24px 12px;
   font-size: 11px;
   font-weight: 600;
@@ -98,8 +101,8 @@
 
 .activityRow {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  column-gap: 32px;
+  grid-template-columns: 0.95fr 0.7fr 0.85fr 1.15fr 1.35fr 0.9fr;
+  column-gap: 20px;
   align-items: center;
   padding: 16px 24px;
 }
@@ -109,6 +112,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .typeIcon {
@@ -196,6 +200,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .tokenIcon {
@@ -236,6 +241,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .addrValue {
@@ -243,6 +249,8 @@
   font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 
@@ -252,12 +260,14 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 3px;
+  min-width: 0;
 }
 
 .amountValue {
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .amountSent {
@@ -279,16 +289,19 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 3px;
+  min-width: 0;
 }
 
 .whenRelative {
   font-size: 12px;
   color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .whenAbsolute {
   font-size: 11px;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* Loading / error / empty */
@@ -325,9 +338,11 @@
   color: var(--text-muted);
 }
 
-/* ── Mobile: the 6-column table can't fit a phone, so hide the column
-   header and reflow each row into a compact 2-column card. ── */
-@media (max-width: 768px) {
+/* ── Tablet + mobile: the 6-column table needs a wide viewport, but the 240px
+   sidebar keeps the content area narrow well past the 768px nav breakpoint, so
+   the table overlaps on a tablet. Reflow into a compact 2-column card at 1024px
+   (the table only has room above that). ── */
+@media (max-width: 1024px) {
   .pageHeader {
     flex-direction: column;
     align-items: stretch;
@@ -377,5 +392,49 @@
 
   .rowDivider {
     margin: 0 16px;
+  }
+}
+
+/* ── Phone: tighten spacing and put TO/FROM and TX side by side (row 3) so
+   each transaction takes 3 rows instead of 4. ── */
+@media (max-width: 560px) {
+  .activityRow {
+    padding: 13px 14px;
+    row-gap: 9px;
+    column-gap: 12px;
+  }
+
+  .typeIcon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .tokenIcon {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Cells render in DOM order: type, token, amount, addr(to/from), addr(tx),
+     when. The 4th/5th cells are the two addr blocks — sit them side by side. */
+  .addrCell {
+    grid-column: auto;
+  }
+
+  .activityRow > div:nth-child(4) {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .activityRow > div:nth-child(5) {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .addrValue {
+    font-size: 11px;
+  }
+
+  .rowDivider {
+    margin: 0 14px;
   }
 }
