@@ -26,7 +26,7 @@ export function LandingPage({ connecting, error, detected, onConnect }: Props) {
 
         <p className={styles.subtitle}>
           Register a Canton party, hold tokens, and transfer —<br />
-          all with MetaMask you already have.
+          all with your existing MetaMask.
         </p>
 
         {!detected && (

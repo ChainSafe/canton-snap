@@ -44,7 +44,7 @@ export function TopBar({ address, onDisconnect }: Props) {
         <div className="topbar-logo-icon">
           <Logo />
         </div>
-        <span className="topbar-logo-text">Canton dApp</span>
+        <span className="topbar-logo-text">EVM Middleware</span>
       </div>
 
       {address && (
