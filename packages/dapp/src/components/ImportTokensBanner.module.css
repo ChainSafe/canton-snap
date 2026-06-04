@@ -1,0 +1,189 @@
+/* Shared "Add tokens to MetaMask" surface — banner (balances) + card (post-registration).
+   Vertical layout: header (icon + copy) → footer (token preview + action). Scales to
+   any token count via an overlapping-avatar stack that collapses into a "+N" badge. */
+
+.root {
+  position: relative;
+  z-index: 1;
+  /* Match the design-system .card (border + radius + gradient) so this reads
+     as the same family as the party-ID card and the balances card. */
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Banner: aligned to the same 768px content column as the balances PageCard
+   (and section headers), with a gap below before the balances card. */
+.banner {
+  max-width: 768px;
+  margin-left: max(0px, calc(50% - 432px));
+  margin-right: auto;
+  margin-bottom: 20px;
+}
+
+/* Card: matches the registration party-ID card width, with a gap above it. */
+.card {
+  width: min(560px, 100%);
+  margin: 20px auto 0;
+  text-align: left;
+}
+
+/* ── Header ── */
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--teal) 14%, transparent);
+  color: var(--teal);
+  flex-shrink: 0;
+}
+
+.iconWrapDone {
+  background: color-mix(in srgb, var(--green) 16%, transparent);
+  color: var(--green);
+}
+
+.copy {
+  min-width: 0;
+  flex: 1;
+  padding-top: 1px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.subtitle {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ── Footer: token preview (left) + action (right) ── */
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.avatars {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.avatar,
+.avatarMore {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  /* Ring matches the card backdrop so overlapping avatars read as separated. */
+  box-shadow: 0 0 0 2px #14172480;
+  margin-left: -8px;
+}
+
+.avatar:first-child {
+  margin-left: 0;
+}
+
+.avatarMore {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.avatarBadge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px #141724;
+}
+
+.avatarBadgeOk {
+  background: var(--green);
+  color: #0a0b14;
+}
+
+.avatarBadgeErr {
+  background: var(--amber);
+  color: #0a0b14;
+}
+
+.avatarSpinner {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid rgba(10, 11, 20, 0.25);
+  border-top-color: #0a0b14;
+  animation: importAvatarSpin 0.7s linear infinite;
+}
+
+@keyframes importAvatarSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.previewLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.action {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* When the row can't fit both items (narrow viewport or the card variant),
+   the action drops to its own full-width line below the preview. */
+.card .action {
+  flex: 1 1 100%;
+}
+
+@media (max-width: 560px) {
+  .action {
+    flex: 1 1 100%;
+  }
+}
