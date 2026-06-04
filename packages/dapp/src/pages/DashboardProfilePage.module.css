@@ -22,9 +22,16 @@
   /* Quick-actions track scales with the viewport (instead of a fixed 300px
      that holds its size then snaps to full-width) so the Send button shrinks
      gradually as the window narrows, down to the 768px stack breakpoint. */
-  grid-template-columns: 1fr clamp(200px, 26%, 300px);
+  grid-template-columns: minmax(0, 1fr) clamp(200px, 26%, 300px);
   gap: clamp(24px, 4vw, 48px);
   margin-bottom: 24px;
+}
+
+/* Grid tracks default to min-width:auto, which would grow to fit the
+   non-wrapping MidTruncate hash (defeating its ellipsis and overflowing the
+   card). Let the cells shrink below their content instead. */
+.identityCard > div {
+  min-width: 0;
 }
 
 .sectionLabel {
@@ -242,7 +249,7 @@
   }
 
   .identityCard {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 28px;
   }
 
