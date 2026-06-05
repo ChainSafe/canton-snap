@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.2.0...dapp-v1.3.0) (2026-06-05)
+
+
+### Features
+
+* **dapp:** one-click "Add tokens to MetaMask" after registration + balances banner ([#74](https://github.com/ChainSafe/canton-snap/issues/74)) ([d6700cc](https://github.com/ChainSafe/canton-snap/commit/d6700ccf005e3978c735e259cbb93d0c639badbe))
+* **dapp:** use ChainSafe logo as app logo and favicon ([#77](https://github.com/ChainSafe/canton-snap/issues/77)) ([0ddc8f7](https://github.com/ChainSafe/canton-snap/commit/0ddc8f705a6625d1214e8aff5e02800fb29e20de))
+
+
+### Bug Fixes
+
+* **dapp:** activity timestamps in local time, not UTC ([#71](https://github.com/ChainSafe/canton-snap/issues/71)) ([2ad94cb](https://github.com/ChainSafe/canton-snap/commit/2ad94cb9623d10be3734c164ad8edf5e3174cdbc))
+* **dapp:** pre-select the clicked token on Transfer ([#72](https://github.com/ChainSafe/canton-snap/issues/72)) ([b76a02a](https://github.com/ChainSafe/canton-snap/commit/b76a02a9568a2fb04e3b540bf4f5a907966e87e6))
+* **dapp:** rename product to EVM Middleware and refine landing copy ([#70](https://github.com/ChainSafe/canton-snap/issues/70)) ([39f758c](https://github.com/ChainSafe/canton-snap/commit/39f758ca41259716355e0e6a437b5dd0af42b28e)), closes [#69](https://github.com/ChainSafe/canton-snap/issues/69)
+* **dapp:** responsive layout for mobile viewports ([#73](https://github.com/ChainSafe/canton-snap/issues/73)) ([4945944](https://github.com/ChainSafe/canton-snap/commit/49459445bd9d7378ed870d52ef9a31d71d44aa78))
+
 ## [1.2.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.1.0...dapp-v1.2.0) (2026-06-01)
 
 
