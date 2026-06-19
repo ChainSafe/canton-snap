@@ -23,7 +23,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.1.1",
     "typescript-eslint": "^8.59.0",
-    "vite": "^6.3.0",
+    "vite": "^6.4.3",
     "vitest": "^3.2.4"
   },
   "notes": "Run 'npm install' in this directory to set up the build toolchain before development.",
