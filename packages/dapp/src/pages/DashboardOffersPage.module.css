@@ -1,0 +1,359 @@
+/* ── Page header ── */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 22px;
+}
+
+.modePill {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background: rgba(0, 212, 164, 0.12);
+  color: #00d4a4;
+  border: 1px solid rgba(0, 212, 164, 0.3);
+}
+
+/* Same content column as the other dashboard pages. */
+.column {
+  max-width: 768px;
+  margin-left: max(0px, calc(50% - 432px));
+  margin-right: auto;
+}
+
+/* ── Filter chips ── */
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.filterChip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.filterChip:hover {
+  border-color: #43496e;
+  color: var(--text-primary);
+}
+
+.filterChipActive {
+  background: rgba(0, 212, 164, 0.1);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.filterCount {
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+/* ── Section header ── */
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0 12px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sectionMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.statePill {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 8px;
+  padding: 3px 9px;
+}
+
+.statePillLive {
+  background: rgba(0, 212, 164, 0.12);
+  color: var(--teal);
+  border: 1px solid rgba(0, 212, 164, 0.3);
+}
+
+.statePillExp {
+  background: rgba(255, 184, 77, 0.14);
+  color: var(--amber);
+  border: 1px solid rgba(255, 184, 77, 0.32);
+}
+
+/* ── Offer card / rows ── */
+.offersCard {
+  padding: 0 24px;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.offersCardExp {
+  border-color: rgba(255, 184, 77, 0.28);
+}
+
+.colHeaders {
+  display: grid;
+  grid-template-columns: 1fr 150px 150px;
+  gap: 18px;
+  align-items: center;
+  padding: 14px 0 11px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.colAmount {
+  text-align: right;
+}
+
+.colStatus {
+  text-align: right;
+}
+
+.offerRow {
+  display: grid;
+  grid-template-columns: 1fr 150px 150px;
+  gap: 18px;
+  align-items: center;
+  padding: 16px 0;
+}
+
+.rowDivider {
+  height: 1px;
+  background: var(--border);
+}
+
+/* Left: token + recipient */
+.offerInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tokenIconCircle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.offerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.offerSymbol {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.offerTo {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Middle: amount */
+.amountInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.amount {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.amountLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Right: status */
+.offerStatus {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.statusChip {
+  font-size: 10.5px;
+  font-weight: 600;
+  border-radius: 9px;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.statusChipPending {
+  background: rgba(0, 212, 164, 0.1);
+  color: var(--teal);
+  border: 1px solid rgba(0, 212, 164, 0.28);
+}
+
+.statusChipExpired {
+  background: rgba(255, 184, 77, 0.12);
+  color: var(--amber);
+  border: 1px solid rgba(255, 184, 77, 0.3);
+}
+
+/* ── Loading / error / empty ── */
+.centred {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+}
+
+.empty {
+  background: var(--bg-card);
+  border: 1px dashed var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: 48px 24px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.emptyIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: var(--text-muted);
+}
+
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.emptyText {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  max-width: 380px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sampleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  margin-bottom: 16px;
+}
+
+.sampleDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+
+/* ── Mobile: drop the column headers, lay each row out as [token | amount]
+   with the status chip wrapping to its own line beneath. ── */
+@media (max-width: 560px) {
+  .pageHeader {
+    flex-wrap: wrap;
+  }
+
+  .colHeaders {
+    display: none;
+  }
+
+  .offerRow {
+    grid-template-columns: 1fr auto;
+    row-gap: 10px;
+  }
+
+  .offerStatus {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .offersCard {
+    padding: 0 16px;
+  }
+}

@@ -8,7 +8,7 @@ import { NETWORK } from "../lib/config";
 import { cn } from "../lib/cn";
 import styles from "./DashboardLayout.module.css";
 
-export type DashboardTab = "profile" | "balances" | "transfer" | "activity";
+export type DashboardTab = "profile" | "balances" | "transfer" | "offers" | "activity";
 
 interface Props {
   address: string;
@@ -70,6 +70,25 @@ function TransferIcon() {
   );
 }
 
+function OffersIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path
+        d="M3 7L10 3L17 7V13L10 17L3 13V7Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3 7L10 11L17 7M10 11V17"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function ActivityIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -83,6 +102,7 @@ const NAV = [
   { id: "profile" as DashboardTab, label: "Profile", Icon: ProfileIcon },
   { id: "balances" as DashboardTab, label: "Balances", Icon: BalancesIcon },
   { id: "transfer" as DashboardTab, label: "Transfer", Icon: TransferIcon },
+  { id: "offers" as DashboardTab, label: "Offers", Icon: OffersIcon },
   { id: "activity" as DashboardTab, label: "Activity", Icon: ActivityIcon },
 ];
 
