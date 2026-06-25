@@ -5,7 +5,7 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { PageCard } from "../components/PageCard";
 import { Spinner } from "../components/Spinner";
-import { NETWORK } from "../lib/config";
+import { NETWORK, isOfferBasedToken } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
 import {
   getTokenBalance,
@@ -769,12 +769,13 @@ export function TransferPage({
   const selectedBalance = selectedToken ? balances.get(selectedToken.address) : undefined;
   const pillClass = isNonCustodial ? styles.modePillNonCustodial : styles.modePillCustodial;
 
-  // Custodial sends to a plain EVM address settle via a raw ERC-20 transfer and
-  // carry no offer validity. Every other path (any non-custodial send, or a
-  // custodial send to a party id) goes through the middleware and needs a
-  // validity, so the Offer expiry control is shown for those.
+  // Offer expiry only applies to offer-based tokens (e.g. USDCx, configurable):
+  // the recipient must accept, so there's an offer that can expire. Other tokens
+  // settle directly with no offer. Custodial sends to a plain EVM address also
+  // settle directly (raw ERC-20), so they never carry a validity either.
+  const offerBased = isOfferBasedToken(selectedToken?.symbol);
   const isCustodialParty = !isNonCustodial && recipientType === "party";
-  const usesValidity = isNonCustodial || isCustodialParty;
+  const usesValidity = offerBased && (isNonCustodial || isCustodialParty);
 
   return (
     <>
@@ -909,11 +910,19 @@ export function TransferPage({
             <div className={styles.infoStrip}>
               <InfoIcon />
               {isCustodialParty ? (
-                <span>
-                  Gas-free on Canton · The recipient party receives an{" "}
-                  <strong style={{ color: "var(--text-primary)" }}>offer to accept</strong> — the
-                  server co-signs on your behalf.
-                </span>
+                offerBased ? (
+                  <span>
+                    Gas-free on Canton · The recipient party receives an{" "}
+                    <strong style={{ color: "var(--text-primary)" }}>offer to accept</strong> — the
+                    server co-signs on your behalf.
+                  </span>
+                ) : (
+                  <span>
+                    Gas-free on Canton · Sent{" "}
+                    <strong style={{ color: "var(--text-primary)" }}>directly</strong> to the party
+                    — the server co-signs on your behalf.
+                  </span>
+                )
               ) : isNonCustodial ? (
                 <span>
                   Gas-free on Canton · Settles in ~2–4s · You&apos;ll sign{" "}
