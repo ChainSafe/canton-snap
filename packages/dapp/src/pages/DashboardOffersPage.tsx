@@ -9,7 +9,12 @@ import { NETWORK } from "../lib/config";
 import { OFFERS_SAMPLE_ENABLED } from "../lib/features";
 import { formatTokenAmount } from "../lib/ethrpc";
 import { TOKEN_COLORS } from "../lib/tokens";
-import { listOutgoingTransfers, type OutgoingTransfer } from "../lib/transfer";
+import {
+  listIncomingTransfers,
+  listOutgoingTransfers,
+  type IncomingTransfer,
+  type OutgoingTransfer,
+} from "../lib/transfer";
 import { cn } from "../lib/cn";
 import styles from "./DashboardOffersPage.module.css";
 
@@ -21,14 +26,27 @@ interface Props {
   keyMode: "custodial" | "external";
 }
 
-type Filter = "all" | "pending" | "expired";
+type Filter = "all" | "incoming" | "outgoing";
 
 interface OffersState {
   url: string;
   address: string;
-  items: OutgoingTransfer[] | null;
+  incoming: IncomingTransfer[];
+  outgoing: OutgoingTransfer[];
   error: string | null;
   sample: boolean;
+}
+
+// A normalized row so incoming and outgoing offers render through one table.
+type ChipKind = "incoming" | "pending" | "expired";
+interface OfferRow {
+  key: string;
+  symbol: string;
+  decimals?: number;
+  amount: string;
+  counterparty: string;
+  chipKind: ChipKind;
+  chipText: string;
 }
 
 function TokenIcon({ symbol }: { symbol: string }) {
@@ -37,6 +55,21 @@ function TokenIcon({ symbol }: { symbol: string }) {
     <div className={styles.tokenIconCircle} style={{ background: colors.bg, color: colors.text }}>
       {symbol.charAt(0).toUpperCase()}
     </div>
+  );
+}
+
+function IncomingIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path
+        d="M7 2V9M7 9L4 6M7 9L10 6"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M2.5 10.5H11.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -83,10 +116,24 @@ function OffersGlyph() {
 }
 
 // Illustrative offers shown only when VITE_OFFERS_SAMPLE=true and the live
-// endpoint returns nothing — lets the design be reviewed before the outgoing
-// endpoint is deployed. Timestamps are relative to "now" so the countdown /
-// "expired N ago" labels render sensibly.
-function buildSampleOffers(): OutgoingTransfer[] {
+// endpoints return nothing — lets the design be reviewed before they're
+// deployed. Timestamps are relative to "now" so the labels render sensibly.
+function buildSampleIncoming(): IncomingTransfer[] {
+  return [
+    {
+      contractId: "sample-incoming-1",
+      senderPartyId: "erin_5kT::1220fa31…0c4d",
+      receiverPartyId: "me_7a3f::1220ab00…b21e",
+      amount: "250",
+      instrumentAdmin: "admin::1220…",
+      instrumentId: "USDCX",
+      symbol: "USDCX",
+      decimals: 6,
+    },
+  ];
+}
+
+function buildSampleOutgoing(): OutgoingTransfer[] {
   const now = Date.now();
   const hours = (h: number) => new Date(now + h * 3600_000).toISOString();
   return [
@@ -114,32 +161,14 @@ function buildSampleOffers(): OutgoingTransfer[] {
       status: "expired",
       expiresAt: hours(-48),
     },
-    {
-      contractId: "sample-expired-2",
-      senderPartyId: "me_7a3f::1220ab00…b21e",
-      receiverPartyId: "dave_8mR::1220ab77…04ce",
-      amount: "75.5",
-      instrumentAdmin: "admin::1220…",
-      instrumentId: "USDCX",
-      symbol: "USDCX",
-      decimals: 6,
-      status: "expired",
-      expiresAt: hours(-120),
-    },
   ];
 }
 
-export function DashboardOffersPage({
-  address,
-  activeTab,
-  onTabChange,
-  onDisconnect,
-  keyMode,
-}: Props) {
+export function DashboardOffersPage({ address, activeTab, onTabChange, onDisconnect }: Props) {
   const [offers, setOffers] = useState<OffersState | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
-  // Ticks every 30s so the relative countdowns stay live and offers flip from
-  // pending to expired on their own, without a refetch or page refresh.
+  // Ticks every 30s so the relative countdowns stay live and outgoing offers
+  // flip from pending to expired on their own, without a refetch.
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -147,62 +176,72 @@ export function DashboardOffersPage({
     return () => window.clearInterval(timer);
   }, []);
 
-  const isNonCustodial = keyMode === "external";
-  const loading =
-    isNonCustodial && (offers?.url !== NETWORK.middlewareUrl || offers?.address !== address);
+  const loading = offers?.url !== NETWORK.middlewareUrl || offers?.address !== address;
 
-  // Outgoing offers are surfaced for non-custodial users: custodial sends settle
-  // directly server-side, so there's no pending/expired offer to track here.
-  // (The custodial branch renders its own explainer independently of `offers`.)
+  // Offers in both directions are shown for every user, custodial or not — the
+  // read endpoints are unauthenticated and resolve by EVM address.
   useEffect(() => {
-    if (!isNonCustodial) return;
     let cancelled = false;
+    const url = NETWORK.middlewareUrl;
 
-    const withSample = (): OffersState => ({
-      url: NETWORK.middlewareUrl,
+    const sampleState = (): OffersState => ({
+      url,
       address,
-      items: buildSampleOffers(),
+      incoming: buildSampleIncoming(),
+      outgoing: buildSampleOutgoing(),
       error: null,
       sample: true,
     });
 
-    listOutgoingTransfers(NETWORK.middlewareUrl, address)
-      .then((items) => {
-        if (cancelled) return;
-        if (items.length === 0 && OFFERS_SAMPLE_ENABLED) {
-          setOffers(withSample());
-        } else {
-          setOffers({ url: NETWORK.middlewareUrl, address, items, error: null, sample: false });
-        }
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        // Endpoint missing / unreachable: fall back to sample data when the
-        // preview flag is on so the design stays reviewable.
+    Promise.allSettled([
+      listIncomingTransfers(url, address),
+      listOutgoingTransfers(url, address),
+    ]).then(([inc, out]) => {
+      if (cancelled) return;
+      const incoming = inc.status === "fulfilled" ? inc.value : [];
+      const outgoing = out.status === "fulfilled" ? out.value : [];
+
+      // Surface an error only when nothing could be loaded at all.
+      if (inc.status === "rejected" && out.status === "rejected") {
         if (OFFERS_SAMPLE_ENABLED) {
-          setOffers(withSample());
+          setOffers(sampleState());
         } else {
           setOffers({
-            url: NETWORK.middlewareUrl,
+            url,
             address,
-            items: null,
-            error: (e as Error).message,
+            incoming: [],
+            outgoing: [],
+            error: (inc.reason as Error).message,
             sample: false,
           });
         }
-      });
+        return;
+      }
+
+      if (incoming.length === 0 && outgoing.length === 0 && OFFERS_SAMPLE_ENABLED) {
+        setOffers(sampleState());
+      } else {
+        setOffers({ url, address, incoming, outgoing, error: null, sample: false });
+      }
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [address, isNonCustodial]);
+  }, [address]);
 
-  const items = useMemo(() => offers?.items ?? [], [offers]);
-  const { pending, expired } = useMemo(() => splitByStatus(items, now), [items, now]);
+  const incoming = useMemo(() => offers?.incoming ?? [], [offers]);
+  const outgoing = useMemo(() => offers?.outgoing ?? [], [offers]);
+  const { pending, expired } = useMemo(() => splitOutgoing(outgoing, now), [outgoing, now]);
 
-  const visiblePending = filter === "expired" ? [] : pending;
-  const visibleExpired = filter === "pending" ? [] : expired;
-  const hasAny = items.length > 0;
+  const incomingRows = useMemo(() => incoming.map(toIncomingRow), [incoming]);
+  const pendingRows = useMemo(() => pending.map((o) => toOutgoingRow(o, now)), [pending, now]);
+  const expiredRows = useMemo(() => expired.map((o) => toOutgoingRow(o, now)), [expired, now]);
+
+  const showIncoming = filter !== "outgoing";
+  const showOutgoing = filter !== "incoming";
+  const total = incoming.length + outgoing.length;
+  const hasAny = total > 0;
 
   return (
     <>
@@ -215,34 +254,19 @@ export function DashboardOffersPage({
       >
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Offers</h1>
-          {isNonCustodial && <span className={styles.modePill}>NON-CUSTODIAL</span>}
         </div>
         <p className={styles.pageSubtitle}>
-          Transfers you&apos;ve offered to another Canton party, and which of them have expired.
+          Transfer offers waiting on you to accept, and the ones you&apos;ve sent.
         </p>
 
         <div className={styles.column}>
-          {/* Custodial — offers settle server-side */}
-          {!isNonCustodial && (
-            <div className={styles.empty}>
-              <div className={styles.emptyIcon}>
-                <OffersGlyph />
-              </div>
-              <p className={styles.emptyTitle}>Nothing to track here</p>
-              <p className={styles.emptyText}>
-                In custodial mode the middleware settles your transfers directly, so there are no
-                pending offers to manage.
-              </p>
-            </div>
-          )}
-
-          {isNonCustodial && loading && (
+          {loading && (
             <div className={styles.centred}>
               <Spinner />
             </div>
           )}
 
-          {isNonCustodial && !loading && offers?.error && (
+          {!loading && offers?.error && (
             <div className={styles.empty}>
               <div className={styles.emptyIcon}>
                 <OffersGlyph />
@@ -252,7 +276,7 @@ export function DashboardOffersPage({
             </div>
           )}
 
-          {isNonCustodial && !loading && offers && !offers.error && (
+          {!loading && offers && !offers.error && (
             <>
               {offers.sample && (
                 <div className={styles.sampleBadge}>
@@ -266,10 +290,10 @@ export function DashboardOffersPage({
                   <div className={styles.emptyIcon}>
                     <OffersGlyph />
                   </div>
-                  <p className={styles.emptyTitle}>No offered transfers</p>
+                  <p className={styles.emptyTitle}>No offers</p>
                   <p className={styles.emptyText}>
-                    Transfers you offer to another Canton party appear here while they await
-                    acceptance, and stay listed if they expire unaccepted.
+                    Offers sent to you and transfers you&apos;ve offered to another Canton party
+                    will appear here.
                   </p>
                 </div>
               ) : (
@@ -277,25 +301,42 @@ export function DashboardOffersPage({
                   <div className={styles.filters}>
                     <FilterChip
                       label="All"
-                      count={items.length}
+                      count={total}
                       active={filter === "all"}
                       onClick={() => setFilter("all")}
                     />
                     <FilterChip
-                      label="Pending"
-                      count={pending.length}
-                      active={filter === "pending"}
-                      onClick={() => setFilter("pending")}
+                      label="Incoming"
+                      count={incoming.length}
+                      active={filter === "incoming"}
+                      onClick={() => setFilter("incoming")}
                     />
                     <FilterChip
-                      label="Expired"
-                      count={expired.length}
-                      active={filter === "expired"}
-                      onClick={() => setFilter("expired")}
+                      label="Outgoing"
+                      count={outgoing.length}
+                      active={filter === "outgoing"}
+                      onClick={() => setFilter("outgoing")}
                     />
                   </div>
 
-                  {visiblePending.length > 0 && (
+                  {showIncoming && incomingRows.length > 0 && (
+                    <>
+                      <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>
+                          <span className={cn(styles.statePill, styles.statePillIncoming)}>
+                            INCOMING
+                          </span>
+                          Awaiting your acceptance
+                        </h2>
+                        <span className={styles.sectionMeta}>Sent to you by another party</span>
+                      </div>
+                      <PageCard className={styles.offersCard}>
+                        <OffersTable rows={incomingRows} />
+                      </PageCard>
+                    </>
+                  )}
+
+                  {showOutgoing && pendingRows.length > 0 && (
                     <>
                       <div className={styles.sectionHeader}>
                         <h2 className={styles.sectionTitle}>
@@ -307,12 +348,12 @@ export function DashboardOffersPage({
                         <span className={styles.sectionMeta}>The recipient can still accept</span>
                       </div>
                       <PageCard className={styles.offersCard}>
-                        <OffersTable rows={visiblePending} now={now} />
+                        <OffersTable rows={pendingRows} />
                       </PageCard>
                     </>
                   )}
 
-                  {visibleExpired.length > 0 && (
+                  {showOutgoing && expiredRows.length > 0 && (
                     <>
                       <div className={styles.sectionHeader}>
                         <h2 className={styles.sectionTitle}>
@@ -322,17 +363,18 @@ export function DashboardOffersPage({
                         <span className={styles.sectionMeta}>Expired before acceptance</span>
                       </div>
                       <PageCard className={cn(styles.offersCard, styles.offersCardExp)}>
-                        <OffersTable rows={visibleExpired} now={now} />
+                        <OffersTable rows={expiredRows} />
                       </PageCard>
                     </>
                   )}
 
-                  {visiblePending.length === 0 && visibleExpired.length === 0 && (
-                    <div className={styles.empty}>
-                      <p className={styles.emptyTitle}>Nothing in this view</p>
-                      <p className={styles.emptyText}>No offers match the selected filter.</p>
-                    </div>
-                  )}
+                  {((showIncoming && incomingRows.length === 0) || !showIncoming) &&
+                    (!showOutgoing || (pendingRows.length === 0 && expiredRows.length === 0)) && (
+                      <div className={styles.empty}>
+                        <p className={styles.emptyTitle}>Nothing in this view</p>
+                        <p className={styles.emptyText}>No offers match the selected filter.</p>
+                      </div>
+                    )}
                 </>
               )}
             </>
@@ -365,56 +407,89 @@ function FilterChip({
   );
 }
 
-function OffersTable({ rows, now }: { rows: OutgoingTransfer[]; now: number }) {
+function ChipIcon({ kind }: { kind: ChipKind }) {
+  if (kind === "incoming") return <IncomingIcon />;
+  if (kind === "expired") return <ExpiredIcon />;
+  return <ClockIcon />;
+}
+
+function OffersTable({ rows }: { rows: OfferRow[] }) {
   return (
     <>
       <div className={styles.colHeaders}>
-        <span>Token · To</span>
+        <span>Token · Party</span>
         <span className={styles.colAmount}>Amount</span>
         <span className={styles.colStatus}>Status</span>
       </div>
-      {rows.map((offer, i) => {
-        const symbol = offer.symbol ?? offer.instrumentId;
-        const decimals = offer.decimals ?? 0;
-        const expired = isExpired(offer, now);
-        return (
-          <div key={offer.contractId}>
-            {i > 0 && <div className={styles.rowDivider} />}
-            <div className={styles.offerRow}>
-              <div className={styles.offerInfo}>
-                <TokenIcon symbol={symbol} />
-                <div className={styles.offerText}>
-                  <p className={styles.offerSymbol}>{symbol}</p>
-                  <p className={styles.offerTo}>to {shortenPartyId(offer.receiverPartyId)}</p>
-                </div>
-              </div>
-
-              <div className={styles.amountInfo}>
-                <p className={styles.amount}>
-                  {offer.decimals !== undefined
-                    ? formatTokenAmount(parseAmountToBigInt(offer.amount, decimals), decimals)
-                    : offer.amount}
-                </p>
-                <p className={styles.amountLabel}>{symbol}</p>
-              </div>
-
-              <div className={styles.offerStatus}>
-                <span
-                  className={cn(
-                    styles.statusChip,
-                    expired ? styles.statusChipExpired : styles.statusChipPending,
-                  )}
-                >
-                  {expired ? <ExpiredIcon /> : <ClockIcon />}
-                  {formatRelativeExpiry(offer.expiresAt, now)}
-                </span>
+      {rows.map((row, i) => (
+        <div key={row.key}>
+          {i > 0 && <div className={styles.rowDivider} />}
+          <div className={styles.offerRow}>
+            <div className={styles.offerInfo}>
+              <TokenIcon symbol={row.symbol} />
+              <div className={styles.offerText}>
+                <p className={styles.offerSymbol}>{row.symbol}</p>
+                <p className={styles.offerTo}>{row.counterparty}</p>
               </div>
             </div>
+
+            <div className={styles.amountInfo}>
+              <p className={styles.amount}>{row.amount}</p>
+              <p className={styles.amountLabel}>{row.symbol}</p>
+            </div>
+
+            <div className={styles.offerStatus}>
+              <span
+                className={cn(
+                  styles.statusChip,
+                  row.chipKind === "incoming" && styles.statusChipIncoming,
+                  row.chipKind === "pending" && styles.statusChipPending,
+                  row.chipKind === "expired" && styles.statusChipExpired,
+                )}
+              >
+                <ChipIcon kind={row.chipKind} />
+                {row.chipText}
+              </span>
+            </div>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </>
   );
+}
+
+// ── row mapping ──
+
+function formatAmount(amount: string, decimals?: number): string {
+  if (decimals === undefined) return amount;
+  return formatTokenAmount(parseAmountToBigInt(amount, decimals), decimals);
+}
+
+function toIncomingRow(o: IncomingTransfer): OfferRow {
+  const symbol = o.symbol ?? o.instrumentId;
+  return {
+    key: o.contractId,
+    symbol,
+    decimals: o.decimals,
+    amount: formatAmount(o.amount, o.decimals),
+    counterparty: `from ${shortenPartyId(o.senderPartyId)}`,
+    chipKind: "incoming",
+    chipText: "awaiting your acceptance",
+  };
+}
+
+function toOutgoingRow(o: OutgoingTransfer, now: number): OfferRow {
+  const symbol = o.symbol ?? o.instrumentId;
+  const expired = isExpired(o, now);
+  return {
+    key: o.contractId,
+    symbol,
+    decimals: o.decimals,
+    amount: formatAmount(o.amount, o.decimals),
+    counterparty: `to ${shortenPartyId(o.receiverPartyId)}`,
+    chipKind: expired ? "expired" : "pending",
+    chipText: formatRelativeExpiry(o.expiresAt, now),
+  };
 }
 
 // ── helpers ──
@@ -425,7 +500,7 @@ function isExpired(offer: OutgoingTransfer, now: number): boolean {
   return new Date(offer.expiresAt).getTime() <= now;
 }
 
-function splitByStatus(
+function splitOutgoing(
   items: OutgoingTransfer[],
   now: number,
 ): {

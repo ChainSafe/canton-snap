@@ -126,6 +126,12 @@
   border: 1px solid rgba(255, 184, 77, 0.32);
 }
 
+.statePillIncoming {
+  background: rgba(139, 124, 255, 0.14);
+  color: var(--purple);
+  border: 1px solid rgba(139, 124, 255, 0.32);
+}
+
 /* ── Offer card / rows ── */
 .offersCard {
   padding: 0 24px;
@@ -262,6 +268,12 @@
   background: rgba(255, 184, 77, 0.12);
   color: var(--amber);
   border: 1px solid rgba(255, 184, 77, 0.3);
+}
+
+.statusChipIncoming {
+  background: rgba(139, 124, 255, 0.12);
+  color: var(--purple);
+  border: 1px solid rgba(139, 124, 255, 0.3);
 }
 
 /* ── Loading / error / empty ── */
