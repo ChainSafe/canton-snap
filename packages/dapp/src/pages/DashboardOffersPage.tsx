@@ -138,6 +138,14 @@ export function DashboardOffersPage({
 }: Props) {
   const [offers, setOffers] = useState<OffersState | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+  // Ticks every 30s so the relative countdowns stay live and offers flip from
+  // pending to expired on their own, without a refetch or page refresh.
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const isNonCustodial = keyMode === "external";
   const loading =
@@ -190,7 +198,7 @@ export function DashboardOffersPage({
   }, [address, isNonCustodial]);
 
   const items = useMemo(() => offers?.items ?? [], [offers]);
-  const { pending, expired } = useMemo(() => splitByStatus(items), [items]);
+  const { pending, expired } = useMemo(() => splitByStatus(items, now), [items, now]);
 
   const visiblePending = filter === "expired" ? [] : pending;
   const visibleExpired = filter === "pending" ? [] : expired;
@@ -299,7 +307,7 @@ export function DashboardOffersPage({
                         <span className={styles.sectionMeta}>The recipient can still accept</span>
                       </div>
                       <PageCard className={styles.offersCard}>
-                        <OffersTable rows={visiblePending} />
+                        <OffersTable rows={visiblePending} now={now} />
                       </PageCard>
                     </>
                   )}
@@ -314,7 +322,7 @@ export function DashboardOffersPage({
                         <span className={styles.sectionMeta}>Expired before acceptance</span>
                       </div>
                       <PageCard className={cn(styles.offersCard, styles.offersCardExp)}>
-                        <OffersTable rows={visibleExpired} />
+                        <OffersTable rows={visibleExpired} now={now} />
                       </PageCard>
                     </>
                   )}
@@ -357,7 +365,7 @@ function FilterChip({
   );
 }
 
-function OffersTable({ rows }: { rows: OutgoingTransfer[] }) {
+function OffersTable({ rows, now }: { rows: OutgoingTransfer[]; now: number }) {
   return (
     <>
       <div className={styles.colHeaders}>
@@ -368,7 +376,7 @@ function OffersTable({ rows }: { rows: OutgoingTransfer[] }) {
       {rows.map((offer, i) => {
         const symbol = offer.symbol ?? offer.instrumentId;
         const decimals = offer.decimals ?? 0;
-        const expired = isExpired(offer);
+        const expired = isExpired(offer, now);
         return (
           <div key={offer.contractId}>
             {i > 0 && <div className={styles.rowDivider} />}
@@ -398,7 +406,7 @@ function OffersTable({ rows }: { rows: OutgoingTransfer[] }) {
                   )}
                 >
                   {expired ? <ExpiredIcon /> : <ClockIcon />}
-                  {formatRelativeExpiry(offer.expiresAt)}
+                  {formatRelativeExpiry(offer.expiresAt, now)}
                 </span>
               </div>
             </div>
@@ -411,13 +419,16 @@ function OffersTable({ rows }: { rows: OutgoingTransfer[] }) {
 
 // ── helpers ──
 
-function isExpired(offer: OutgoingTransfer): boolean {
+function isExpired(offer: OutgoingTransfer, now: number): boolean {
   if (offer.status) return offer.status === "expired";
   if (!offer.expiresAt) return false;
-  return new Date(offer.expiresAt).getTime() <= Date.now();
+  return new Date(offer.expiresAt).getTime() <= now;
 }
 
-function splitByStatus(items: OutgoingTransfer[]): {
+function splitByStatus(
+  items: OutgoingTransfer[],
+  now: number,
+): {
   pending: OutgoingTransfer[];
   expired: OutgoingTransfer[];
 } {
@@ -427,17 +438,17 @@ function splitByStatus(items: OutgoingTransfer[]): {
   // to the two actionable states.
   for (const o of items) {
     if (o.status === "completed") continue;
-    (isExpired(o) ? expired : pending).push(o);
+    (isExpired(o, now) ? expired : pending).push(o);
   }
   return { pending, expired };
 }
 
 // "expires in 14h 22m" for a future time, "expired 2d ago" for a past one.
-function formatRelativeExpiry(iso?: string): string {
+function formatRelativeExpiry(iso: string | undefined, now: number): string {
   if (!iso) return "no expiry";
   const target = new Date(iso).getTime();
   if (Number.isNaN(target)) return "";
-  const diffMs = target - Date.now();
+  const diffMs = target - now;
   const future = diffMs > 0;
   const abs = Math.abs(diffMs);
   const mins = Math.floor(abs / 60_000);
