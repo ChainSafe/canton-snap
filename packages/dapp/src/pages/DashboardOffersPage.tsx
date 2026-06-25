@@ -129,7 +129,13 @@ function buildSampleOffers(): OutgoingTransfer[] {
   ];
 }
 
-export function DashboardOffersPage({ address, activeTab, onTabChange, onDisconnect, keyMode }: Props) {
+export function DashboardOffersPage({
+  address,
+  activeTab,
+  onTabChange,
+  onDisconnect,
+  keyMode,
+}: Props) {
   const [offers, setOffers] = useState<OffersState | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -261,16 +267,33 @@ export function DashboardOffersPage({ address, activeTab, onTabChange, onDisconn
               ) : (
                 <>
                   <div className={styles.filters}>
-                    <FilterChip label="All" count={items.length} active={filter === "all"} onClick={() => setFilter("all")} />
-                    <FilterChip label="Pending" count={pending.length} active={filter === "pending"} onClick={() => setFilter("pending")} />
-                    <FilterChip label="Expired" count={expired.length} active={filter === "expired"} onClick={() => setFilter("expired")} />
+                    <FilterChip
+                      label="All"
+                      count={items.length}
+                      active={filter === "all"}
+                      onClick={() => setFilter("all")}
+                    />
+                    <FilterChip
+                      label="Pending"
+                      count={pending.length}
+                      active={filter === "pending"}
+                      onClick={() => setFilter("pending")}
+                    />
+                    <FilterChip
+                      label="Expired"
+                      count={expired.length}
+                      active={filter === "expired"}
+                      onClick={() => setFilter("expired")}
+                    />
                   </div>
 
                   {visiblePending.length > 0 && (
                     <>
                       <div className={styles.sectionHeader}>
                         <h2 className={styles.sectionTitle}>
-                          <span className={cn(styles.statePill, styles.statePillLive)}>PENDING</span>
+                          <span className={cn(styles.statePill, styles.statePillLive)}>
+                            PENDING
+                          </span>
                           Awaiting acceptance
                         </h2>
                         <span className={styles.sectionMeta}>The recipient can still accept</span>
