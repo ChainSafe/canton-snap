@@ -73,8 +73,7 @@ export async function prepareTransfer(
   const authHeaders = await makeAuthHeaders(address);
   // The middleware accepts exactly one of `to` (EVM address) or `to_party_id`
   // (Canton party id); `validity_seconds` is mandatory (canton-middleware#334).
-  const recipientField =
-    recipientType === "party" ? { to_party_id: recipient } : { to: recipient };
+  const recipientField = recipientType === "party" ? { to_party_id: recipient } : { to: recipient };
   const res = await fetch(`${baseUrl}/api/v2/transfer/prepare`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders },

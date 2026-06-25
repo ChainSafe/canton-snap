@@ -763,9 +763,7 @@ export function TransferPage({
   }
 
   const recipientValid =
-    recipientType === "party"
-      ? PARTY_ID_RE.test(recipient)
-      : /^0x[0-9a-fA-F]{40}$/.test(recipient);
+    recipientType === "party" ? PARTY_ID_RE.test(recipient) : /^0x[0-9a-fA-F]{40}$/.test(recipient);
   const selectedBalance = selectedToken ? balances.get(selectedToken.address) : undefined;
   const pillClass = isNonCustodial ? styles.modePillNonCustodial : styles.modePillCustodial;
 
@@ -899,7 +897,8 @@ export function TransferPage({
                 <p className={styles.fieldLabel}>OFFER EXPIRY</p>
                 <ExpiryPicker value={validitySeconds} onChange={setValiditySeconds} />
                 <p className={styles.balanceHint}>
-                  The recipient has this long to accept. After it expires the offer can be reclaimed.
+                  The recipient has this long to accept. After it expires the offer can be
+                  reclaimed.
                 </p>
               </div>
             )}
@@ -1053,7 +1052,9 @@ export function TransferPage({
             <div className={styles.contractPreview}>
               <span className={styles.contractPreviewLabel}>
                 {isCustodialParty ? "CANTON TRANSFER" : "CONTRACT CALL"}
-                <span className={styles.contractVia}>{isCustodialParty ? "via /custodial" : "via /eth"}</span>
+                <span className={styles.contractVia}>
+                  {isCustodialParty ? "via /custodial" : "via /eth"}
+                </span>
               </span>
               <span className={styles.contractCall}>
                 {isCustodialParty
