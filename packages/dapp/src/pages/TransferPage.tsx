@@ -258,7 +258,7 @@ function ExpiryPicker({ value, onChange }: { value: number; onChange: (seconds: 
           <input
             className={styles.expiryCustomInput}
             type="text"
-            inputMode="numeric"
+            inputMode="decimal"
             placeholder="0"
             value={num}
             onChange={(e) => updateCustom(e.target.value.replace(/[^\d.]/g, ""), unit)}
@@ -698,6 +698,8 @@ export function TransferPage({
     setStep("details");
     setAmount("");
     setRecipient("");
+    setRecipientType("address");
+    setValiditySeconds(DEFAULT_VALIDITY_SECONDS);
     setPrepared(null);
     setSignPhase("idle");
     setError(null);
