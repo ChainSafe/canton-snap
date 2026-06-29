@@ -5,7 +5,7 @@ import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { PageCard } from "../components/PageCard";
 import { Spinner } from "../components/Spinner";
-import { NETWORK } from "../lib/config";
+import { NETWORK, isOfferBasedToken } from "../lib/config";
 import { getTokens, type TokenConfig } from "../lib/middleware";
 import {
   getTokenBalance,
@@ -14,7 +14,15 @@ import {
   getTransactionReceipt,
   parseTokenAmount,
 } from "../lib/ethrpc";
-import { prepareTransfer, executeTransfer, type PrepareResult } from "../lib/transfer";
+import {
+  prepareTransfer,
+  executeTransfer,
+  sendCustodialTransfer,
+  VALIDITY_PRESETS,
+  DEFAULT_VALIDITY_SECONDS,
+  type PrepareResult,
+  type RecipientType,
+} from "../lib/transfer";
 import { sendEthTransaction, shortenAddress, toChecksumAddress } from "../lib/ethereum";
 import { ensureChainAdded } from "../lib/network";
 import { TOKEN_COLORS } from "../lib/tokens";
@@ -30,7 +38,9 @@ type Step = "details" | "sign" | "done";
 type SignPhase = "idle" | "preparing" | "awaiting-snap" | "signing" | "executing";
 
 interface Receipt {
-  txHash: string;
+  // Absent for custodial party-id sends, which settle server-side in one call
+  // and return no EVM transaction hash.
+  txHash?: string;
   token: TokenConfig;
   amount: string;
   to: string;
@@ -76,6 +86,199 @@ function InfoIcon() {
       <path d="M7 6V10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       <circle cx="7" cy="4" r="0.7" fill="currentColor" />
     </svg>
+  );
+}
+
+// A Canton party id is `name::fingerprint`. Kept permissive (no whitespace, a
+// `::` separator with non-empty halves) so truncated/devstack forms pass; the
+// middleware does the authoritative resolution.
+const PARTY_ID_RE = /^\S+::\S+$/;
+
+// Compact a `name::fingerprint` party id for display (keeps the readable hint,
+// truncates the long fingerprint). Mirrors the helper on the Balances page.
+function shortenPartyId(partyId: string): string {
+  const sep = partyId.indexOf("::");
+  if (sep < 0) return partyId.length > 18 ? `${partyId.slice(0, 9)}…${partyId.slice(-6)}` : partyId;
+  const head = partyId.slice(0, sep);
+  const fp = partyId.slice(sep + 2);
+  const fpShort = fp.length > 12 ? `${fp.slice(0, 6)}…${fp.slice(-4)}` : fp;
+  return `${head}::${fpShort}`;
+}
+
+const CUSTOM_UNITS = [
+  { id: "minutes", label: "minutes", seconds: 60 },
+  { id: "hours", label: "hours", seconds: 3600 },
+  { id: "days", label: "days", seconds: 86400 },
+] as const;
+type CustomUnit = (typeof CUSTOM_UNITS)[number]["id"];
+
+const MAX_VALIDITY_SECONDS = 365 * 86400;
+
+// Validity in seconds for a custom value/unit, or NaN when the input isn't a
+// usable positive number (caught by validate() before prepare).
+function customSeconds(value: string, unit: CustomUnit): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return NaN;
+  const per = CUSTOM_UNITS.find((u) => u.id === unit)?.seconds ?? 1;
+  return Math.floor(n * per);
+}
+
+function EvmAddressIcon({ active }: { active: boolean }) {
+  const stroke = active ? "#00d4a4" : "#a1a6c4";
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 3L18.5 12L12 16L5.5 12L12 3Z"
+        stroke={stroke}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.5 13.3L12 21L18.5 13.3L12 17.4L5.5 13.3Z"
+        stroke={stroke}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function PartyIdIcon({ active }: { active: boolean }) {
+  const stroke = active ? "#00d4a4" : "#a1a6c4";
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+      <circle cx="9" cy="8.5" r="3" stroke={stroke} strokeWidth="1.5" />
+      <path
+        d="M3.5 19C3.5 15.7 6 13.5 9 13.5C12 13.5 14.5 15.7 14.5 19"
+        stroke={stroke}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16 4L17 6L19 6.3L17.6 7.7L17.9 9.7L16 8.8L14.1 9.7L14.4 7.7L13 6.3L15 6L16 4Z"
+        fill={stroke}
+        opacity={0.85}
+      />
+    </svg>
+  );
+}
+
+function RecipientTypeToggle({
+  value,
+  onChange,
+}: {
+  value: RecipientType;
+  onChange: (t: RecipientType) => void;
+}) {
+  const options: { id: RecipientType; title: string; desc: string; Icon: typeof EvmAddressIcon }[] =
+    [
+      { id: "address", title: "EVM Address", desc: "0x… 40-hex address", Icon: EvmAddressIcon },
+      { id: "party", title: "Canton Party ID", desc: "name::fingerprint", Icon: PartyIdIcon },
+    ];
+  return (
+    <div className={styles.rtypeGrid} role="radiogroup" aria-label="Recipient type">
+      {options.map(({ id, title, desc, Icon }) => {
+        const selected = value === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            className={cn(styles.rtypeOption, selected && styles.rtypeOptionSelected)}
+            onClick={() => onChange(id)}
+          >
+            <span className={styles.rtypeIcon}>
+              <Icon active={selected} />
+            </span>
+            <span className={styles.rtypeText}>
+              <span className={styles.rtypeTitle}>{title}</span>
+              <span className={styles.rtypeDesc}>{desc}</span>
+            </span>
+            <span className={cn(styles.rtypeRadio, selected && styles.rtypeRadioSelected)} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ExpiryPicker({ value, onChange }: { value: number; onChange: (seconds: number) => void }) {
+  const [custom, setCustom] = useState(false);
+  const [num, setNum] = useState("3");
+  const [unit, setUnit] = useState<CustomUnit>("days");
+
+  function selectPreset(seconds: number) {
+    setCustom(false);
+    onChange(seconds);
+  }
+
+  function selectCustom() {
+    setCustom(true);
+    onChange(customSeconds(num, unit));
+  }
+
+  function updateCustom(nextNum: string, nextUnit: CustomUnit) {
+    setNum(nextNum);
+    setUnit(nextUnit);
+    onChange(customSeconds(nextNum, nextUnit));
+  }
+
+  return (
+    <>
+      <div className={styles.expiryRow} role="radiogroup" aria-label="Offer expiry">
+        {VALIDITY_PRESETS.map(({ label, seconds }) => {
+          const selected = !custom && value === seconds;
+          return (
+            <button
+              key={seconds}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              className={cn(styles.expiryChip, selected && styles.expiryChipSelected)}
+              onClick={() => selectPreset(seconds)}
+            >
+              {label}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={custom}
+          className={cn(styles.expiryChip, custom && styles.expiryChipSelected)}
+          onClick={selectCustom}
+        >
+          Custom
+        </button>
+      </div>
+
+      {custom && (
+        <div className={styles.expiryCustomRow}>
+          <input
+            className={styles.expiryCustomInput}
+            type="text"
+            inputMode="decimal"
+            placeholder="0"
+            value={num}
+            onChange={(e) => updateCustom(e.target.value.replace(/[^\d.]/g, ""), unit)}
+            aria-label="Custom expiry amount"
+          />
+          <select
+            className={styles.expiryCustomUnit}
+            value={unit}
+            onChange={(e) => updateCustom(num, e.target.value as CustomUnit)}
+            aria-label="Custom expiry unit"
+          >
+            {CUSTOM_UNITS.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -244,7 +447,9 @@ export function TransferPage({
   const [tokensLoading, setTokensLoading] = useState(true);
   const [selectedToken, setSelectedToken] = useState<TokenConfig | null>(null);
   const [balances, setBalances] = useState<Map<string, bigint>>(new Map());
+  const [recipientType, setRecipientType] = useState<RecipientType>("address");
   const [recipient, setRecipient] = useState("");
+  const [validitySeconds, setValiditySeconds] = useState<number>(DEFAULT_VALIDITY_SECONDS);
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -324,6 +529,8 @@ export function TransferPage({
           recipient,
           token.symbol,
           amount,
+          recipientType,
+          validitySeconds,
         );
         if (cancelled) return;
         setPrepared(result);
@@ -347,8 +554,17 @@ export function TransferPage({
 
   function validate(): string | null {
     if (!selectedToken) return "Select a token";
-    if (!recipient.match(/^0x[0-9a-fA-F]{40}$/)) return "Enter a valid 0x EVM address";
+    if (recipientType === "party") {
+      if (!PARTY_ID_RE.test(recipient)) return "Enter a valid Canton party id (name::fingerprint)";
+    } else if (!recipient.match(/^0x[0-9a-fA-F]{40}$/)) {
+      return "Enter a valid 0x EVM address";
+    }
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return "Enter a positive amount";
+    if (usesValidity) {
+      if (!Number.isFinite(validitySeconds) || validitySeconds <= 0)
+        return "Enter a valid offer expiry";
+      if (validitySeconds > MAX_VALIDITY_SECONDS) return "Offer expiry can be at most 365 days";
+    }
     const bal = balances.get(selectedToken.address);
     if (bal !== undefined) {
       if (parseTokenAmount(amount, selectedToken.decimals) > bal)
@@ -451,10 +667,39 @@ export function TransferPage({
     }
   }
 
+  // Custodial send to a Canton party id. The middleware signs server-side and
+  // settles in one call, so there's no MetaMask tx and no eth hash to poll —
+  // the receipt is "confirmed" immediately. (Custodial sends to a plain EVM
+  // address still go through handleMetaMaskSign / the ERC-20 path above.)
+  async function handleCustodialPartySend() {
+    if (!selectedToken) return;
+    setPending(true);
+    setError(null);
+    try {
+      await sendCustodialTransfer(
+        NETWORK.middlewareUrl,
+        address,
+        recipient,
+        selectedToken.symbol,
+        amount,
+        validitySeconds,
+      );
+      setReceipt({ token: selectedToken, amount, to: recipient });
+      setReceiptStatus("success");
+      setStep("done");
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setPending(false);
+    }
+  }
+
   function handleReset() {
     setStep("details");
     setAmount("");
     setRecipient("");
+    setRecipientType("address");
+    setValiditySeconds(DEFAULT_VALIDITY_SECONDS);
     setPrepared(null);
     setSignPhase("idle");
     setError(null);
@@ -468,19 +713,20 @@ export function TransferPage({
   // a few seconds after the hash returns. Mirrors the polling on the Activity
   // tab so the pending entry there clears in lockstep with the UI here.
   useEffect(() => {
-    if (step !== "done" || !receipt || receiptStatus !== "pending") return;
+    if (step !== "done" || !receipt?.txHash || receiptStatus !== "pending") return;
     const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
+    const txHash = receipt.txHash;
     let cancelled = false;
 
     async function poll() {
       try {
-        const r = await getTransactionReceipt(rpcUrl, receipt!.txHash);
+        const r = await getTransactionReceipt(rpcUrl, txHash);
         if (cancelled || !r) return;
         if (r.status === "success") {
-          removePendingTx(address, receipt!.txHash);
+          removePendingTx(address, txHash);
           setReceiptStatus("success");
         } else {
-          markPendingFailed(address, receipt!.txHash, r.revertReason);
+          markPendingFailed(address, txHash, r.revertReason);
           setRevertReason(r.revertReason);
           setReceiptStatus("failed");
         }
@@ -499,20 +745,37 @@ export function TransferPage({
 
   async function handlePaste() {
     try {
-      const text = await navigator.clipboard.readText();
-      setRecipient(toChecksumAddress(text.trim()));
+      const text = (await navigator.clipboard.readText()).trim();
+      // Only the EVM-address form is checksummed; party ids are opaque strings.
+      setRecipient(recipientType === "party" ? text : toChecksumAddress(text));
     } catch {
       // clipboard access denied — no-op
     }
   }
 
   function handleRecipientBlur() {
-    if (recipient) setRecipient(toChecksumAddress(recipient));
+    if (recipient && recipientType === "address") setRecipient(toChecksumAddress(recipient));
   }
 
-  const recipientValid = /^0x[0-9a-fA-F]{40}$/.test(recipient);
+  function handleRecipientTypeChange(t: RecipientType) {
+    if (t === recipientType) return;
+    setRecipientType(t);
+    setRecipient("");
+    setError(null);
+  }
+
+  const recipientValid =
+    recipientType === "party" ? PARTY_ID_RE.test(recipient) : /^0x[0-9a-fA-F]{40}$/.test(recipient);
   const selectedBalance = selectedToken ? balances.get(selectedToken.address) : undefined;
   const pillClass = isNonCustodial ? styles.modePillNonCustodial : styles.modePillCustodial;
+
+  // Offer expiry only applies to offer-based tokens (e.g. USDCx, configurable):
+  // the recipient must accept, so there's an offer that can expire. Other tokens
+  // settle directly with no offer. Custodial sends to a plain EVM address also
+  // settle directly (raw ERC-20), so they never carry a validity either.
+  const offerBased = isOfferBasedToken(selectedToken?.symbol);
+  const isCustodialParty = !isNonCustodial && recipientType === "party";
+  const usesValidity = offerBased && (isNonCustodial || isCustodialParty);
 
   return (
     <>
@@ -558,6 +821,14 @@ export function TransferPage({
               )}
             </div>
 
+            {/* Recipient type — EVM address or Canton party id. Both modes
+                support party id: non-custodial via prepare/execute, custodial
+                via the server-signed /custodial endpoint. */}
+            <div className={styles.fieldGroup}>
+              <p className={styles.fieldLabel}>RECIPIENT TYPE</p>
+              <RecipientTypeToggle value={recipientType} onChange={handleRecipientTypeChange} />
+            </div>
+
             {/* Recipient */}
             <div className={styles.fieldGroup}>
               <p className={styles.fieldLabel}>RECIPIENT</p>
@@ -565,7 +836,7 @@ export function TransferPage({
                 <input
                   className={styles.recipientInput}
                   type="text"
-                  placeholder="0x..."
+                  placeholder={recipientType === "party" ? "name::fingerprint" : "0x..."}
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value.trim())}
                   onBlur={handleRecipientBlur}
@@ -575,7 +846,11 @@ export function TransferPage({
                   Paste
                 </button>
               </div>
-              {recipientValid && <p className={styles.recipientHint}>✓ Valid EVM address</p>}
+              {recipientValid && (
+                <p className={styles.recipientHint}>
+                  ✓ Valid {recipientType === "party" ? "Canton party ID" : "EVM address"}
+                </p>
+              )}
             </div>
 
             {/* Amount */}
@@ -617,10 +892,38 @@ export function TransferPage({
               )}
             </div>
 
+            {/* Offer expiry — sets validity_seconds: how long the recipient has
+                to accept before the offer expires and the funds can be reclaimed.
+                Shown for every send that creates an on-ledger offer. */}
+            {usesValidity && (
+              <div className={styles.fieldGroup}>
+                <p className={styles.fieldLabel}>OFFER EXPIRY</p>
+                <ExpiryPicker value={validitySeconds} onChange={setValiditySeconds} />
+                <p className={styles.balanceHint}>
+                  The recipient has this long to accept. After it expires the offer can be
+                  reclaimed.
+                </p>
+              </div>
+            )}
+
             {/* Info strip */}
             <div className={styles.infoStrip}>
               <InfoIcon />
-              {isNonCustodial ? (
+              {isCustodialParty ? (
+                offerBased ? (
+                  <span>
+                    Gas-free on Canton · The recipient party receives an{" "}
+                    <strong style={{ color: "var(--text-primary)" }}>offer to accept</strong> — the
+                    server co-signs on your behalf.
+                  </span>
+                ) : (
+                  <span>
+                    Gas-free on Canton · Sent{" "}
+                    <strong style={{ color: "var(--text-primary)" }}>directly</strong> to the party
+                    — the server co-signs on your behalf.
+                  </span>
+                )
+              ) : isNonCustodial ? (
                 <span>
                   Gas-free on Canton · Settles in ~2–4s · You&apos;ll sign{" "}
                   <strong style={{ color: "var(--text-primary)" }}>three times</strong> (MetaMask
@@ -752,23 +1055,28 @@ export function TransferPage({
 
             <p className={styles.signTitle}>Confirm in MetaMask</p>
             <p className={styles.signSubtitle}>
-              Sign the ERC-20 transfer — the middleware will co-sign on Canton.
+              {isCustodialParty
+                ? "Authorise the transfer — the middleware signs and settles it on Canton on your behalf."
+                : "Sign the ERC-20 transfer — the middleware will co-sign on Canton."}
             </p>
 
             <div className={styles.contractPreview}>
               <span className={styles.contractPreviewLabel}>
-                CONTRACT CALL
-                <span className={styles.contractVia}>via /eth</span>
+                {isCustodialParty ? "CANTON TRANSFER" : "CONTRACT CALL"}
+                <span className={styles.contractVia}>
+                  {isCustodialParty ? "via /custodial" : "via /eth"}
+                </span>
               </span>
               <span className={styles.contractCall}>
-                {selectedToken.symbol.toLowerCase()}.transfer({shortenAddress(recipient)},{" "}
-                {parseTokenAmount(amount, selectedToken.decimals).toString()})
+                {isCustodialParty
+                  ? `${amount} ${selectedToken.symbol} → ${shortenPartyId(recipient)}`
+                  : `${selectedToken.symbol.toLowerCase()}.transfer(${shortenAddress(recipient)}, ${parseTokenAmount(amount, selectedToken.decimals).toString()})`}
               </span>
             </div>
 
             <button
               className={styles.btnOpenDialog}
-              onClick={handleMetaMaskSign}
+              onClick={isCustodialParty ? handleCustodialPartySend : handleMetaMaskSign}
               disabled={pending}
             >
               {pending ? "Waiting for MetaMask…" : "Open MetaMask"}
@@ -851,10 +1159,12 @@ export function TransferPage({
                 <span className={styles.receiptLabel}>To</span>
                 <span className={styles.receiptValue}>{receipt.to}</span>
               </div>
-              <div className={styles.receiptRow}>
-                <span className={styles.receiptLabel}>Transaction</span>
-                <span className={styles.receiptValue}>{receipt.txHash}</span>
-              </div>
+              {receipt.txHash && (
+                <div className={styles.receiptRow}>
+                  <span className={styles.receiptLabel}>Transaction</span>
+                  <span className={styles.receiptValue}>{receipt.txHash}</span>
+                </div>
+              )}
               <div className={styles.receiptRow}>
                 <span className={styles.receiptLabel}>Status</span>
                 <span className={styles.receiptValue}>
