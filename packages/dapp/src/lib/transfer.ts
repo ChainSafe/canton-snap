@@ -255,6 +255,104 @@ export async function listOutgoingTransfers(
   return all;
 }
 
+// ── Completed transfers (Activity history) ──────────────────────────────────
+//
+// A settled transfer in the unified history, across all tokens and both
+// transfer shapes (direct CIP-56 and accepted offers). Party ids are truncated
+// server-side (the endpoint is unauthenticated). `txId` is a Canton ledger
+// update id — not an EVM tx hash, so it isn't block-explorer linkable.
+export interface CompletedTransfer {
+  contractId: string;
+  kind: string; // "direct" | "offer"
+  status: string; // "completed"
+  fromPartyId: string;
+  toPartyId: string;
+  amount: string;
+  instrumentAdmin: string;
+  instrumentId: string;
+  timestamp: string; // RFC3339
+  txId?: string;
+  symbol?: string;
+  decimals?: number;
+  name?: string;
+  contractAddress?: string;
+}
+
+export interface CompletedTransfersPage {
+  items: CompletedTransfer[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export const COMPLETED_PAGE_LIMIT = 50;
+
+interface CompletedItemResponse {
+  contract_id: string;
+  kind: string;
+  status: string;
+  from_party_id: string;
+  to_party_id: string;
+  amount: string;
+  instrument_admin: string;
+  instrument_id: string;
+  timestamp: string;
+  tx_id?: string;
+  symbol?: string;
+  decimals?: number;
+  name?: string;
+  contract_address?: string;
+}
+
+// GET /api/v2/transfer/completed?address=&page=&limit=. Unauthenticated; returns
+// one page of settled transfers (sender + receiver) for the address. Page-based
+// so the Activity tab can "Load more" rather than buffer the whole history.
+export async function listCompletedTransfers(
+  baseUrl: string,
+  address: string,
+  page = 1,
+  limit: number = COMPLETED_PAGE_LIMIT,
+): Promise<CompletedTransfersPage> {
+  const url = new URL(`${baseUrl}/api/v2/transfer/completed`);
+  url.searchParams.set("address", address);
+  url.searchParams.set("page", String(page));
+  url.searchParams.set("limit", String(limit));
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  const data = (await res.json()) as {
+    items?: CompletedItemResponse[];
+    total?: number;
+    page?: number;
+    limit?: number;
+    has_more?: boolean;
+  };
+
+  return {
+    items: (data.items ?? []).map((t) => ({
+      contractId: t.contract_id,
+      kind: t.kind,
+      status: t.status,
+      fromPartyId: t.from_party_id,
+      toPartyId: t.to_party_id,
+      amount: t.amount,
+      instrumentAdmin: t.instrument_admin,
+      instrumentId: t.instrument_id,
+      timestamp: t.timestamp,
+      txId: t.tx_id,
+      symbol: t.symbol,
+      decimals: t.decimals,
+      name: t.name,
+      contractAddress: t.contract_address,
+    })),
+    total: data.total ?? 0,
+    page: data.page ?? page,
+    limit: data.limit ?? limit,
+    hasMore: data.has_more ?? false,
+  };
+}
+
 export async function prepareAcceptTransfer(
   baseUrl: string,
   address: string,
