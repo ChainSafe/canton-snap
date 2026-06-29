@@ -18,6 +18,7 @@ import { RegistrationDonePage } from "./pages/RegistrationDonePage";
 import { DashboardProfilePage } from "./pages/DashboardProfilePage";
 import { DashboardBalancesPage } from "./pages/DashboardBalancesPage";
 import { DashboardActivityPage } from "./pages/DashboardActivityPage";
+import { DashboardOffersPage } from "./pages/DashboardOffersPage";
 import { TransferPage } from "./pages/TransferPage";
 import type { DashboardTab } from "./components/DashboardLayout";
 
@@ -30,7 +31,13 @@ type Page =
   | "registration-done"
   | "dashboard";
 
-const DASHBOARD_TABS: readonly DashboardTab[] = ["profile", "balances", "transfer", "activity"];
+const DASHBOARD_TABS: readonly DashboardTab[] = [
+  "profile",
+  "balances",
+  "transfer",
+  "offers",
+  "activity",
+];
 
 function readTabFromHash(): DashboardTab {
   const h = window.location.hash.replace(/^#/, "");
@@ -369,6 +376,10 @@ export default function App() {
           preselectTokenAddress={transferToken}
         />
       );
+    }
+
+    if (dashboardTab === "offers") {
+      return <DashboardOffersPage {...sharedProps} keyMode={profile.keyMode} />;
     }
 
     if (dashboardTab === "activity") {

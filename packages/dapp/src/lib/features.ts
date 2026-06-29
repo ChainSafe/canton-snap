@@ -13,3 +13,11 @@
  */
 
 export const NON_CUSTODIAL_ENABLED = import.meta.env.VITE_ENABLE_NON_CUSTODIAL === "true";
+
+/**
+ * OFFERS_SAMPLE_ENABLED — when set, the Offers tab seeds illustrative sample
+ * offers if the middleware returns none (or its outgoing endpoint isn't
+ * deployed yet). A design/preview aid for the outgoing-offers flow; defaults
+ * off so production never shows fixtures. Enable with VITE_OFFERS_SAMPLE=true.
+ */
+export const OFFERS_SAMPLE_ENABLED = import.meta.env.VITE_OFFERS_SAMPLE === "true";
