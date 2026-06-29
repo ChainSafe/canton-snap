@@ -247,11 +247,11 @@ export function DashboardActivityPage({
                           {amount}
                         </div>
 
-                        {/* Party */}
+                        {/* Party — the history API truncates party ids
+                            server-side, so there's no full value to copy. */}
                         <div className={cn(styles.inlineCell, styles.partyCell)}>
                           <span className={styles.prefix}>{sent ? "To" : "From"}</span>
                           <span className={styles.monoValue}>{counterparty}</span>
-                          <CopyButton text={counterparty} />
                         </div>
 
                         {/* Ledger tx */}
