@@ -259,7 +259,9 @@ export function DashboardActivityPage({
                           <span className={cn(styles.prefix, styles.txPrefix)}>Tx</span>
                           {row.txId ? (
                             <>
-                              <span className={styles.monoValue}>{shorten(row.txId)}</span>
+                              {/* Display is clipped by CSS ellipsis; the copy
+                                  button still puts the full id on the clipboard. */}
+                              <span className={styles.monoValue}>{row.txId}</span>
                               <CopyButton text={row.txId} />
                             </>
                           ) : (
@@ -310,10 +312,6 @@ function truncateParty(partyId: string): string {
   const tail = 8;
   if (partyId.length <= head + tail + 1) return partyId;
   return partyId.slice(0, head) + "…" + partyId.slice(-tail);
-}
-
-function shorten(value: string): string {
-  return value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-8)}` : value;
 }
 
 function relativeTime(iso: string): string {
