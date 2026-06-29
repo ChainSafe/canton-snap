@@ -16,12 +16,20 @@
   margin-top: 6px;
 }
 
+/* Constrain the table so it doesn't stretch across an ultrawide viewport,
+   which would balloon the flexible PARTY column into a large empty gap.
+   Left-aligned to sit under the page title. */
+.colHeaders,
+.card {
+  max-width: 960px;
+}
+
 /* ── Shared row grid (header + each row) ──
    TYPE | TOKEN | AMOUNT | PARTY (flex) | LEDGER TX | DATE */
 .colHeaders,
 .activityRow {
   display: grid;
-  grid-template-columns: 116px 96px 120px minmax(0, 1fr) 132px 132px;
+  grid-template-columns: 104px 92px 108px minmax(0, 1fr) 132px 120px;
   gap: 16px;
   align-items: center;
 }
@@ -46,6 +54,11 @@
   padding: 0 22px;
   position: relative;
   z-index: 1;
+}
+
+/* Mobile-only "Tx" label (the column header is hidden on narrow viewports). */
+.txPrefix {
+  display: none;
 }
 
 .dayGroup {
@@ -240,33 +253,63 @@
   cursor: not-allowed;
 }
 
-/* ── Mobile: drop the column headers and let each row wrap into a compact
-   two-line card (type+amount on top, party/tx/date below). ── */
-@media (max-width: 720px) {
+/* ── Tablet / mobile ──
+   Below ~1100px the sidebar collapses and the main column is too narrow for
+   six side-by-side columns, so each row reflows into a compact 2-column card:
+
+     [ Sent          ]   [   −10 ]
+     [ ◎ DEMO        ]   [ 3d ago ]
+     [ To external…       (full)  ]
+     [ Tx 1220…           (full)  ]
+*/
+@media (max-width: 1100px) {
   .colHeaders {
     display: none;
   }
 
+  .card {
+    max-width: none;
+    padding: 0 16px;
+  }
+
   .activityRow {
     grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "type amount"
+      "token date"
+      "party party"
+      "tx tx";
     gap: 6px 14px;
     padding: 12px 0;
   }
 
-  /* token + amount sit on the first row beside type; party/tx/date wrap full
-     width underneath. */
-  .inlineCell,
-  .whenCell {
-    grid-column: 1 / -1;
+  .typeCell {
+    grid-area: type;
+  }
+
+  .amountValue {
+    grid-area: amount;
+    text-align: right;
+  }
+
+  .tokenCell {
+    grid-area: token;
   }
 
   .whenCell {
-    text-align: left;
+    grid-area: date;
+    text-align: right;
   }
 
-  .card,
-  .colHeaders {
-    padding-left: 16px;
-    padding-right: 16px;
+  .partyCell {
+    grid-area: party;
+  }
+
+  .txCell {
+    grid-area: tx;
+  }
+
+  .txPrefix {
+    display: inline;
   }
 }

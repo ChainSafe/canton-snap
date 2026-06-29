@@ -248,14 +248,15 @@ export function DashboardActivityPage({
                         </div>
 
                         {/* Party */}
-                        <div className={styles.inlineCell}>
+                        <div className={cn(styles.inlineCell, styles.partyCell)}>
                           <span className={styles.prefix}>{sent ? "To" : "From"}</span>
                           <span className={styles.monoValue}>{counterparty}</span>
                           <CopyButton text={counterparty} />
                         </div>
 
                         {/* Ledger tx */}
-                        <div className={styles.inlineCell}>
+                        <div className={cn(styles.inlineCell, styles.txCell)}>
+                          <span className={cn(styles.prefix, styles.txPrefix)}>Tx</span>
                           {row.txId ? (
                             <>
                               <span className={styles.monoValue}>{shorten(row.txId)}</span>
