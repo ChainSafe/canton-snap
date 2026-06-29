@@ -50,3 +50,18 @@ export const NETWORK: NetworkConfig = {
   middlewareUrl,
   nativeCurrency: CANTON_NATIVE_CURRENCY,
 };
+
+// Tokens whose transfers are offer-based: the recipient must accept, so the
+// sender sets an offer validity (expiry) and can reclaim it if it lapses.
+// Everything else settles directly, so the Transfer UI hides the expiry field
+// for those. USDCx is the only offer-based token today — add symbols here as
+// more are introduced.
+const OFFER_BASED_TOKENS: readonly string[] = ["USDCX"];
+
+const OFFER_BASED_TOKEN_SET: ReadonlySet<string> = new Set(
+  OFFER_BASED_TOKENS.map((s) => s.toUpperCase()),
+);
+
+export function isOfferBasedToken(symbol: string | undefined): boolean {
+  return symbol !== undefined && OFFER_BASED_TOKEN_SET.has(symbol.toUpperCase());
+}

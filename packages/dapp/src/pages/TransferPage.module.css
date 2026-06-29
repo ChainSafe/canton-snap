@@ -148,6 +148,170 @@
   margin-bottom: 16px;
 }
 
+/* ── Recipient type toggle (EVM Address / Canton Party ID) ── */
+.rtypeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.rtypeOption {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  border: 1px solid #353a5a;
+  background: #1a1d2e;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.rtypeOption:hover {
+  border-color: #43496e;
+}
+
+.rtypeOptionSelected {
+  border-color: var(--teal);
+  background: rgba(0, 212, 164, 0.07);
+}
+
+.rtypeIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0b14;
+  border: 1px solid var(--border);
+}
+
+.rtypeOptionSelected .rtypeIcon {
+  border-color: rgba(0, 212, 164, 0.4);
+}
+
+.rtypeText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rtypeTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rtypeDesc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.rtypeRadio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid #353a5a;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.rtypeRadioSelected {
+  border-color: var(--teal);
+  background: radial-gradient(circle, var(--teal) 0 5px, transparent 6px);
+}
+
+/* ── Offer expiry chips + custom value ── */
+.expiryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.expiryChip {
+  flex: 1;
+  min-width: 72px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid #353a5a;
+  background: #1a1d2e;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+
+.expiryChip:hover {
+  border-color: #43496e;
+  color: var(--text-primary);
+}
+
+.expiryChipSelected {
+  border-color: var(--teal);
+  background: rgba(0, 212, 164, 0.07);
+  color: var(--teal);
+}
+
+.expiryCustomRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.expiryCustomInput {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  background: #1a1d2e;
+  border: 1px solid #353a5a;
+  border-radius: 10px;
+  padding: 0 14px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.expiryCustomInput:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+
+.expiryCustomInput::placeholder {
+  color: #353a5a;
+}
+
+.expiryCustomUnit {
+  height: 48px;
+  background: #1a1d2e;
+  border: 1px solid #353a5a;
+  border-radius: 10px;
+  padding: 0 12px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.expiryCustomUnit:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+
 /* ── Token dropdown ── */
 .tokenDropdownWrapper {
   position: relative;
@@ -779,6 +943,10 @@
 @media (max-width: 560px) {
   .pageHeader {
     flex-wrap: wrap;
+  }
+
+  .rtypeGrid {
+    grid-template-columns: 1fr;
   }
 
   .receiptRow {
