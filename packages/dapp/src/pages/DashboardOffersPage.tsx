@@ -256,6 +256,8 @@ export function DashboardOffersPage({
   // server-signed call. Mirrors the accept flow on the Balances tab.
   const handleWithdraw = useCallback(
     async (contractId: string) => {
+      // Ignore repeat clicks while a claim-back for this offer is in flight.
+      if (withdrawState[contractId]) return;
       const offer = offers?.outgoing.find((o) => o.contractId === contractId);
       setWithdrawError((s) => {
         const next = { ...s };
@@ -323,7 +325,7 @@ export function DashboardOffersPage({
         });
       }
     },
-    [offers?.outgoing, isSample, isNonCustodial, snap, address],
+    [offers?.outgoing, isSample, isNonCustodial, snap, address, withdrawState],
   );
 
   const incoming = useMemo(() => offers?.incoming ?? [], [offers]);
@@ -542,9 +544,9 @@ function OffersTable({
         {withActions && <span className={styles.colAction} />}
       </div>
       {rows.map((row, i) => {
-        const cid = row.withdraw?.contractId;
-        const busy = cid ? withdrawState?.[cid] : undefined;
-        const err = cid ? withdrawError?.[cid] : undefined;
+        const wd = row.withdraw;
+        const busy = wd ? withdrawState?.[wd.contractId] : undefined;
+        const err = wd ? withdrawError?.[wd.contractId] : undefined;
         return (
           <div key={row.key}>
             {i > 0 && <div className={styles.rowDivider} />}
@@ -578,7 +580,7 @@ function OffersTable({
 
               {withActions && (
                 <div className={styles.offerAction}>
-                  {row.withdraw &&
+                  {wd &&
                     (busy ? (
                       <span className={styles.actionSpinnerWrap} aria-busy="true">
                         <Spinner size={20} />
@@ -592,9 +594,9 @@ function OffersTable({
                             ? styles.withdrawBtnClaim
                             : styles.withdrawBtnCancel,
                         )}
-                        onClick={() => onWithdraw?.(row.withdraw!.contractId)}
+                        onClick={() => onWithdraw?.(wd.contractId)}
                       >
-                        {row.withdraw.label}
+                        {wd.label}
                       </button>
                     ))}
                 </div>

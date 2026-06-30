@@ -314,6 +314,19 @@ export async function executeAcceptTransfer(
 // for non-custodial users, single server-signed call for custodial. The server
 // looks up the offer's instrument admin via the indexer, so no request body is
 // needed beyond the contract id in the path (canton-middleware#339).
+
+// Maps the withdraw endpoints' documented failure codes to user-facing copy:
+// 404 — the offer is gone or not the caller's; 409 — it was already accepted or
+// settled on-ledger. Anything else falls back to the generic formatter.
+async function withdrawErrorMessage(res: Response): Promise<string> {
+  const body = await res.text();
+  if (res.status === 404)
+    return "This offer is no longer available — it may have been accepted or already claimed back.";
+  if (res.status === 409)
+    return "This offer can no longer be claimed back — it was already accepted or settled.";
+  return friendlyError(res.status, body);
+}
+
 export async function prepareWithdrawTransfer(
   baseUrl: string,
   address: string,
@@ -324,7 +337,7 @@ export async function prepareWithdrawTransfer(
     `${baseUrl}/api/v2/transfer/outgoing/${encodeURIComponent(contractId)}/withdraw/prepare`,
     { method: "POST", headers: authHeaders },
   );
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
   const data = await res.json();
   return {
     transferId: data.transfer_id as string,
@@ -351,7 +364,7 @@ export async function executeWithdrawTransfer(
       body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
     },
   );
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
 }
 
 // Custodial claim-back: the middleware holds the user's Canton key and signs
@@ -366,5 +379,5 @@ export async function withdrawCustodialTransfer(
     `${baseUrl}/api/v2/transfer/outgoing/${encodeURIComponent(contractId)}/withdraw/custodial`,
     { method: "POST", headers: authHeaders },
   );
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
 }
