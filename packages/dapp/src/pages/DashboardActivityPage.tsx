@@ -4,23 +4,12 @@ import { useState, useEffect, useMemo } from "react";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { Spinner } from "../components/Spinner";
-import { NETWORK } from "../lib/config";
-import { getTokens, type TokenConfig } from "../lib/middleware";
-import {
-  getTransferLogs,
-  getTransactionReceipt,
-  formatTokenAmount,
-  type TransferLog,
-} from "../lib/ethrpc";
-import {
-  getPendingTxs,
-  removePendingTx,
-  markPendingFailed,
-  type PendingTx,
-} from "../lib/pendingTxs";
-import { TOKEN_COLORS } from "../lib/tokens";
-import { toChecksumAddress, shortenAddress } from "../lib/ethereum";
 import { CopyButton } from "../components/CopyButton";
+import { NETWORK } from "../lib/config";
+import { formatTokenAmount } from "../lib/ethrpc";
+import { listCompletedTransfers, type CompletedTransfer } from "../lib/transfer";
+import { TOKEN_COLORS } from "../lib/tokens";
+import { cn } from "../lib/cn";
 import styles from "./DashboardActivityPage.module.css";
 
 interface Props {
@@ -28,92 +17,23 @@ interface Props {
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
+  /** The signed-in user's Canton party id — used to label rows Sent vs Received. */
+  cantonPartyId: string;
 }
 
-type RowStatus = "confirmed" | "pending" | "failed";
-
-interface ActivityRow extends TransferLog {
-  token: TokenConfig;
-  status: RowStatus;
-  revertReason?: string;
-}
-
-type FetchState =
-  | { url: string; address: string; rows: ActivityRow[]; error: null }
-  | { url: string; address: string; rows: null; error: string };
-
-const RECEIPT_POLL_INTERVAL_MS = 4000;
-
-function pendingToRow(p: PendingTx): ActivityRow {
-  return {
-    txHash: p.txHash,
-    // Pending entries have no block yet; sentinel keeps sort order (newest first).
-    blockNumber: Number.MAX_SAFE_INTEGER,
-    logIndex: 0,
-    timestamp: p.submittedAt,
-    direction: "sent",
-    tokenAddress: p.tokenAddress,
-    amount: BigInt(p.amount),
-    from: p.from,
-    to: p.to,
-    token: {
-      address: p.tokenAddress,
-      name: p.tokenSymbol,
-      symbol: p.tokenSymbol,
-      decimals: p.tokenDecimals,
-    },
-    status: p.status === "failed" ? "failed" : "pending",
-    revertReason: p.revertReason,
-  };
-}
-
-// Jan 1 2020 in Unix seconds — anything before this is a synthetic/bogus timestamp
-const MIN_REAL_TIMESTAMP = 1577836800;
-
-function relativeTime(ts: number): string {
-  if (!ts || ts < MIN_REAL_TIMESTAMP) return "—";
-  const diff = Date.now() / 1000 - ts;
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 172800) return "Yesterday";
-  return `${Math.floor(diff / 86400)}d ago`;
-}
-
-function timeLocal(ts: number): string {
-  if (!ts || ts < MIN_REAL_TIMESTAMP) return "";
-  // Render in the viewer's local timezone (timeZoneName shows the local
-  // abbreviation, e.g. EDT/GMT+1). Day grouping below also uses local time,
-  // so the time shown stays consistent with its day label.
-  return new Date(ts * 1000).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
-}
-
-function dayKey(ts: number): string {
-  if (!ts) return "unknown";
-  return new Date(ts * 1000).toDateString();
-}
-
-function dayLabel(ts: number): string {
-  if (!ts) return "UNKNOWN";
-  const d = new Date(ts * 1000);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const month = d.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
-  if (d.toDateString() === today.toDateString()) return `TODAY · ${month}`;
-  if (d.toDateString() === yesterday.toDateString()) return `YESTERDAY · ${month}`;
-  return d
-    .toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
-    .toUpperCase();
+interface ActivityState {
+  url: string;
+  address: string;
+  rows: CompletedTransfer[];
+  total: number;
+  page: number;
+  hasMore: boolean;
+  error: string | null;
 }
 
 function ArrowUpIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
       <path
         d="M10 15V5M5 10L10 5L15 10"
         stroke="currentColor"
@@ -127,7 +47,7 @@ function ArrowUpIcon() {
 
 function ArrowDownIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
       <path
         d="M10 5V15M5 10L10 15L15 10"
         stroke="currentColor"
@@ -148,179 +68,90 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
-function SearchIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M9.5 9.5L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
+export function DashboardActivityPage({
+  address,
+  activeTab,
+  onTabChange,
+  onDisconnect,
+  cantonPartyId,
+}: Props) {
+  const [state, setState] = useState<ActivityState | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-export function DashboardActivityPage({ address, activeTab, onTabChange, onDisconnect }: Props) {
-  const [fetchState, setFetchState] = useState<FetchState | null>(null);
-  const [search, setSearch] = useState("");
+  const loading = state?.url !== NETWORK.middlewareUrl || state?.address !== address;
 
-  // Bump to re-read the pending store (localStorage) or re-fetch confirmed logs.
-  // Pending is derived state, not local state — the source of truth is
-  // localStorage. Components that mutate the store (TransferPage, the polling
-  // callback below) write to localStorage, then we read it back here.
-  const [pendingTick, setPendingTick] = useState(0);
-  const [logsTick, setLogsTick] = useState(0);
-
-  const pending = useMemo(
-    () => getPendingTxs(address),
-    // pendingTick re-runs the read when the store mutates
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [address, pendingTick],
-  );
-
-  const loading = fetchState?.url !== NETWORK.middlewareUrl || fetchState?.address !== address;
-
+  // Load the first page of settled history for this address. Refetches from
+  // scratch when the address (or network) changes.
   useEffect(() => {
     let cancelled = false;
-    const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
-
-    async function load() {
-      try {
-        const tokens = await getTokens(NETWORK.middlewareUrl);
-        const tokenByAddress = new Map(tokens.map((t) => [t.address.toLowerCase(), t]));
-        const logs = await getTransferLogs(
-          rpcUrl,
-          tokens.map((t) => t.address),
-          address,
-        );
-        const rows: ActivityRow[] = logs
-          .map((log): ActivityRow | null => {
-            const token = tokenByAddress.get(log.tokenAddress);
-            if (!token) return null;
-            return { ...log, token, status: "confirmed" };
-          })
-          .filter((r): r is ActivityRow => r !== null);
-
+    const url = NETWORK.middlewareUrl;
+    listCompletedTransfers(url, address, 1)
+      .then((p) => {
         if (cancelled) return;
-
-        // Drop pending entries whose confirmed Transfer log just arrived —
-        // covers reloads after the receipt landed and any poll the user
-        // missed because the tab was hidden.
-        const confirmedHashes = new Set(rows.map((r) => r.txHash.toLowerCase()));
-        let removed = false;
-        for (const p of getPendingTxs(address)) {
-          if (confirmedHashes.has(p.txHash.toLowerCase())) {
-            removePendingTx(address, p.txHash);
-            removed = true;
-          }
-        }
-
-        setFetchState({ url: NETWORK.middlewareUrl, address, rows, error: null });
-        if (removed) setPendingTick((t) => t + 1);
-      } catch (e: unknown) {
-        if (!cancelled)
-          setFetchState({
-            url: NETWORK.middlewareUrl,
-            address,
-            rows: null,
-            error: (e as Error).message,
-          });
-      }
-    }
-
-    void load();
+        setState({
+          url,
+          address,
+          rows: p.items,
+          total: p.total,
+          page: p.page,
+          hasMore: p.hasMore,
+          error: null,
+        });
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setState({
+          url,
+          address,
+          rows: [],
+          total: 0,
+          page: 1,
+          hasMore: false,
+          error: (e as Error).message,
+        });
+      });
     return () => {
       cancelled = true;
     };
-  }, [address, logsTick]);
+  }, [address]);
 
-  // Poll receipts for entries still in "pending" status. Once a receipt arrives:
-  //   status=1 → remove (a confirmed log will appear on next refresh)
-  //   status=0 → mark failed and keep so the user sees the outcome
-  const hasUnresolved = pending.some((p) => p.status === "pending");
-
-  useEffect(() => {
-    if (!hasUnresolved) return;
-
-    const rpcUrl = `${NETWORK.middlewareUrl}/eth`;
-    let cancelled = false;
-
-    async function poll() {
-      const snapshot = getPendingTxs(address).filter((p) => p.status === "pending");
-      if (snapshot.length === 0) return;
-      const results = await Promise.all(
-        snapshot.map(async (p) => {
-          try {
-            return [p, await getTransactionReceipt(rpcUrl, p.txHash)] as const;
-          } catch {
-            return [p, null] as const;
-          }
-        }),
+  async function loadMore() {
+    if (!state || loadingMore || !state.hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = await listCompletedTransfers(NETWORK.middlewareUrl, address, state.page + 1);
+      setState((s) =>
+        s
+          ? {
+              ...s,
+              rows: [...s.rows, ...next.items],
+              page: next.page,
+              hasMore: next.hasMore,
+              total: next.total,
+            }
+          : s,
       );
-      if (cancelled) return;
-
-      let resolvedAny = false;
-      for (const [p, receipt] of results) {
-        if (!receipt) continue;
-        resolvedAny = true;
-        if (receipt.status === "success") {
-          removePendingTx(address, p.txHash);
-        } else {
-          markPendingFailed(address, p.txHash, receipt.revertReason);
-        }
-      }
-      if (resolvedAny) {
-        setPendingTick((t) => t + 1);
-        setLogsTick((t) => t + 1);
-      }
+    } catch {
+      // Leave the existing list in place; the user can retry Load more.
+    } finally {
+      setLoadingMore(false);
     }
+  }
 
-    void poll();
-    const id = window.setInterval(() => void poll(), RECEIPT_POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [hasUnresolved, address]);
+  const me = useMemo(() => truncateParty(cantonPartyId), [cantonPartyId]);
+  const rows = useMemo(() => state?.rows ?? [], [state]);
 
-  const merged = useMemo(() => {
-    const confirmed = fetchState?.rows ?? [];
-    const confirmedHashes = new Set(confirmed.map((r) => r.txHash.toLowerCase()));
-    const pendingRows = pending
-      .filter((p) => !confirmedHashes.has(p.txHash.toLowerCase()))
-      .map(pendingToRow);
-    // Sort by timestamp (newest first) so failed entries fall into their
-    // historical day group rather than always sorting to the top. Within the
-    // same block, logIndex breaks ties. blockNumber is a tertiary key for the
-    // rare case of two confirmed blocks sharing a timestamp.
-    return [...pendingRows, ...confirmed].sort(
-      (a, b) =>
-        b.timestamp - a.timestamp || b.blockNumber - a.blockNumber || b.logIndex - a.logIndex,
-    );
-  }, [fetchState, pending]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return merged;
-    return merged.filter(
-      (r) =>
-        r.txHash.toLowerCase().includes(q) ||
-        r.from.toLowerCase().includes(q) ||
-        r.to.toLowerCase().includes(q) ||
-        r.token.symbol.toLowerCase().includes(q),
-    );
-  }, [merged, search]);
-
-  // Group rows by calendar day. Only in-flight pending entries land in the
-  // dedicated PENDING group; failed entries fall into their submission-day
-  // group so the resolved-but-unsuccessful history stays chronological.
+  // Group rows by calendar day, preserving the server's newest-first order.
   const groups = useMemo(() => {
-    const map = new Map<string, ActivityRow[]>();
-    for (const row of filtered) {
-      const key = row.status === "pending" ? "__pending__" : dayKey(row.timestamp);
+    const map = new Map<string, CompletedTransfer[]>();
+    for (const row of rows) {
+      const key = dayKey(row.timestamp);
       const arr = map.get(key) ?? [];
       arr.push(row);
       map.set(key, arr);
     }
-    return [...map.entries()].map(([key, rows]) => ({ key, rows }));
-  }, [filtered]);
+    return [...map.entries()].map(([key, items]) => ({ key, items }));
+  }, [rows]);
 
   return (
     <>
@@ -331,34 +162,20 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}
       >
-        {/* Header */}
         <div className={styles.pageHeader}>
-          <div className={styles.pageTitles}>
-            <h1 className={styles.pageTitle}>Activity</h1>
-            <p className={styles.pageSubtitle}>Token transfers for this wallet.</p>
-          </div>
-          <label className={styles.searchBar}>
-            <SearchIcon />
-            <input
-              className={styles.searchInput}
-              placeholder="Search by tx hash, address, or token…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </label>
+          <h1 className={styles.pageTitle}>Activity</h1>
+          <p className={styles.pageSubtitle}>Settled transfer history on Canton Network.</p>
         </div>
 
-        {/* Column headers */}
         <div className={styles.colHeaders}>
           <span>TYPE</span>
           <span>TOKEN</span>
           <span>AMOUNT</span>
-          <span>TO / FROM</span>
-          <span>TX HASH</span>
+          <span>PARTY</span>
+          <span>LEDGER TX</span>
           <span className={styles.colRight}>DATE</span>
         </div>
 
-        {/* Card */}
         <div className={styles.card}>
           {loading && (
             <div className={styles.centred}>
@@ -366,117 +183,96 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
             </div>
           )}
 
-          {!loading && fetchState?.error && (
+          {!loading && state?.error && (
             <div className={styles.centred}>
-              <p className={styles.errorText}>{fetchState.error}</p>
+              <p className={styles.errorText}>{state.error}</p>
             </div>
           )}
 
-          {!loading && fetchState?.rows && filtered.length === 0 && (
+          {!loading && state && !state.error && rows.length === 0 && (
             <div className={styles.centred}>
-              <p className={styles.hint}>
-                {search.trim()
-                  ? "No transfers match your search."
-                  : "No transfers found for this address."}
-              </p>
+              <p className={styles.hint}>No transfers yet for this party.</p>
             </div>
           )}
 
           {!loading &&
-            fetchState?.rows &&
-            filtered.length > 0 &&
-            groups.map(({ key, rows }) => (
+            state &&
+            !state.error &&
+            rows.length > 0 &&
+            groups.map(({ key, items }) => (
               <div key={key}>
-                <div className={styles.dayGroup}>
-                  {key === "__pending__" ? "PENDING" : dayLabel(rows[0].timestamp)}
-                </div>
-                {rows.map((row, i) => {
-                  const isSent = row.direction === "sent";
-                  const counterparty = toChecksumAddress(isSent ? row.to : row.from);
-                  const shortTx = `${row.txHash.slice(0, 10)}…${row.txHash.slice(-8)}`;
-                  const isPending = row.status === "pending";
-                  const isFailed = row.status === "failed";
-
+                <div className={styles.dayGroup}>{dayLabel(items[0].timestamp)}</div>
+                {items.map((row, i) => {
+                  const sent = row.fromPartyId === me;
+                  const counterparty = sent ? row.toPartyId : row.fromPartyId;
+                  const symbol = row.symbol ?? row.instrumentId;
+                  const amount =
+                    row.decimals !== undefined
+                      ? formatTokenAmount(
+                          parseAmountToBigInt(row.amount, row.decimals),
+                          row.decimals,
+                        )
+                      : row.amount;
                   return (
-                    <div key={`${row.txHash}-${row.logIndex}`}>
+                    <div key={row.contractId}>
                       {i > 0 && <div className={styles.rowDivider} />}
-                      <div
-                        className={`${styles.activityRow} ${isPending ? styles.rowPending : ""} ${isFailed ? styles.rowFailed : ""}`}
-                      >
+                      <div className={styles.activityRow}>
                         {/* Type */}
                         <div className={styles.typeCell}>
                           <div
-                            className={`${styles.typeIcon} ${isSent ? styles.iconSent : styles.iconReceived}`}
+                            className={cn(
+                              styles.typeIcon,
+                              sent ? styles.iconSent : styles.iconReceived,
+                            )}
                           >
-                            {isSent ? <ArrowUpIcon /> : <ArrowDownIcon />}
+                            {sent ? <ArrowUpIcon /> : <ArrowDownIcon />}
                           </div>
-                          <div className={styles.typeStack}>
-                            <span className={styles.typeLabel}>{isSent ? "Sent" : "Received"}</span>
-                            {isPending && (
-                              <span className={`${styles.statusPill} ${styles.statusPillPending}`}>
-                                <span className={styles.statusDot} />
-                                Pending
-                              </span>
-                            )}
-                            {isFailed && (
-                              <span
-                                className={`${styles.statusPill} ${styles.statusPillFailed}`}
-                                title={row.revertReason}
-                              >
-                                Failed
-                              </span>
-                            )}
-                          </div>
+                          <span className={styles.typeLabel}>{sent ? "Sent" : "Received"}</span>
                         </div>
 
                         {/* Token */}
                         <div className={styles.tokenCell}>
-                          <TokenIcon symbol={row.token.symbol} />
-                          <span className={styles.tokenSymbol}>{row.token.symbol}</span>
+                          <TokenIcon symbol={symbol} />
+                          <span className={styles.tokenSymbol}>{symbol}</span>
                         </div>
 
                         {/* Amount */}
-                        <div className={styles.amountCell}>
-                          <span
-                            className={`${styles.amountValue} ${isSent ? styles.amountSent : styles.amountReceived}`}
-                          >
-                            {isSent ? "−" : "+"}
-                            {formatTokenAmount(row.amount, row.token.decimals)}
-                          </span>
+                        <div
+                          className={cn(
+                            styles.amountValue,
+                            sent ? styles.amountSent : styles.amountReceived,
+                          )}
+                        >
+                          {sent ? "−" : "+"}
+                          {amount}
                         </div>
 
-                        {/* To / From */}
-                        <div className={styles.addrCell}>
-                          <span className={styles.addrLabel}>{isSent ? "To" : "From"}</span>
-                          <div className={styles.addrRow}>
-                            <span className={styles.addrValue}>
-                              {shortenAddress(counterparty, 5)}
-                            </span>
-                            <CopyButton text={counterparty} />
-                          </div>
+                        {/* Party — the history API truncates party ids
+                            server-side, so there's no full value to copy. */}
+                        <div className={cn(styles.inlineCell, styles.partyCell)}>
+                          <span className={styles.prefix}>{sent ? "To" : "From"}</span>
+                          <span className={styles.monoValue}>{counterparty}</span>
                         </div>
 
-                        {/* Tx hash */}
-                        <div className={styles.addrCell}>
-                          <span className={styles.addrLabel}>Tx</span>
-                          <div className={styles.addrRow}>
-                            <span className={styles.addrValue}>{shortTx}</span>
-                            <CopyButton text={row.txHash} />
-                          </div>
+                        {/* Ledger tx */}
+                        <div className={cn(styles.inlineCell, styles.txCell)}>
+                          <span className={cn(styles.prefix, styles.txPrefix)}>Tx</span>
+                          {row.txId ? (
+                            <>
+                              {/* Display is clipped by CSS ellipsis; the copy
+                                  button still puts the full id on the clipboard. */}
+                              <span className={styles.monoValue}>{row.txId}</span>
+                              <CopyButton text={row.txId} />
+                            </>
+                          ) : (
+                            <span className={styles.muted}>—</span>
+                          )}
                         </div>
 
                         {/* Date */}
                         <div className={styles.whenCell}>
-                          <span className={styles.whenRelative}>{relativeTime(row.timestamp)}</span>
-                          <span className={styles.whenAbsolute}>
-                            {isPending
-                              ? "Awaiting receipt"
-                              : isFailed
-                                ? "Reverted"
-                                : row.timestamp >= MIN_REAL_TIMESTAMP
-                                  ? timeLocal(row.timestamp)
-                                  : `Block #${row.blockNumber}`}
-                          </span>
+                          {relativeTime(row.timestamp)} ·{" "}
+                          <span className={styles.whenAbs}>{timeLocal(row.timestamp)}</span>
                         </div>
                       </div>
                     </div>
@@ -485,15 +281,85 @@ export function DashboardActivityPage({ address, activeTab, onTabChange, onDisco
               </div>
             ))}
 
-          {!loading && fetchState?.rows && filtered.length > 0 && (
+          {!loading && state && !state.error && rows.length > 0 && (
             <div className={styles.footer}>
               <span className={styles.footerCount}>
-                Showing {filtered.length} transfer{filtered.length !== 1 ? "s" : ""}
+                Showing {rows.length} of {state.total} transfer{state.total !== 1 ? "s" : ""}
               </span>
+              {state.hasMore && (
+                <button
+                  className={styles.loadMore}
+                  onClick={() => void loadMore()}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? "Loading…" : "Load more"}
+                </button>
+              )}
             </div>
           )}
         </div>
       </DashboardLayout>
     </>
   );
+}
+
+// ── helpers ──
+
+// Mirrors the middleware's party-id truncation (head 8 + "…" + tail 8) so the
+// signed-in party matches the truncated `from`/`to` the API returns.
+function truncateParty(partyId: string): string {
+  const head = 8;
+  const tail = 8;
+  if (partyId.length <= head + tail + 1) return partyId;
+  return partyId.slice(0, head) + "…" + partyId.slice(-tail);
+}
+
+function relativeTime(iso: string): string {
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return "—";
+  const diff = (Date.now() - ts) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 172800) return "Yesterday";
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function timeLocal(iso: string): string {
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return "";
+  return new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function dayKey(iso: string): string {
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return "unknown";
+  return new Date(ts).toDateString();
+}
+
+function dayLabel(iso: string): string {
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return "UNKNOWN";
+  const d = new Date(ts);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const month = d.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
+  if (d.toDateString() === today.toDateString()) return `TODAY · ${month}`;
+  if (d.toDateString() === yesterday.toDateString()) return `YESTERDAY · ${month}`;
+  return d
+    .toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
+    .toUpperCase();
+}
+
+// Parse a decimal string ("12.5") into the smallest-unit bigint for `decimals`.
+function parseAmountToBigInt(amount: string, decimals: number): bigint {
+  const [whole, fracRaw = ""] = amount.split(".");
+  const frac = (fracRaw + "0".repeat(decimals)).slice(0, decimals);
+  const digits = (whole + frac).replace(/^0+(?=\d)/, "") || "0";
+  try {
+    return BigInt(digits);
+  } catch {
+    return 0n;
+  }
 }

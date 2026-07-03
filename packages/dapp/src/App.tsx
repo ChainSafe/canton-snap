@@ -383,7 +383,7 @@ export default function App() {
     }
 
     if (dashboardTab === "activity") {
-      return <DashboardActivityPage {...sharedProps} />;
+      return <DashboardActivityPage {...sharedProps} cantonPartyId={profile.cantonPartyId} />;
     }
 
     return (

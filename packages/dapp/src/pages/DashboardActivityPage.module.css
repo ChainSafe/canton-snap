@@ -1,15 +1,6 @@
 /* ── Page header ── */
 .pageHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.pageTitles {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  margin-bottom: 18px;
 }
 
 .pageTitle {
@@ -22,92 +13,73 @@
 .pageSubtitle {
   font-size: 13px;
   color: var(--text-secondary);
+  margin-top: 6px;
 }
 
-/* ── Search ── */
-.searchBar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 296px;
-  height: 36px;
-  background: #12141f;
-  border: 1px solid var(--border-muted);
-  border-radius: 10px;
-  padding: 0 14px;
-  color: var(--text-muted);
-  font-size: 12px;
-  flex-shrink: 0;
+/* Constrain the table so it doesn't stretch across an ultrawide viewport,
+   which would balloon the flexible PARTY column into a large empty gap.
+   Left-aligned to sit under the page title. */
+.colHeaders,
+.card {
+  max-width: 960px;
 }
 
-.searchInput {
-  background: none;
-  border: none;
-  outline: none;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-family: var(--font-sans);
-  width: 100%;
-}
-
-.searchInput::placeholder {
-  color: var(--text-muted);
-}
-
-/* ── Column headers (above card) ── */
-.colHeaders {
+/* ── Shared row grid (header + each row) ──
+   TYPE | TOKEN | AMOUNT | PARTY (flex) | LEDGER TX | DATE */
+.colHeaders,
+.activityRow {
   display: grid;
-  /* Content-weighted tracks: TX HASH / TO-FROM are the widest, TYPE/TOKEN/
-     AMOUNT/DATE are narrower. Equal 1fr columns starved the hash columns and
-     made the rows overlap until ~1500px wide. Must match .activityRow. */
-  grid-template-columns: 0.95fr 0.7fr 0.85fr 1.15fr 1.35fr 0.9fr;
-  column-gap: 20px;
-  padding: 0 24px 12px;
-  font-size: 11px;
+  grid-template-columns: 104px 92px 108px minmax(0, 1fr) 132px 120px;
+  gap: 16px;
+  align-items: center;
+}
+
+.colHeaders {
+  padding: 13px 22px 10px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 1px;
   color: var(--text-muted);
-  text-transform: uppercase;
 }
 
 .colRight {
   text-align: right;
 }
 
-/* ── Activity card (full-width) ── */
+/* ── Card ── */
 .card {
-  background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
+  background: var(--bg-card, linear-gradient(180deg, #1a1d2e 0%, #12141f 100%));
   border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
+  border-radius: var(--radius-xl);
+  padding: 0 22px;
+  position: relative;
+  z-index: 1;
 }
 
-/* ── Day group label ── */
+/* Mobile-only "Tx" label (the column header is hidden on narrow viewports). */
+.txPrefix {
+  display: none;
+}
+
 .dayGroup {
-  padding: 16px 24px 4px;
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.2px;
+  letter-spacing: 1px;
   color: var(--text-muted);
-  text-transform: uppercase;
+  font-weight: 700;
+  padding: 14px 0 6px;
 }
 
-/* ── Activity row ── */
+/* Compact single-line rows */
+.activityRow {
+  padding: 9px 0;
+}
+
 .rowDivider {
   height: 1px;
   background: var(--border);
-  margin: 0 24px;
 }
 
-.activityRow {
-  display: grid;
-  grid-template-columns: 0.95fr 0.7fr 0.85fr 1.15fr 1.35fr 0.9fr;
-  column-gap: 20px;
-  align-items: center;
-  padding: 16px 24px;
-}
-
-/* Type cell */
+/* Type */
 .typeCell {
   display: flex;
   align-items: center;
@@ -116,9 +88,9 @@
 }
 
 .typeIcon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,20 +98,13 @@
 }
 
 .iconSent {
-  background: rgba(0, 212, 164, 0.12);
-  color: #00d4a4;
+  background: rgba(255, 107, 107, 0.12);
+  color: #ff8a8a;
 }
 
 .iconReceived {
-  background: rgba(96, 165, 250, 0.14);
-  color: #60a5fa;
-}
-
-.typeStack {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--green);
 }
 
 .typeLabel {
@@ -148,69 +113,22 @@
   color: var(--text-primary);
 }
 
-.statusPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  align-self: flex-start;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.statusPillPending {
-  background: color-mix(in srgb, var(--amber) 14%, transparent);
-  color: var(--amber);
-  border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
-}
-
-.statusPillFailed {
-  background: color-mix(in srgb, var(--red) 14%, transparent);
-  color: var(--red);
-  border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
-}
-
-.statusDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: pendingPulse 1.6s ease-in-out infinite;
-}
-
-@keyframes pendingPulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-
-.rowPending .amountValue {
-  color: var(--amber);
-}
-
-.rowFailed .amountValue {
-  color: var(--text-muted);
-  text-decoration: line-through;
-}
-
-/* Token cell */
+/* Token */
 .tokenCell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   min-width: 0;
 }
 
 .tokenIcon {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -221,90 +139,63 @@
   color: var(--text-primary);
 }
 
-/* Address / tx cells */
-.addrCell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+/* Amount */
+.amountValue {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 700;
 }
 
-.addrLabel {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  text-transform: uppercase;
+.amountSent {
+  color: #ff8a8a;
 }
 
-.addrRow {
+.amountReceived {
+  color: var(--green);
+}
+
+/* Party + Ledger tx — single inline line each */
+.inlineCell {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
 }
 
-.addrValue {
+.prefix {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.monoValue {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-
-/* Amount cell */
-.amountCell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  min-width: 0;
-}
-
-.amountValue {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.amountSent {
-  color: var(--text-primary);
-}
-
-.amountReceived {
-  color: #34d399;
-}
-
-.amountLabel {
-  font-size: 11px;
+.muted {
   color: var(--text-muted);
+  font-size: 12px;
 }
 
-/* When cell */
+/* Date */
 .whenCell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  min-width: 0;
-}
-
-.whenRelative {
+  text-align: right;
   font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
-.whenAbsolute {
-  font-size: 11px;
+.whenAbs {
   color: var(--text-muted);
-  white-space: nowrap;
+  font-family: var(--font-mono);
 }
 
-/* Loading / error / empty */
+/* ── States ── */
 .centred {
   display: flex;
   align-items: center;
@@ -322,15 +213,17 @@
   font-size: 12px;
   color: var(--text-muted);
   text-align: center;
+  padding: 20px 0;
 }
 
-/* ── Footer ── */
+/* ── Footer / pagination ── */
 .footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
+  padding: 14px 0;
   border-top: 1px solid var(--border);
+  margin-top: 2px;
 }
 
 .footerCount {
@@ -338,103 +231,85 @@
   color: var(--text-muted);
 }
 
-/* ── Tablet + mobile: the 6-column table needs a wide viewport, but the 240px
-   sidebar keeps the content area narrow well past the 768px nav breakpoint, so
-   the table overlaps on a tablet. Reflow into a compact 2-column card at 1024px
-   (the table only has room above that). ── */
-@media (max-width: 1024px) {
-  .pageHeader {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-  }
+.loadMore {
+  background: #232640;
+  border: 1px solid var(--border-muted);
+  color: var(--text-primary);
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
 
-  .searchBar {
-    width: 100%;
-  }
+.loadMore:hover:not(:disabled) {
+  border-color: var(--teal);
+  color: var(--teal);
+}
 
+.loadMore:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Tablet / mobile ──
+   Below ~1100px the sidebar collapses and the main column is too narrow for
+   six side-by-side columns, so each row reflows into a compact 2-column card:
+
+     [ Sent          ]   [   −10 ]
+     [ ◎ DEMO        ]   [ 3d ago ]
+     [ To external…       (full)  ]
+     [ Tx 1220…           (full)  ]
+*/
+@media (max-width: 1100px) {
   .colHeaders {
     display: none;
   }
 
+  .card {
+    max-width: none;
+    padding: 0 16px;
+  }
+
   .activityRow {
-    grid-template-columns: 1fr 1fr;
-    column-gap: 16px;
-    row-gap: 12px;
-    padding: 16px;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "type amount"
+      "token date"
+      "party party"
+      "tx tx";
+    gap: 6px 14px;
+    padding: 12px 0;
   }
 
-  /* Row 1: type ┊ date — Row 2: token ┊ amount — Rows 3-4: to/from + tx full-width */
   .typeCell {
-    grid-column: 1;
-    grid-row: 1;
+    grid-area: type;
   }
 
-  .whenCell {
-    grid-column: 2;
-    grid-row: 1;
+  .amountValue {
+    grid-area: amount;
+    text-align: right;
   }
 
   .tokenCell {
-    grid-column: 1;
-    grid-row: 2;
+    grid-area: token;
   }
 
-  .amountCell {
-    grid-column: 2;
-    grid-row: 2;
-    align-items: flex-end;
+  .whenCell {
+    grid-area: date;
+    text-align: right;
   }
 
-  .addrCell {
-    grid-column: 1 / -1;
+  .partyCell {
+    grid-area: party;
   }
 
-  .rowDivider {
-    margin: 0 16px;
-  }
-}
-
-/* ── Phone: tighten spacing and put TO/FROM and TX side by side (row 3) so
-   each transaction takes 3 rows instead of 4. ── */
-@media (max-width: 560px) {
-  .activityRow {
-    padding: 13px 14px;
-    row-gap: 9px;
-    column-gap: 12px;
+  .txCell {
+    grid-area: tx;
   }
 
-  .typeIcon {
-    width: 28px;
-    height: 28px;
-  }
-
-  .tokenIcon {
-    width: 24px;
-    height: 24px;
-  }
-
-  /* Cells render in DOM order: type, token, amount, addr(to/from), addr(tx),
-     when. The 4th/5th cells are the two addr blocks — sit them side by side. */
-  .addrCell {
-    grid-column: auto;
-  }
-
-  .activityRow > div:nth-child(4) {
-    grid-column: 1;
-    grid-row: 3;
-  }
-
-  .activityRow > div:nth-child(5) {
-    grid-column: 2;
-    grid-row: 3;
-  }
-
-  .addrValue {
-    font-size: 11px;
-  }
-
-  .rowDivider {
-    margin: 0 14px;
+  .txPrefix {
+    display: inline;
   }
 }
