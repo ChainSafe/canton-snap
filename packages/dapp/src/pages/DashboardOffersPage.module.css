@@ -276,6 +276,75 @@
   border: 1px solid rgba(139, 124, 255, 0.3);
 }
 
+/* ── Action column (outgoing tables only: claim back / cancel) ── */
+.colHeadersAction,
+.offerRowAction {
+  grid-template-columns: 1fr 140px 150px 124px;
+}
+
+.colAction {
+  text-align: right;
+}
+
+.offerAction {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.withdrawBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+
+.withdrawBtnClaim {
+  background: rgba(255, 184, 77, 0.14);
+  border: 1px solid rgba(255, 184, 77, 0.4);
+  color: var(--amber);
+}
+
+.withdrawBtnClaim:hover {
+  background: rgba(255, 184, 77, 0.22);
+}
+
+.withdrawBtnCancel {
+  background: #232640;
+  border: 1px solid var(--border-muted);
+  color: var(--text-secondary);
+}
+
+.withdrawBtnCancel:hover {
+  border-color: #43496e;
+  color: var(--text-primary);
+}
+
+/* Holds the in-flight spinner in the action slot so the row doesn't jump. */
+.actionSpinnerWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  min-width: 92px;
+}
+
+.rowError {
+  font-size: 11px;
+  color: var(--amber);
+  padding: 0 0 12px;
+}
+
 /* ── Loading / error / empty ── */
 .centred {
   display: flex;
@@ -355,12 +424,19 @@
     display: none;
   }
 
-  .offerRow {
+  .offerRow,
+  .offerRowAction {
     grid-template-columns: 1fr auto;
     row-gap: 10px;
   }
 
   .offerStatus {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  /* Full-width action row beneath the status, left-aligned. */
+  .offerAction {
     grid-column: 1 / -1;
     justify-content: flex-start;
   }

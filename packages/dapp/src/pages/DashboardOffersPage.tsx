@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { DashboardLayout, type DashboardTab } from "../components/DashboardLayout";
 import { PageCard } from "../components/PageCard";
@@ -9,9 +9,13 @@ import { NETWORK } from "../lib/config";
 import { OFFERS_SAMPLE_ENABLED } from "../lib/features";
 import { formatTokenAmount } from "../lib/ethrpc";
 import { TOKEN_COLORS } from "../lib/tokens";
+import { useSnap } from "../hooks/useSnap";
 import {
   listIncomingTransfers,
   listOutgoingTransfers,
+  prepareWithdrawTransfer,
+  executeWithdrawTransfer,
+  withdrawCustodialTransfer,
   type IncomingTransfer,
   type OutgoingTransfer,
 } from "../lib/transfer";
@@ -39,6 +43,7 @@ interface OffersState {
 
 // A normalized row so incoming and outgoing offers render through one table.
 type ChipKind = "incoming" | "pending" | "expired";
+type WithdrawState = "preparing" | "signing" | "executing";
 interface OfferRow {
   key: string;
   symbol: string;
@@ -47,6 +52,8 @@ interface OfferRow {
   counterparty: string;
   chipKind: ChipKind;
   chipText: string;
+  // Present on outgoing offers, which the sender can claim back / cancel.
+  withdraw?: { contractId: string; label: string };
 }
 
 function TokenIcon({ symbol }: { symbol: string }) {
@@ -164,12 +171,24 @@ function buildSampleOutgoing(): OutgoingTransfer[] {
   ];
 }
 
-export function DashboardOffersPage({ address, activeTab, onTabChange, onDisconnect }: Props) {
+export function DashboardOffersPage({
+  address,
+  activeTab,
+  onTabChange,
+  onDisconnect,
+  keyMode,
+}: Props) {
   const [offers, setOffers] = useState<OffersState | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+  // Per-offer claim-back progress + error, keyed by contract id.
+  const [withdrawState, setWithdrawState] = useState<Record<string, WithdrawState>>({});
+  const [withdrawError, setWithdrawError] = useState<Record<string, string>>({});
   // Ticks every 30s so the relative countdowns stay live and outgoing offers
   // flip from pending to expired on their own, without a refetch.
   const [now, setNow] = useState(() => Date.now());
+
+  const snap = useSnap();
+  const isNonCustodial = keyMode === "external";
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
@@ -229,6 +248,85 @@ export function DashboardOffersPage({ address, activeTab, onTabChange, onDisconn
       cancelled = true;
     };
   }, [address]);
+
+  const isSample = offers?.sample ?? false;
+
+  // Claim back (withdraw) an outgoing offer — pending (cancel) or expired
+  // (reclaim). Non-custodial: prepare → snap sign → execute. Custodial: a single
+  // server-signed call. Mirrors the accept flow on the Balances tab.
+  const handleWithdraw = useCallback(
+    async (contractId: string) => {
+      // Ignore repeat clicks while a claim-back for this offer is in flight.
+      if (withdrawState[contractId]) return;
+      const offer = offers?.outgoing.find((o) => o.contractId === contractId);
+      setWithdrawError((s) => {
+        const next = { ...s };
+        delete next[contractId];
+        return next;
+      });
+
+      // Sample rows aren't backed by a real contract — animate then drop the row
+      // so the interaction is demonstrable without a backend.
+      if (isSample) {
+        setWithdrawState((s) => ({ ...s, [contractId]: "executing" }));
+        window.setTimeout(() => {
+          setOffers((prev) =>
+            prev
+              ? { ...prev, outgoing: prev.outgoing.filter((o) => o.contractId !== contractId) }
+              : prev,
+          );
+          setWithdrawState((s) => {
+            const next = { ...s };
+            delete next[contractId];
+            return next;
+          });
+        }, 900);
+        return;
+      }
+
+      try {
+        if (isNonCustodial) {
+          setWithdrawState((s) => ({ ...s, [contractId]: "preparing" }));
+          const prep = await prepareWithdrawTransfer(NETWORK.middlewareUrl, address, contractId);
+          setWithdrawState((s) => ({ ...s, [contractId]: "signing" }));
+          const { derSignature, fingerprint } = await snap.signHash(prep.transactionHash, {
+            operation: "Claim back transfer",
+            tokenSymbol: offer?.symbol ?? offer?.instrumentId ?? "",
+            amount: offer?.amount ?? "",
+            recipient: offer?.receiverPartyId ?? "",
+            sender: offer?.senderPartyId ?? "",
+          });
+          setWithdrawState((s) => ({ ...s, [contractId]: "executing" }));
+          await executeWithdrawTransfer(
+            NETWORK.middlewareUrl,
+            address,
+            contractId,
+            prep.transferId,
+            derSignature,
+            fingerprint,
+          );
+        } else {
+          setWithdrawState((s) => ({ ...s, [contractId]: "executing" }));
+          await withdrawCustodialTransfer(NETWORK.middlewareUrl, address, contractId);
+        }
+        // Optimistically drop the reclaimed offer; the indexer catches up shortly.
+        setOffers((prev) =>
+          prev
+            ? { ...prev, outgoing: prev.outgoing.filter((o) => o.contractId !== contractId) }
+            : prev,
+        );
+      } catch (e) {
+        setWithdrawError((s) => ({ ...s, [contractId]: (e as Error).message }));
+      } finally {
+        setWithdrawState((s) => {
+          const next = { ...s };
+          delete next[contractId];
+          return next;
+        });
+      }
+    },
+    [offers?.outgoing, isSample, isNonCustodial, snap, address, withdrawState],
+  );
 
   const incoming = useMemo(() => offers?.incoming ?? [], [offers]);
   const outgoing = useMemo(() => offers?.outgoing ?? [], [offers]);
@@ -348,7 +446,12 @@ export function DashboardOffersPage({ address, activeTab, onTabChange, onDisconn
                         <span className={styles.sectionMeta}>The recipient can still accept</span>
                       </div>
                       <PageCard className={styles.offersCard}>
-                        <OffersTable rows={pendingRows} />
+                        <OffersTable
+                          rows={pendingRows}
+                          withdrawState={withdrawState}
+                          withdrawError={withdrawError}
+                          onWithdraw={handleWithdraw}
+                        />
                       </PageCard>
                     </>
                   )}
@@ -363,7 +466,12 @@ export function DashboardOffersPage({ address, activeTab, onTabChange, onDisconn
                         <span className={styles.sectionMeta}>Expired before acceptance</span>
                       </div>
                       <PageCard className={cn(styles.offersCard, styles.offersCardExp)}>
-                        <OffersTable rows={expiredRows} />
+                        <OffersTable
+                          rows={expiredRows}
+                          withdrawState={withdrawState}
+                          withdrawError={withdrawError}
+                          onWithdraw={handleWithdraw}
+                        />
                       </PageCard>
                     </>
                   )}
@@ -413,47 +521,91 @@ function ChipIcon({ kind }: { kind: ChipKind }) {
   return <ClockIcon />;
 }
 
-function OffersTable({ rows }: { rows: OfferRow[] }) {
+function OffersTable({
+  rows,
+  withdrawState,
+  withdrawError,
+  onWithdraw,
+}: {
+  rows: OfferRow[];
+  // Withdraw wiring — only passed for the outgoing tables.
+  withdrawState?: Record<string, WithdrawState>;
+  withdrawError?: Record<string, string>;
+  onWithdraw?: (contractId: string) => void;
+}) {
+  // Reserve the action column only when this table can withdraw (outgoing).
+  const withActions = !!onWithdraw;
   return (
     <>
-      <div className={styles.colHeaders}>
+      <div className={cn(styles.colHeaders, withActions && styles.colHeadersAction)}>
         <span>Token · Party</span>
         <span className={styles.colAmount}>Amount</span>
         <span className={styles.colStatus}>Status</span>
+        {withActions && <span className={styles.colAction} />}
       </div>
-      {rows.map((row, i) => (
-        <div key={row.key}>
-          {i > 0 && <div className={styles.rowDivider} />}
-          <div className={styles.offerRow}>
-            <div className={styles.offerInfo}>
-              <TokenIcon symbol={row.symbol} />
-              <div className={styles.offerText}>
-                <p className={styles.offerSymbol}>{row.symbol}</p>
-                <p className={styles.offerTo}>{row.counterparty}</p>
+      {rows.map((row, i) => {
+        const wd = row.withdraw;
+        const busy = wd ? withdrawState?.[wd.contractId] : undefined;
+        const err = wd ? withdrawError?.[wd.contractId] : undefined;
+        return (
+          <div key={row.key}>
+            {i > 0 && <div className={styles.rowDivider} />}
+            <div className={cn(styles.offerRow, withActions && styles.offerRowAction)}>
+              <div className={styles.offerInfo}>
+                <TokenIcon symbol={row.symbol} />
+                <div className={styles.offerText}>
+                  <p className={styles.offerSymbol}>{row.symbol}</p>
+                  <p className={styles.offerTo}>{row.counterparty}</p>
+                </div>
               </div>
-            </div>
 
-            <div className={styles.amountInfo}>
-              <p className={styles.amount}>{row.amount}</p>
-              <p className={styles.amountLabel}>{row.symbol}</p>
-            </div>
+              <div className={styles.amountInfo}>
+                <p className={styles.amount}>{row.amount}</p>
+                <p className={styles.amountLabel}>{row.symbol}</p>
+              </div>
 
-            <div className={styles.offerStatus}>
-              <span
-                className={cn(
-                  styles.statusChip,
-                  row.chipKind === "incoming" && styles.statusChipIncoming,
-                  row.chipKind === "pending" && styles.statusChipPending,
-                  row.chipKind === "expired" && styles.statusChipExpired,
-                )}
-              >
-                <ChipIcon kind={row.chipKind} />
-                {row.chipText}
-              </span>
+              <div className={styles.offerStatus}>
+                <span
+                  className={cn(
+                    styles.statusChip,
+                    row.chipKind === "incoming" && styles.statusChipIncoming,
+                    row.chipKind === "pending" && styles.statusChipPending,
+                    row.chipKind === "expired" && styles.statusChipExpired,
+                  )}
+                >
+                  <ChipIcon kind={row.chipKind} />
+                  {row.chipText}
+                </span>
+              </div>
+
+              {withActions && (
+                <div className={styles.offerAction}>
+                  {wd &&
+                    (busy ? (
+                      <span className={styles.actionSpinnerWrap} aria-busy="true">
+                        <Spinner size={20} />
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={cn(
+                          styles.withdrawBtn,
+                          row.chipKind === "expired"
+                            ? styles.withdrawBtnClaim
+                            : styles.withdrawBtnCancel,
+                        )}
+                        onClick={() => onWithdraw?.(wd.contractId)}
+                      >
+                        {wd.label}
+                      </button>
+                    ))}
+                </div>
+              )}
             </div>
+            {err && <p className={styles.rowError}>{err}</p>}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -489,6 +641,7 @@ function toOutgoingRow(o: OutgoingTransfer, now: number): OfferRow {
     counterparty: `to ${shortenPartyId(o.receiverPartyId)}`,
     chipKind: expired ? "expired" : "pending",
     chipText: formatRelativeExpiry(o.expiresAt, now),
+    withdraw: { contractId: o.contractId, label: expired ? "Claim back" : "Cancel" },
   };
 }
 

@@ -54,7 +54,13 @@ export interface IncomingTransfer {
 
 async function makeAuthHeaders(
   address: string,
-  prefix: "transfer" | "prepare-accept" | "execute-accept" = "transfer",
+  prefix:
+    | "transfer"
+    | "prepare-accept"
+    | "execute-accept"
+    | "prepare-withdraw"
+    | "execute-withdraw"
+    | "withdraw-custodial" = "transfer",
 ): Promise<Record<string, string>> {
   const message = `${prefix}:${Math.floor(Date.now() / 1000)}`;
   const signature = await personalSign(message, address);
@@ -396,4 +402,80 @@ export async function executeAcceptTransfer(
     },
   );
   if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+}
+
+// ── Claim back / withdraw an outgoing offer ─────────────────────────────────
+//
+// Reclaims the holding locked by an offer-based transfer the caller sent. Works
+// on a pending offer (cancel before acceptance) or an expired one (reclaim after
+// it lapsed). Mirrors the accept flow: two-step prepare + snap-signed execute
+// for non-custodial users, single server-signed call for custodial. The server
+// looks up the offer's instrument admin via the indexer, so no request body is
+// needed beyond the contract id in the path (canton-middleware#339).
+
+// Maps the withdraw endpoints' documented failure codes to user-facing copy:
+// 404 — the offer is gone or not the caller's; 409 — it was already accepted or
+// settled on-ledger. Anything else falls back to the generic formatter.
+async function withdrawErrorMessage(res: Response): Promise<string> {
+  const body = await res.text();
+  if (res.status === 404)
+    return "This offer is no longer available — it may have been accepted or already claimed back.";
+  if (res.status === 409)
+    return "This offer can no longer be claimed back — it was already accepted or settled.";
+  return friendlyError(res.status, body);
+}
+
+export async function prepareWithdrawTransfer(
+  baseUrl: string,
+  address: string,
+  contractId: string,
+): Promise<PrepareResult> {
+  const authHeaders = await makeAuthHeaders(address, "prepare-withdraw");
+  const res = await fetch(
+    `${baseUrl}/api/v2/transfer/outgoing/${encodeURIComponent(contractId)}/withdraw/prepare`,
+    { method: "POST", headers: authHeaders },
+  );
+  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
+  const data = await res.json();
+  return {
+    transferId: data.transfer_id as string,
+    transactionHash: data.transaction_hash as string,
+    partyId: data.party_id as string,
+    expiresAt: data.expires_at as string,
+  };
+}
+
+export async function executeWithdrawTransfer(
+  baseUrl: string,
+  address: string,
+  contractId: string,
+  transferId: string,
+  signature: string,
+  signedBy: string,
+): Promise<void> {
+  const authHeaders = await makeAuthHeaders(address, "execute-withdraw");
+  const res = await fetch(
+    `${baseUrl}/api/v2/transfer/outgoing/${encodeURIComponent(contractId)}/withdraw/execute`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
+    },
+  );
+  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
+}
+
+// Custodial claim-back: the middleware holds the user's Canton key and signs
+// server-side, so prepare + execute happen in one call (no snap, no body).
+export async function withdrawCustodialTransfer(
+  baseUrl: string,
+  address: string,
+  contractId: string,
+): Promise<void> {
+  const authHeaders = await makeAuthHeaders(address, "withdraw-custodial");
+  const res = await fetch(
+    `${baseUrl}/api/v2/transfer/outgoing/${encodeURIComponent(contractId)}/withdraw/custodial`,
+    { method: "POST", headers: authHeaders },
+  );
+  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
 }
