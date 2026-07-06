@@ -456,15 +456,15 @@ export function DashboardOffersPage({
 
   const incomingRows = useMemo(
     () => (offers?.incoming.items ?? []).map(toIncomingRow),
-    [offers],
+    [offers?.incoming.items],
   );
   const pendingRows = useMemo(
     () => (offers?.pending.items ?? []).map((o) => toOutgoingRow(o, now)),
-    [offers, now],
+    [offers?.pending.items, now],
   );
   const expiredRows = useMemo(
     () => (offers?.expired.items ?? []).map((o) => toOutgoingRow(o, now)),
-    [offers, now],
+    [offers?.expired.items, now],
   );
 
   const showIncoming = filter !== "outgoing";
@@ -695,12 +695,7 @@ function SectionFooter({
         Showing {shown} of {total}
       </span>
       {hasMore && (
-        <button
-          type="button"
-          className={styles.loadMore}
-          onClick={onLoadMore}
-          disabled={loading}
-        >
+        <button type="button" className={styles.loadMore} onClick={onLoadMore} disabled={loading}>
           {loading ? "Loading…" : "Load more"}
         </button>
       )}

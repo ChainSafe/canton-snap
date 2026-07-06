@@ -183,18 +183,18 @@ interface PagedResponse<T> {
 }
 
 function toPage<T, R>(
-  data: PagedResponse<R>,
+  data: PagedResponse<R> | null | undefined,
   requestedPage: number,
   requestedLimit: number,
   map: (r: R) => T,
 ): TransfersPage<T> {
-  const items = (data.items ?? []).map(map);
+  const items = (data?.items ?? []).map(map);
   return {
     items,
-    total: data.total ?? items.length,
-    page: data.page ?? requestedPage,
-    limit: data.limit ?? requestedLimit,
-    hasMore: data.has_more ?? false,
+    total: data?.total ?? items.length,
+    page: data?.page ?? requestedPage,
+    limit: data?.limit ?? requestedLimit,
+    hasMore: data?.has_more ?? false,
   };
 }
 
