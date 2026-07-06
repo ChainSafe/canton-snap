@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.3.0...dapp-v1.4.0) (2026-07-03)
+
+
+### Features
+
+* **dapp:** claim back / cancel offered transfers ([#90](https://github.com/ChainSafe/canton-snap/issues/90)) ([ce019b2](https://github.com/ChainSafe/canton-snap/commit/ce019b2cec638ed418421f8f1084f8531d8ca2c8))
+* **dapp:** Offers tab listing outgoing offered transfers ([#85](https://github.com/ChainSafe/canton-snap/issues/85)) ([c272ac0](https://github.com/ChainSafe/canton-snap/commit/c272ac0a12a2d13cddb4f19a24e0ae1f95a0ae85))
+* **dapp:** rebuild Activity on the transfer history API ([#87](https://github.com/ChainSafe/canton-snap/issues/87)) ([5439659](https://github.com/ChainSafe/canton-snap/commit/5439659d331d3ea9f854d92cd59117f35ff31680))
+* **dapp:** transfer by Canton party id with offer expiry ([#84](https://github.com/ChainSafe/canton-snap/issues/84)) ([ef53bb6](https://github.com/ChainSafe/canton-snap/commit/ef53bb6ba7fe0f79d44b0ff16d76daac6352d5fb))
+
 ## [1.3.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.2.0...dapp-v1.3.0) (2026-06-05)
 
 
