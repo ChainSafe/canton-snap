@@ -235,8 +235,9 @@ export function DashboardBalancesPage({
     }
     let cancelled = false;
     listIncomingTransfers(NETWORK.middlewareUrl, address)
-      .then((items) => {
-        if (!cancelled) setOffers({ url: NETWORK.middlewareUrl, address, items, error: null });
+      .then((page) => {
+        if (!cancelled)
+          setOffers({ url: NETWORK.middlewareUrl, address, items: page.items, error: null });
       })
       .catch((e: unknown) => {
         if (!cancelled)

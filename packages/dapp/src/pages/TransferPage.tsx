@@ -35,7 +35,9 @@ type ReceiptStatus = "pending" | "success" | "failed";
 const RECEIPT_POLL_INTERVAL_MS = 3000;
 
 type Step = "details" | "sign" | "done";
-type SignPhase = "idle" | "preparing" | "awaiting-snap" | "signing" | "executing";
+// "authorizing" is the second MetaMask auth signature collected inside
+// executeTransfer; "executing" is the middleware settling on Canton after it.
+type SignPhase = "idle" | "preparing" | "awaiting-snap" | "signing" | "authorizing" | "executing";
 
 interface Receipt {
   // Absent for custodial party-id sends, which settle server-side in one call
@@ -44,6 +46,10 @@ interface Receipt {
   token: TokenConfig;
   amount: string;
   to: string;
+  // True when the send created an on-ledger offer the recipient must accept
+  // (offer-based token). The done screen then points at the Offers tab — the
+  // transfer won't appear in Activity until it's accepted.
+  offer: boolean;
 }
 
 interface Props {
@@ -454,6 +460,10 @@ export function TransferPage({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [signPhase, setSignPhase] = useState<SignPhase>("idle");
+  // Custodial party sends collect a MetaMask auth signature, then wait a few
+  // seconds on the middleware — track the boundary so the UI doesn't claim
+  // "waiting for MetaMask" while Canton is actually the one working.
+  const [custodialPhase, setCustodialPhase] = useState<"idle" | "signing" | "executing">("idle");
   const [prepared, setPrepared] = useState<PrepareResult | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [receiptStatus, setReceiptStatus] = useState<ReceiptStatus>("pending");
@@ -461,6 +471,14 @@ export function TransferPage({
 
   const snap = useSnap();
   const isNonCustodial = keyMode === "external";
+
+  // Offer expiry only applies to offer-based tokens (e.g. USDCx, configurable):
+  // the recipient must accept, so there's an offer that can expire. Other tokens
+  // settle directly with no offer. Custodial sends to a plain EVM address also
+  // settle directly (raw ERC-20), so they never carry a validity either.
+  const offerBased = isOfferBasedToken(selectedToken?.symbol);
+  const isCustodialParty = !isNonCustodial && recipientType === "party";
+  const usesValidity = offerBased && (isNonCustodial || isCustodialParty);
 
   // Pre-selection captured at mount — it's fixed for the lifetime of this
   // page (only set when navigating in from a balances "Send →"). Held in a
@@ -606,13 +624,15 @@ export function TransferPage({
         sender: address,
       });
 
-      setSignPhase("executing");
+      setSignPhase("authorizing");
       await executeTransfer(
         NETWORK.middlewareUrl,
         address,
         prepared.transferId,
         derSignature,
         fingerprint,
+        // Auth signature collected — the middleware is now settling on Canton.
+        () => setSignPhase("executing"),
       );
 
       recordPendingTx(address, {
@@ -625,7 +645,13 @@ export function TransferPage({
         to: recipient.toLowerCase(),
         submittedAt: Math.floor(Date.now() / 1000),
       });
-      setReceipt({ txHash: prepared.transactionHash, token: selectedToken, amount, to: recipient });
+      setReceipt({
+        txHash: prepared.transactionHash,
+        token: selectedToken,
+        amount,
+        to: recipient,
+        offer: usesValidity,
+      });
       setStep("done");
     } catch (e: unknown) {
       setError((e as Error).message);
@@ -658,7 +684,8 @@ export function TransferPage({
         to: recipient.toLowerCase(),
         submittedAt: Math.floor(Date.now() / 1000),
       });
-      setReceipt({ txHash, token: selectedToken, amount, to: recipient });
+      // Raw ERC-20 sends settle directly — no offer involved.
+      setReceipt({ txHash, token: selectedToken, amount, to: recipient, offer: false });
       setStep("done");
     } catch (e: unknown) {
       setError((e as Error).message);
@@ -675,6 +702,7 @@ export function TransferPage({
     if (!selectedToken) return;
     setPending(true);
     setError(null);
+    setCustodialPhase("signing");
     try {
       await sendCustodialTransfer(
         NETWORK.middlewareUrl,
@@ -683,14 +711,17 @@ export function TransferPage({
         selectedToken.symbol,
         amount,
         validitySeconds,
+        // MetaMask signature collected — the middleware is now settling on Canton.
+        () => setCustodialPhase("executing"),
       );
-      setReceipt({ token: selectedToken, amount, to: recipient });
+      setReceipt({ token: selectedToken, amount, to: recipient, offer: usesValidity });
       setReceiptStatus("success");
       setStep("done");
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
       setPending(false);
+      setCustodialPhase("idle");
     }
   }
 
@@ -702,6 +733,7 @@ export function TransferPage({
     setValiditySeconds(DEFAULT_VALIDITY_SECONDS);
     setPrepared(null);
     setSignPhase("idle");
+    setCustodialPhase("idle");
     setError(null);
     setReceipt(null);
     setReceiptStatus("pending");
@@ -768,14 +800,6 @@ export function TransferPage({
     recipientType === "party" ? PARTY_ID_RE.test(recipient) : /^0x[0-9a-fA-F]{40}$/.test(recipient);
   const selectedBalance = selectedToken ? balances.get(selectedToken.address) : undefined;
   const pillClass = isNonCustodial ? styles.modePillNonCustodial : styles.modePillCustodial;
-
-  // Offer expiry only applies to offer-based tokens (e.g. USDCx, configurable):
-  // the recipient must accept, so there's an offer that can expire. Other tokens
-  // settle directly with no offer. Custodial sends to a plain EVM address also
-  // settle directly (raw ERC-20), so they never carry a validity either.
-  const offerBased = isOfferBasedToken(selectedToken?.symbol);
-  const isCustodialParty = !isNonCustodial && recipientType === "party";
-  const usesValidity = offerBased && (isNonCustodial || isCustodialParty);
 
   return (
     <>
@@ -979,9 +1003,11 @@ export function TransferPage({
                 ? "Authenticating with MetaMask…"
                 : signPhase === "signing"
                   ? "Approve the request in the Canton Snap dialog…"
-                  : signPhase === "executing"
-                    ? "Submitting transaction to Canton…"
-                    : "Review the transaction hash in the snap dialog and approve to send the transfer."}
+                  : signPhase === "authorizing"
+                    ? "Approve the authentication request in MetaMask…"
+                    : signPhase === "executing"
+                      ? "Signature received — confirming the transfer on Canton. This can take a few seconds…"
+                      : "Review the transaction hash in the snap dialog and approve to send the transfer."}
             </p>
 
             {prepared && (
@@ -998,9 +1024,11 @@ export function TransferPage({
             >
               {signPhase === "signing"
                 ? "Signing…"
-                : signPhase === "executing"
-                  ? "Executing…"
-                  : "Open snap dialog"}
+                : signPhase === "authorizing"
+                  ? "Waiting for MetaMask…"
+                  : signPhase === "executing"
+                    ? "Confirming on Canton…"
+                    : "Open snap dialog"}
             </button>
 
             <div className={styles.signStatusRow}>
@@ -1053,11 +1081,15 @@ export function TransferPage({
               )}
             </div>
 
-            <p className={styles.signTitle}>Confirm in MetaMask</p>
+            <p className={styles.signTitle}>
+              {custodialPhase === "executing" ? "Confirming on Canton" : "Confirm in MetaMask"}
+            </p>
             <p className={styles.signSubtitle}>
-              {isCustodialParty
-                ? "Authorise the transfer — the middleware signs and settles it on Canton on your behalf."
-                : "Sign the ERC-20 transfer — the middleware will co-sign on Canton."}
+              {custodialPhase === "executing"
+                ? "Signature received — the middleware is settling the transfer on Canton. This can take a few seconds…"
+                : isCustodialParty
+                  ? "Authorise the transfer — the middleware signs and settles it on Canton on your behalf."
+                  : "Sign the ERC-20 transfer — the middleware will co-sign on Canton."}
             </p>
 
             <div className={styles.contractPreview}>
@@ -1079,7 +1111,11 @@ export function TransferPage({
               onClick={isCustodialParty ? handleCustodialPartySend : handleMetaMaskSign}
               disabled={pending}
             >
-              {pending ? "Waiting for MetaMask…" : "Open MetaMask"}
+              {custodialPhase === "executing"
+                ? "Confirming on Canton…"
+                : pending
+                  ? "Waiting for MetaMask…"
+                  : "Open MetaMask"}
             </button>
 
             <div className={styles.signStatusRow}>
@@ -1135,17 +1171,23 @@ export function TransferPage({
 
             <p className={styles.doneTitle}>
               {receiptStatus === "pending"
-                ? "Transfer submitted"
+                ? receipt.offer
+                  ? "Offer submitted"
+                  : "Transfer submitted"
                 : receiptStatus === "failed"
                   ? "Transfer failed"
-                  : "Transfer sent"}
+                  : receipt.offer
+                    ? "Offer sent"
+                    : "Transfer sent"}
             </p>
             <p className={styles.doneSubtitle}>
               {receiptStatus === "pending"
                 ? "Awaiting confirmation on Canton Network…"
                 : receiptStatus === "failed"
                   ? (revertReason ?? "Reverted on Canton Network.")
-                  : "Transfer confirmed on Canton Network."}
+                  : receipt.offer
+                    ? "The recipient must accept before the transfer settles — track it under Offers."
+                    : "Transfer confirmed on Canton Network."}
             </p>
 
             <div className={styles.receipt}>
@@ -1181,9 +1223,17 @@ export function TransferPage({
               <button className={styles.btnSendAnother} onClick={handleReset}>
                 Send another
               </button>
-              <button className={styles.btnViewActivity} onClick={() => onTabChange("activity")}>
-                View in Activity →
-              </button>
+              {/* An offer isn't in Activity until the recipient accepts — it
+                  lives on the Offers tab (Outgoing) in the meantime. */}
+              {receipt.offer && receiptStatus !== "failed" ? (
+                <button className={styles.btnViewActivity} onClick={() => onTabChange("offers")}>
+                  View in Offers →
+                </button>
+              ) : (
+                <button className={styles.btnViewActivity} onClick={() => onTabChange("activity")}>
+                  View in Activity →
+                </button>
+              )}
             </div>
           </PageCard>
         )}

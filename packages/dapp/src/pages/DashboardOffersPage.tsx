@@ -18,6 +18,7 @@ import {
   withdrawCustodialTransfer,
   type IncomingTransfer,
   type OutgoingTransfer,
+  type TransfersPage,
 } from "../lib/transfer";
 import { cn } from "../lib/cn";
 import styles from "./DashboardOffersPage.module.css";
@@ -32,13 +33,68 @@ interface Props {
 
 type Filter = "all" | "incoming" | "outgoing";
 
+// One section's slice of the paginated listings. `total` is the server-side
+// count of ALL matching offers, not just the pages fetched so far — the filter
+// chips count from it so they stay accurate without fetching everything.
+interface Paged<T> {
+  items: T[];
+  total: number;
+  page: number;
+  hasMore: boolean;
+}
+
+// The three sections the page renders. Pending vs expired is split server-side
+// (?status=), so each carries its own accurate total; completed offers are
+// never fetched — they live on the Activity tab.
+type Section = "incoming" | "pending" | "expired";
+
 interface OffersState {
   url: string;
   address: string;
-  incoming: IncomingTransfer[];
-  outgoing: OutgoingTransfer[];
+  incoming: Paged<IncomingTransfer>;
+  pending: Paged<OutgoingTransfer>;
+  expired: Paged<OutgoingTransfer>;
   error: string | null;
   sample: boolean;
+}
+
+function emptyPage<T>(): Paged<T> {
+  return { items: [], total: 0, page: 1, hasMore: false };
+}
+
+function fromServerPage<T>(p: TransfersPage<T>): Paged<T> {
+  return { items: p.items, total: p.total, page: p.page, hasMore: p.hasMore };
+}
+
+function samplePage<T>(items: T[]): Paged<T> {
+  return { items, total: items.length, page: 1, hasMore: false };
+}
+
+// Skips items already in the list: the listings are newest-first with offset
+// pagination, so an offer created between two page fetches shifts the window
+// and repeats the previous page's tail (which would duplicate React keys).
+function appendPage<T extends { contractId: string }>(
+  list: Paged<T>,
+  next: TransfersPage<T>,
+): Paged<T> {
+  const seen = new Set(list.items.map((o) => o.contractId));
+  return {
+    items: [...list.items, ...next.items.filter((o) => !seen.has(o.contractId))],
+    total: next.total,
+    page: next.page,
+    hasMore: next.hasMore,
+  };
+}
+
+// Optimistically remove a withdrawn offer from a section, keeping its server
+// total in step with the row that disappeared.
+function dropOffer(list: Paged<OutgoingTransfer>, contractId: string): Paged<OutgoingTransfer> {
+  if (!list.items.some((o) => o.contractId === contractId)) return list;
+  return {
+    ...list,
+    items: list.items.filter((o) => o.contractId !== contractId),
+    total: Math.max(0, list.total - 1),
+  };
 }
 
 // A normalized row so incoming and outgoing offers render through one table.
@@ -180,6 +236,8 @@ export function DashboardOffersPage({
 }: Props) {
   const [offers, setOffers] = useState<OffersState | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+  // Per-section "Load more" in-flight flags.
+  const [loadingMore, setLoadingMore] = useState<Partial<Record<Section, boolean>>>({});
   // Per-offer claim-back progress + error, keyed by contract id.
   const [withdrawState, setWithdrawState] = useState<Record<string, WithdrawState>>({});
   const [withdrawError, setWithdrawError] = useState<Record<string, string>>({});
@@ -198,38 +256,43 @@ export function DashboardOffersPage({
   const loading = offers?.url !== NETWORK.middlewareUrl || offers?.address !== address;
 
   // Offers in both directions are shown for every user, custodial or not — the
-  // read endpoints are unauthenticated and resolve by EVM address.
+  // read endpoints are unauthenticated and resolve by EVM address. First page
+  // of each section; the rest is available through per-section "Load more".
   useEffect(() => {
     let cancelled = false;
     const url = NETWORK.middlewareUrl;
 
-    const sampleState = (): OffersState => ({
-      url,
-      address,
-      incoming: buildSampleIncoming(),
-      outgoing: buildSampleOutgoing(),
-      error: null,
-      sample: true,
-    });
+    const sampleState = (): OffersState => {
+      const outgoing = buildSampleOutgoing();
+      return {
+        url,
+        address,
+        incoming: samplePage(buildSampleIncoming()),
+        pending: samplePage(outgoing.filter((o) => o.status !== "expired")),
+        expired: samplePage(outgoing.filter((o) => o.status === "expired")),
+        error: null,
+        sample: true,
+      };
+    };
 
     Promise.allSettled([
       listIncomingTransfers(url, address),
-      listOutgoingTransfers(url, address),
-    ]).then(([inc, out]) => {
+      listOutgoingTransfers(url, address, "pending"),
+      listOutgoingTransfers(url, address, "expired"),
+    ]).then(([inc, pen, exp]) => {
       if (cancelled) return;
-      const incoming = inc.status === "fulfilled" ? inc.value : [];
-      const outgoing = out.status === "fulfilled" ? out.value : [];
 
       // Surface an error only when nothing could be loaded at all.
-      if (inc.status === "rejected" && out.status === "rejected") {
+      if (inc.status === "rejected" && pen.status === "rejected" && exp.status === "rejected") {
         if (OFFERS_SAMPLE_ENABLED) {
           setOffers(sampleState());
         } else {
           setOffers({
             url,
             address,
-            incoming: [],
-            outgoing: [],
+            incoming: emptyPage(),
+            pending: emptyPage(),
+            expired: emptyPage(),
             error: (inc.reason as Error).message,
             sample: false,
           });
@@ -237,10 +300,22 @@ export function DashboardOffersPage({
         return;
       }
 
-      if (incoming.length === 0 && outgoing.length === 0 && OFFERS_SAMPLE_ENABLED) {
+      const incoming =
+        inc.status === "fulfilled" ? fromServerPage(inc.value) : emptyPage<IncomingTransfer>();
+      const pending =
+        pen.status === "fulfilled" ? fromServerPage(pen.value) : emptyPage<OutgoingTransfer>();
+      const expired =
+        exp.status === "fulfilled" ? fromServerPage(exp.value) : emptyPage<OutgoingTransfer>();
+
+      if (
+        incoming.total === 0 &&
+        pending.total === 0 &&
+        expired.total === 0 &&
+        OFFERS_SAMPLE_ENABLED
+      ) {
         setOffers(sampleState());
       } else {
-        setOffers({ url, address, incoming, outgoing, error: null, sample: false });
+        setOffers({ url, address, incoming, pending, expired, error: null, sample: false });
       }
     });
 
@@ -251,6 +326,45 @@ export function DashboardOffersPage({
 
   const isSample = offers?.sample ?? false;
 
+  // Fetch the next page of one section and append it. Totals refresh from the
+  // server response, so the chips stay accurate as the list grows.
+  const loadMore = useCallback(
+    async (section: Section) => {
+      if (!offers || offers.sample || loadingMore[section]) return;
+      const current = offers[section];
+      if (!current.hasMore) return;
+      setLoadingMore((s) => ({ ...s, [section]: true }));
+      try {
+        const nextPage = current.page + 1;
+        if (section === "incoming") {
+          const next = await listIncomingTransfers(NETWORK.middlewareUrl, address, nextPage);
+          setOffers((prev) =>
+            prev ? { ...prev, incoming: appendPage(prev.incoming, next) } : prev,
+          );
+        } else {
+          const next = await listOutgoingTransfers(
+            NETWORK.middlewareUrl,
+            address,
+            section,
+            nextPage,
+          );
+          setOffers((prev) =>
+            prev
+              ? section === "pending"
+                ? { ...prev, pending: appendPage(prev.pending, next) }
+                : { ...prev, expired: appendPage(prev.expired, next) }
+              : prev,
+          );
+        }
+      } catch {
+        // Leave the list as-is; the user can retry Load more.
+      } finally {
+        setLoadingMore((s) => ({ ...s, [section]: false }));
+      }
+    },
+    [offers, address, loadingMore],
+  );
+
   // Claim back (withdraw) an outgoing offer — pending (cancel) or expired
   // (reclaim). Non-custodial: prepare → snap sign → execute. Custodial: a single
   // server-signed call. Mirrors the accept flow on the Balances tab.
@@ -258,7 +372,11 @@ export function DashboardOffersPage({
     async (contractId: string) => {
       // Ignore repeat clicks while a claim-back for this offer is in flight.
       if (withdrawState[contractId]) return;
-      const offer = offers?.outgoing.find((o) => o.contractId === contractId);
+      const offer = offers
+        ? [...offers.pending.items, ...offers.expired.items].find(
+            (o) => o.contractId === contractId,
+          )
+        : undefined;
       setWithdrawError((s) => {
         const next = { ...s };
         delete next[contractId];
@@ -272,7 +390,11 @@ export function DashboardOffersPage({
         window.setTimeout(() => {
           setOffers((prev) =>
             prev
-              ? { ...prev, outgoing: prev.outgoing.filter((o) => o.contractId !== contractId) }
+              ? {
+                  ...prev,
+                  pending: dropOffer(prev.pending, contractId),
+                  expired: dropOffer(prev.expired, contractId),
+                }
               : prev,
           );
           setWithdrawState((s) => {
@@ -312,7 +434,11 @@ export function DashboardOffersPage({
         // Optimistically drop the reclaimed offer; the indexer catches up shortly.
         setOffers((prev) =>
           prev
-            ? { ...prev, outgoing: prev.outgoing.filter((o) => o.contractId !== contractId) }
+            ? {
+                ...prev,
+                pending: dropOffer(prev.pending, contractId),
+                expired: dropOffer(prev.expired, contractId),
+              }
             : prev,
         );
       } catch (e) {
@@ -325,20 +451,31 @@ export function DashboardOffersPage({
         });
       }
     },
-    [offers?.outgoing, isSample, isNonCustodial, snap, address, withdrawState],
+    [offers, isSample, isNonCustodial, snap, address, withdrawState],
   );
 
-  const incoming = useMemo(() => offers?.incoming ?? [], [offers]);
-  const outgoing = useMemo(() => offers?.outgoing ?? [], [offers]);
-  const { pending, expired } = useMemo(() => splitOutgoing(outgoing, now), [outgoing, now]);
-
-  const incomingRows = useMemo(() => incoming.map(toIncomingRow), [incoming]);
-  const pendingRows = useMemo(() => pending.map((o) => toOutgoingRow(o, now)), [pending, now]);
-  const expiredRows = useMemo(() => expired.map((o) => toOutgoingRow(o, now)), [expired, now]);
+  const incomingRows = useMemo(
+    () => (offers?.incoming.items ?? []).map(toIncomingRow),
+    [offers],
+  );
+  const pendingRows = useMemo(
+    () => (offers?.pending.items ?? []).map((o) => toOutgoingRow(o, now)),
+    [offers, now],
+  );
+  const expiredRows = useMemo(
+    () => (offers?.expired.items ?? []).map((o) => toOutgoingRow(o, now)),
+    [offers, now],
+  );
 
   const showIncoming = filter !== "outgoing";
   const showOutgoing = filter !== "incoming";
-  const total = incoming.length + outgoing.length;
+  // Chip counts come from the server-side totals, not the fetched pages —
+  // pagination means the lists may hold only a slice of what exists. Completed
+  // offers are never queried (they live on the Activity tab), so they don't
+  // inflate the counts.
+  const incomingTotal = offers?.incoming.total ?? 0;
+  const outgoingTotal = (offers?.pending.total ?? 0) + (offers?.expired.total ?? 0);
+  const total = incomingTotal + outgoingTotal;
   const hasAny = total > 0;
 
   return (
@@ -405,13 +542,13 @@ export function DashboardOffersPage({
                     />
                     <FilterChip
                       label="Incoming"
-                      count={incoming.length}
+                      count={incomingTotal}
                       active={filter === "incoming"}
                       onClick={() => setFilter("incoming")}
                     />
                     <FilterChip
                       label="Outgoing"
-                      count={outgoing.length}
+                      count={outgoingTotal}
                       active={filter === "outgoing"}
                       onClick={() => setFilter("outgoing")}
                     />
@@ -430,6 +567,13 @@ export function DashboardOffersPage({
                       </div>
                       <PageCard className={styles.offersCard}>
                         <OffersTable rows={incomingRows} />
+                        <SectionFooter
+                          shown={incomingRows.length}
+                          total={incomingTotal}
+                          hasMore={offers.incoming.hasMore}
+                          loading={!!loadingMore.incoming}
+                          onLoadMore={() => void loadMore("incoming")}
+                        />
                       </PageCard>
                     </>
                   )}
@@ -452,6 +596,13 @@ export function DashboardOffersPage({
                           withdrawError={withdrawError}
                           onWithdraw={handleWithdraw}
                         />
+                        <SectionFooter
+                          shown={pendingRows.length}
+                          total={offers.pending.total}
+                          hasMore={offers.pending.hasMore}
+                          loading={!!loadingMore.pending}
+                          onLoadMore={() => void loadMore("pending")}
+                        />
                       </PageCard>
                     </>
                   )}
@@ -471,6 +622,13 @@ export function DashboardOffersPage({
                           withdrawState={withdrawState}
                           withdrawError={withdrawError}
                           onWithdraw={handleWithdraw}
+                        />
+                        <SectionFooter
+                          shown={expiredRows.length}
+                          total={offers.expired.total}
+                          hasMore={offers.expired.hasMore}
+                          loading={!!loadingMore.expired}
+                          onLoadMore={() => void loadMore("expired")}
                         />
                       </PageCard>
                     </>
@@ -512,6 +670,41 @@ function FilterChip({
     >
       {label} <span className={styles.filterCount}>{count}</span>
     </button>
+  );
+}
+
+// "Showing x of n" + Load more, rendered only when the section has more pages
+// than currently fetched.
+function SectionFooter({
+  shown,
+  total,
+  hasMore,
+  loading,
+  onLoadMore,
+}: {
+  shown: number;
+  total: number;
+  hasMore: boolean;
+  loading: boolean;
+  onLoadMore: () => void;
+}) {
+  if (!hasMore && shown >= total) return null;
+  return (
+    <div className={styles.sectionFooter}>
+      <span className={styles.sectionFooterCount}>
+        Showing {shown} of {total}
+      </span>
+      {hasMore && (
+        <button
+          type="button"
+          className={styles.loadMore}
+          onClick={onLoadMore}
+          disabled={loading}
+        >
+          {loading ? "Loading…" : "Load more"}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -647,28 +840,13 @@ function toOutgoingRow(o: OutgoingTransfer, now: number): OfferRow {
 
 // ── helpers ──
 
+// Time-aware on top of the server status: an offer fetched as "pending" whose
+// expiry passes while on screen flips to expired (chip + "Claim back") via the
+// 30s ticker, staying in its section until the next refetch.
 function isExpired(offer: OutgoingTransfer, now: number): boolean {
-  if (offer.status) return offer.status === "expired";
+  if (offer.status === "expired") return true;
   if (!offer.expiresAt) return false;
   return new Date(offer.expiresAt).getTime() <= now;
-}
-
-function splitOutgoing(
-  items: OutgoingTransfer[],
-  now: number,
-): {
-  pending: OutgoingTransfer[];
-  expired: OutgoingTransfer[];
-} {
-  const pending: OutgoingTransfer[] = [];
-  const expired: OutgoingTransfer[] = [];
-  // Completed transfers belong on the Activity tab, not here — keep this view
-  // to the two actionable states.
-  for (const o of items) {
-    if (o.status === "completed") continue;
-    (isExpired(o, now) ? expired : pending).push(o);
-  }
-  return { pending, expired };
 }
 
 // "expires in 14h 22m" for a future time, "expired 2d ago" for a past one.
