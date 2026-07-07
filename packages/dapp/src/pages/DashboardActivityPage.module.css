@@ -107,6 +107,13 @@
   color: var(--green);
 }
 
+/* Closed (canceled/rejected) offers — neutral X; the transfer never settled
+   and the escrowed funds returned to the sender. */
+.iconClosed {
+  background: rgba(101, 106, 138, 0.16);
+  color: var(--text-muted);
+}
+
 .typeLabel {
   font-size: 13px;
   font-weight: 600;
@@ -152,6 +159,11 @@
 
 .amountReceived {
   color: var(--green);
+}
+
+/* Unsigned + muted: a closed offer had no net balance effect. */
+.amountNeutral {
+  color: var(--text-muted);
 }
 
 /* Party + Ledger tx — single inline line each */

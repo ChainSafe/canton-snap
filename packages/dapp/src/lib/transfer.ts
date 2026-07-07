@@ -231,7 +231,11 @@ export async function listIncomingTransfers(
 // but adds the lifecycle fields the Offers tab splits on: `status` and
 // `expiresAt`. Party ids are truncated server-side (the endpoint is
 // unauthenticated), same as incoming offers.
-export type OutgoingStatus = "pending" | "expired" | "completed";
+//
+// "canceled" = the sender withdrew (claimed back) the offer; "rejected" = the
+// receiver declined it. Both are terminal, funds returned to the sender; they
+// render on the Activity tab, never the Offers tab.
+export type OutgoingStatus = "pending" | "expired" | "completed" | "canceled" | "rejected";
 
 export interface OutgoingTransfer {
   contractId: string;
@@ -246,6 +250,8 @@ export interface OutgoingTransfer {
   contractAddress?: string;
   /** Server-reported lifecycle status. */
   status?: OutgoingStatus;
+  /** RFC3339 ledger time when the offer was created. */
+  createdAt?: string;
   /** RFC3339 timestamp after which the offer can no longer be accepted. */
   expiresAt?: string;
 }
@@ -262,6 +268,7 @@ interface OutgoingItemResponse {
   name?: string;
   contract_address?: string;
   status?: OutgoingStatus;
+  created_at?: string;
   expires_at?: string;
 }
 
@@ -278,6 +285,7 @@ function mapOutgoing(o: OutgoingItemResponse): OutgoingTransfer {
     name: o.name,
     contractAddress: o.contract_address,
     status: o.status,
+    createdAt: o.created_at,
     expiresAt: o.expires_at,
   };
 }
