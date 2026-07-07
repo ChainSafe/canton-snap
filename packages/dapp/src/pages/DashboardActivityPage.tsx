@@ -7,7 +7,12 @@ import { Spinner } from "../components/Spinner";
 import { CopyButton } from "../components/CopyButton";
 import { NETWORK } from "../lib/config";
 import { formatTokenAmount } from "../lib/ethrpc";
-import { listCompletedTransfers, type CompletedTransfer } from "../lib/transfer";
+import {
+  listCompletedTransfers,
+  listOutgoingTransfers,
+  type CompletedTransfer,
+  type OutgoingTransfer,
+} from "../lib/transfer";
 import { TOKEN_COLORS } from "../lib/tokens";
 import { cn } from "../lib/cn";
 import styles from "./DashboardActivityPage.module.css";
@@ -21,14 +26,60 @@ interface Props {
   cantonPartyId: string;
 }
 
+// One row of the unified history: settled transfers plus offers that ended
+// without settling ("canceled" = sender withdrew, "rejected" = receiver
+// declined). Closed offers reuse the CompletedTransfer shape with the offer's
+// creation time as `timestamp` so day-grouping and sorting work unchanged.
+type Outcome = "completed" | "canceled" | "rejected";
+
+interface ActivityRow extends CompletedTransfer {
+  outcome: Outcome;
+}
+
 interface ActivityState {
   url: string;
   address: string;
-  rows: CompletedTransfer[];
+  /** Settled transfers, paged via Load more. */
+  completed: ActivityRow[];
+  /** Canceled + rejected offers, fetched once (first page of each). */
+  closed: ActivityRow[];
   total: number;
   page: number;
   hasMore: boolean;
   error: string | null;
+}
+
+function completedRow(t: CompletedTransfer): ActivityRow {
+  return { ...t, outcome: "completed" };
+}
+
+// Adapt a closed outgoing offer to the activity-row shape. The sender is the
+// signed-in party (the outgoing list is sender-scoped) and there is no ledger
+// tx id to show — the row records that the offer ended, not a settlement.
+function closedRow(o: OutgoingTransfer, outcome: Outcome): ActivityRow {
+  return {
+    contractId: o.contractId,
+    kind: "offer",
+    status: o.status ?? outcome,
+    fromPartyId: o.senderPartyId,
+    toPartyId: o.receiverPartyId,
+    amount: o.amount,
+    instrumentAdmin: o.instrumentAdmin,
+    instrumentId: o.instrumentId,
+    timestamp: o.createdAt ?? o.expiresAt ?? "",
+    symbol: o.symbol,
+    decimals: o.decimals,
+    name: o.name,
+    contractAddress: o.contractAddress,
+    outcome,
+  };
+}
+
+// Newest first; rows with unparseable timestamps sink to the end.
+function byTimestampDesc(a: ActivityRow, b: ActivityRow): number {
+  const ta = new Date(a.timestamp).getTime();
+  const tb = new Date(b.timestamp).getTime();
+  return (Number.isNaN(tb) ? -Infinity : tb) - (Number.isNaN(ta) ? -Infinity : ta);
 }
 
 function ArrowUpIcon() {
@@ -59,6 +110,19 @@ function ArrowDownIcon() {
   );
 }
 
+function XIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+      <path
+        d="M6 6L14 14M14 6L6 14"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function TokenIcon({ symbol }: { symbol: string }) {
   const colors = TOKEN_COLORS[symbol.toUpperCase()] ?? { bg: "#656a8a", text: "#ffffff" };
   return (
@@ -80,35 +144,59 @@ export function DashboardActivityPage({
 
   const loading = state?.url !== NETWORK.middlewareUrl || state?.address !== address;
 
-  // Load the first page of settled history for this address. Refetches from
-  // scratch when the address (or network) changes.
+  // Load the first page of settled history plus the closed (canceled/rejected)
+  // offers for this address. Refetches from scratch when the address (or
+  // network) changes. Closed offers are fetched once — first page of each
+  // status — since they are rare; only the settled list is "Load more"-paged.
+  // A closed-offer fetch failure degrades to settled-only rather than failing
+  // the whole tab.
   useEffect(() => {
     let cancelled = false;
     const url = NETWORK.middlewareUrl;
-    listCompletedTransfers(url, address, 1)
-      .then((p) => {
+    Promise.allSettled([
+      listCompletedTransfers(url, address, 1),
+      listOutgoingTransfers(url, address, "canceled"),
+      listOutgoingTransfers(url, address, "rejected"),
+    ])
+      .then(([done, can, rej]) => {
         if (cancelled) return;
+        if (done.status === "rejected") {
+          setState({
+            url,
+            address,
+            completed: [],
+            closed: [],
+            total: 0,
+            page: 1,
+            hasMore: false,
+            error: (done.reason as Error).message,
+          });
+          return;
+        }
+        const closed = [
+          ...(can.status === "fulfilled" ? can.value.items : []).map((o) =>
+            closedRow(o, "canceled"),
+          ),
+          ...(rej.status === "fulfilled" ? rej.value.items : []).map((o) =>
+            closedRow(o, "rejected"),
+          ),
+        ];
+        const closedTotal =
+          (can.status === "fulfilled" ? can.value.total : 0) +
+          (rej.status === "fulfilled" ? rej.value.total : 0);
         setState({
           url,
           address,
-          rows: p.items,
-          total: p.total,
-          page: p.page,
-          hasMore: p.hasMore,
+          completed: done.value.items.map(completedRow),
+          closed,
+          total: done.value.total + closedTotal,
+          page: done.value.page,
+          hasMore: done.value.hasMore,
           error: null,
         });
       })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setState({
-          url,
-          address,
-          rows: [],
-          total: 0,
-          page: 1,
-          hasMore: false,
-          error: (e as Error).message,
-        });
+      .catch(() => {
+        // allSettled never rejects; nothing to do.
       });
     return () => {
       cancelled = true;
@@ -124,10 +212,10 @@ export function DashboardActivityPage({
         s
           ? {
               ...s,
-              rows: [...s.rows, ...next.items],
+              completed: [...s.completed, ...next.items.map(completedRow)],
               page: next.page,
               hasMore: next.hasMore,
-              total: next.total,
+              total: next.total + s.closed.length,
             }
           : s,
       );
@@ -139,11 +227,17 @@ export function DashboardActivityPage({
   }
 
   const me = useMemo(() => truncateParty(cantonPartyId), [cantonPartyId]);
-  const rows = useMemo(() => state?.rows ?? [], [state]);
+  // Merge settled and closed rows into one newest-first feed. Closed offers
+  // beyond the loaded settled window may appear "early" until Load more
+  // catches up — acceptable for the rare closed rows.
+  const rows = useMemo(
+    () => [...(state?.completed ?? []), ...(state?.closed ?? [])].sort(byTimestampDesc),
+    [state],
+  );
 
-  // Group rows by calendar day, preserving the server's newest-first order.
+  // Group rows by calendar day, preserving the merged newest-first order.
   const groups = useMemo(() => {
-    const map = new Map<string, CompletedTransfer[]>();
+    const map = new Map<string, ActivityRow[]>();
     for (const row of rows) {
       const key = dayKey(row.timestamp);
       const arr = map.get(key) ?? [];
@@ -204,6 +298,10 @@ export function DashboardActivityPage({
                 <div className={styles.dayGroup}>{dayLabel(items[0].timestamp)}</div>
                 {items.map((row, i) => {
                   const sent = row.fromPartyId === me;
+                  // Closed offers never settled: neutral X icon, outcome label
+                  // ("Canceled" = sender withdrew, "Declined" = receiver
+                  // rejected) and an unsigned amount.
+                  const closed = row.outcome !== "completed";
                   const counterparty = sent ? row.toPartyId : row.fromPartyId;
                   const symbol = row.symbol ?? row.instrumentId;
                   const amount =
@@ -222,12 +320,24 @@ export function DashboardActivityPage({
                           <div
                             className={cn(
                               styles.typeIcon,
-                              sent ? styles.iconSent : styles.iconReceived,
+                              closed
+                                ? styles.iconClosed
+                                : sent
+                                  ? styles.iconSent
+                                  : styles.iconReceived,
                             )}
                           >
-                            {sent ? <ArrowUpIcon /> : <ArrowDownIcon />}
+                            {closed ? <XIcon /> : sent ? <ArrowUpIcon /> : <ArrowDownIcon />}
                           </div>
-                          <span className={styles.typeLabel}>{sent ? "Sent" : "Received"}</span>
+                          <span className={styles.typeLabel}>
+                            {closed
+                              ? row.outcome === "canceled"
+                                ? "Canceled"
+                                : "Declined"
+                              : sent
+                                ? "Sent"
+                                : "Received"}
+                          </span>
                         </div>
 
                         {/* Token */}
@@ -240,10 +350,14 @@ export function DashboardActivityPage({
                         <div
                           className={cn(
                             styles.amountValue,
-                            sent ? styles.amountSent : styles.amountReceived,
+                            closed
+                              ? styles.amountNeutral
+                              : sent
+                                ? styles.amountSent
+                                : styles.amountReceived,
                           )}
                         >
-                          {sent ? "−" : "+"}
+                          {closed ? "" : sent ? "−" : "+"}
                           {amount}
                         </div>
 

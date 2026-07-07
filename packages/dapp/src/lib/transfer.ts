@@ -101,8 +101,12 @@ export async function executeTransfer(
   transferId: string,
   signature: string,
   signedBy: string,
+  // Called once the MetaMask auth signature is collected and the (slower)
+  // middleware call begins — lets the UI advance past "waiting for MetaMask".
+  onAuthenticated?: () => void,
 ): Promise<void> {
   const authHeaders = await makeAuthHeaders(address);
+  onAuthenticated?.();
   const res = await fetch(`${baseUrl}/api/v2/transfer/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders },
@@ -123,8 +127,12 @@ export async function sendCustodialTransfer(
   token: string,
   amount: string,
   validitySeconds: number = DEFAULT_VALIDITY_SECONDS,
+  // Called once the MetaMask auth signature is collected and the (slower)
+  // middleware call begins — lets the UI advance past "waiting for MetaMask".
+  onAuthenticated?: () => void,
 ): Promise<void> {
   const authHeaders = await makeAuthHeaders(address);
+  onAuthenticated?.();
   const res = await fetch(`${baseUrl}/api/v2/transfer/custodial`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders },
@@ -138,30 +146,74 @@ export async function sendCustodialTransfer(
   if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
 }
 
-// GET /api/v2/transfer/incoming?address=<addr>. Unauthenticated.
+// One page of a paginated transfer listing. `total` is the server-side count
+// of ALL matching items (not just this page), so callers can render accurate
+// counts without fetching every page.
+export interface TransfersPage<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+// Page size shared by the offer listings (incoming/outgoing) — matches the
+// middleware's default limit.
+export const OFFERS_PAGE_LIMIT = 50;
+
+interface IncomingItemResponse {
+  contract_id: string;
+  sender_party_id: string;
+  receiver_party_id: string;
+  amount: string;
+  instrument_admin: string;
+  instrument_id: string;
+  symbol?: string;
+  decimals?: number;
+  name?: string;
+  contract_address?: string;
+}
+
+interface PagedResponse<T> {
+  items?: T[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  has_more?: boolean;
+}
+
+function toPage<T, R>(
+  data: PagedResponse<R> | null | undefined,
+  requestedPage: number,
+  requestedLimit: number,
+  map: (r: R) => T,
+): TransfersPage<T> {
+  const items = (data?.items ?? []).map(map);
+  return {
+    items,
+    total: data?.total ?? items.length,
+    page: data?.page ?? requestedPage,
+    limit: data?.limit ?? requestedLimit,
+    hasMore: data?.has_more ?? false,
+  };
+}
+
+// GET /api/v2/transfer/incoming?address=<addr>&page=&limit=. Unauthenticated;
+// returns one page of pending inbound offers plus the server-side total.
 export async function listIncomingTransfers(
   baseUrl: string,
   address: string,
-): Promise<IncomingTransfer[]> {
+  page = 1,
+  limit: number = OFFERS_PAGE_LIMIT,
+): Promise<TransfersPage<IncomingTransfer>> {
   const url = new URL(`${baseUrl}/api/v2/transfer/incoming`);
   url.searchParams.set("address", address);
+  url.searchParams.set("page", String(page));
+  url.searchParams.set("limit", String(limit));
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
-  const data = (await res.json()) as {
-    items: Array<{
-      contract_id: string;
-      sender_party_id: string;
-      receiver_party_id: string;
-      amount: string;
-      instrument_admin: string;
-      instrument_id: string;
-      symbol?: string;
-      decimals?: number;
-      name?: string;
-      contract_address?: string;
-    }>;
-  };
-  return (data.items ?? []).map((o) => ({
+  const data = (await res.json()) as PagedResponse<IncomingItemResponse>;
+  return toPage(data, page, limit, (o) => ({
     contractId: o.contract_id,
     senderPartyId: o.sender_party_id,
     receiverPartyId: o.receiver_party_id,
@@ -179,7 +231,11 @@ export async function listIncomingTransfers(
 // but adds the lifecycle fields the Offers tab splits on: `status` and
 // `expiresAt`. Party ids are truncated server-side (the endpoint is
 // unauthenticated), same as incoming offers.
-export type OutgoingStatus = "pending" | "expired" | "completed";
+//
+// "canceled" = the sender withdrew (claimed back) the offer; "rejected" = the
+// receiver declined it. Both are terminal, funds returned to the sender; they
+// render on the Activity tab, never the Offers tab.
+export type OutgoingStatus = "pending" | "expired" | "completed" | "canceled" | "rejected";
 
 export interface OutgoingTransfer {
   contractId: string;
@@ -194,12 +250,11 @@ export interface OutgoingTransfer {
   contractAddress?: string;
   /** Server-reported lifecycle status. */
   status?: OutgoingStatus;
+  /** RFC3339 ledger time when the offer was created. */
+  createdAt?: string;
   /** RFC3339 timestamp after which the offer can no longer be accepted. */
   expiresAt?: string;
 }
-
-const OUTGOING_PAGE_LIMIT = 50;
-const OUTGOING_MAX_PAGES = 100;
 
 interface OutgoingItemResponse {
   contract_id: string;
@@ -213,6 +268,7 @@ interface OutgoingItemResponse {
   name?: string;
   contract_address?: string;
   status?: OutgoingStatus;
+  created_at?: string;
   expires_at?: string;
 }
 
@@ -229,36 +285,31 @@ function mapOutgoing(o: OutgoingItemResponse): OutgoingTransfer {
     name: o.name,
     contractAddress: o.contract_address,
     status: o.status,
+    createdAt: o.created_at,
     expiresAt: o.expires_at,
   };
 }
 
-// GET /api/v2/transfer/outgoing?address=<addr>&status=<status>. Unauthenticated,
-// page/limit paginated; walks all pages so the caller gets the full list. Pass
-// a status to filter server-side, or omit for all.
+// GET /api/v2/transfer/outgoing?address=<addr>&status=<status>&page=&limit=.
+// Unauthenticated; returns one page plus the server-side total for the given
+// status filter (or all statuses when omitted).
 export async function listOutgoingTransfers(
   baseUrl: string,
   address: string,
   status?: OutgoingStatus | "all",
-): Promise<OutgoingTransfer[]> {
-  const all: OutgoingTransfer[] = [];
+  page = 1,
+  limit: number = OFFERS_PAGE_LIMIT,
+): Promise<TransfersPage<OutgoingTransfer>> {
+  const url = new URL(`${baseUrl}/api/v2/transfer/outgoing`);
+  url.searchParams.set("address", address);
+  url.searchParams.set("page", String(page));
+  url.searchParams.set("limit", String(limit));
+  if (status && status !== "all") url.searchParams.set("status", status);
 
-  for (let page = 1; page <= OUTGOING_MAX_PAGES; page++) {
-    const url = new URL(`${baseUrl}/api/v2/transfer/outgoing`);
-    url.searchParams.set("address", address);
-    url.searchParams.set("page", String(page));
-    url.searchParams.set("limit", String(OUTGOING_PAGE_LIMIT));
-    if (status && status !== "all") url.searchParams.set("status", status);
-
-    const res = await fetch(url.toString());
-    if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
-    const data = (await res.json()) as { items?: OutgoingItemResponse[]; has_more?: boolean };
-
-    all.push(...(data.items ?? []).map(mapOutgoing));
-    if (!data.has_more) break;
-  }
-
-  return all;
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  const data = (await res.json()) as PagedResponse<OutgoingItemResponse>;
+  return toPage(data, page, limit, mapOutgoing);
 }
 
 // ── Completed transfers (Activity history) ──────────────────────────────────
