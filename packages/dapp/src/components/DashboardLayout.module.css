@@ -87,12 +87,66 @@
   min-width: 0;
 }
 
-.mainHeader {
+/* The shared content column. Every page's header and cards live inside it,
+   so they always share the same edges. Fluid up to a cap: fills the main
+   area on typical monitors, stays proportionate on ultrawide/4K. */
+.content {
+  max-width: 1840px;
+  margin: 0 auto;
+}
+
+/* ── Header band: side-band title left, pills right, one y-axis ── */
+.pageHead {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+/* Teal indicator bar — the same mark as the active nav item. */
+.pageHeadText {
+  position: relative;
+  padding-left: 16px;
+  min-width: 0;
+}
+
+.pageHeadText::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  bottom: 3px;
+  width: 3px;
+  border-radius: 1.5px;
+  background: linear-gradient(180deg, #00f0b8, var(--teal));
+}
+
+.pageTitleRow {
+  display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 28px;
+  margin-bottom: 1px;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.35px;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.pageSubtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.pageHeadPills {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .pillAnchor {
@@ -146,8 +200,18 @@
     padding: 16px 20px 32px;
   }
 
-  .mainHeader {
+  /* Pills wrap above the title so it keeps its full width. */
+  .pageHead {
     flex-wrap: wrap;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+  }
+
+  .pageHeadPills {
+    order: -1;
+    width: 100%;
+  }
+
+  .pageTitle {
+    font-size: 19px;
   }
 }

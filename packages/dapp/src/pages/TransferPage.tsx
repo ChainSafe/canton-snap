@@ -809,16 +809,14 @@ export function TransferPage({
         activeTab={activeTab}
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}
-      >
-        {/* Header */}
-        <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Transfer</h1>
+        title="Transfer"
+        subtitle="Send tokens on Canton Network."
+        titleExtra={
           <span className={cn(styles.modePill, pillClass)}>
             {isNonCustodial ? "NON-CUSTODIAL" : "CUSTODIAL"}
           </span>
-        </div>
-        <p className={styles.pageSubtitle}>Send tokens on Canton Network.</p>
-
+        }
+      >
         <StepsBar step={step} />
 
         {error && <div className={styles.errorBanner}>{error}</div>}

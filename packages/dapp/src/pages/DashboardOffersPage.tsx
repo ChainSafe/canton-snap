@@ -13,6 +13,8 @@ import { useSnap } from "../hooks/useSnap";
 import {
   listIncomingTransfers,
   listOutgoingTransfers,
+  prepareAcceptTransfer,
+  executeAcceptTransfer,
   prepareWithdrawTransfer,
   executeWithdrawTransfer,
   withdrawCustodialTransfer,
@@ -86,9 +88,9 @@ function appendPage<T extends { contractId: string }>(
   };
 }
 
-// Optimistically remove a withdrawn offer from a section, keeping its server
-// total in step with the row that disappeared.
-function dropOffer(list: Paged<OutgoingTransfer>, contractId: string): Paged<OutgoingTransfer> {
+// Optimistically remove an accepted/withdrawn offer from a section, keeping
+// its server total in step with the row that disappeared.
+function dropOffer<T extends { contractId: string }>(list: Paged<T>, contractId: string): Paged<T> {
   if (!list.items.some((o) => o.contractId === contractId)) return list;
   return {
     ...list,
@@ -110,6 +112,8 @@ interface OfferRow {
   chipText: string;
   // Present on outgoing offers, which the sender can claim back / cancel.
   withdraw?: { contractId: string; label: string };
+  // Present on incoming offers for non-custodial users, who accept here.
+  accept?: { contractId: string };
 }
 
 function TokenIcon({ symbol }: { symbol: string }) {
@@ -241,6 +245,10 @@ export function DashboardOffersPage({
   // Per-offer claim-back progress + error, keyed by contract id.
   const [withdrawState, setWithdrawState] = useState<Record<string, WithdrawState>>({});
   const [withdrawError, setWithdrawError] = useState<Record<string, string>>({});
+  // Per-offer accept progress + error (incoming offers, non-custodial only —
+  // custodial accepts are handled server-side by the auto-accept worker).
+  const [acceptState, setAcceptState] = useState<Record<string, WithdrawState>>({});
+  const [acceptError, setAcceptError] = useState<Record<string, string>>({});
   // Ticks every 30s so the relative countdowns stay live and outgoing offers
   // flip from pending to expired on their own, without a refetch.
   const [now, setNow] = useState(() => Date.now());
@@ -454,9 +462,82 @@ export function DashboardOffersPage({
     [offers, isSample, isNonCustodial, snap, address, withdrawState],
   );
 
+  // Accept an incoming offer: prepare → snap sign → execute, then drop the row
+  // optimistically. Non-custodial only — custodial users never see the button
+  // (their offers are auto-accepted server-side).
+  const handleAccept = useCallback(
+    async (contractId: string) => {
+      // Ignore repeat clicks while an accept for this offer is in flight.
+      if (acceptState[contractId]) return;
+      const offer = offers?.incoming.items.find((o) => o.contractId === contractId);
+      setAcceptError((s) => {
+        const next = { ...s };
+        delete next[contractId];
+        return next;
+      });
+
+      // Sample rows aren't backed by a real contract — animate then drop.
+      if (isSample) {
+        setAcceptState((s) => ({ ...s, [contractId]: "executing" }));
+        window.setTimeout(() => {
+          setOffers((prev) =>
+            prev ? { ...prev, incoming: dropOffer(prev.incoming, contractId) } : prev,
+          );
+          setAcceptState((s) => {
+            const next = { ...s };
+            delete next[contractId];
+            return next;
+          });
+        }, 900);
+        return;
+      }
+      if (!offer) return;
+
+      try {
+        setAcceptState((s) => ({ ...s, [contractId]: "preparing" }));
+        const prep = await prepareAcceptTransfer(
+          NETWORK.middlewareUrl,
+          address,
+          contractId,
+          offer.instrumentAdmin,
+        );
+        setAcceptState((s) => ({ ...s, [contractId]: "signing" }));
+        const { derSignature, fingerprint } = await snap.signHash(prep.transactionHash, {
+          operation: "Accept transfer",
+          tokenSymbol: offer.symbol ?? offer.instrumentId,
+          amount: offer.amount,
+          recipient: offer.receiverPartyId,
+          sender: offer.senderPartyId,
+        });
+        setAcceptState((s) => ({ ...s, [contractId]: "executing" }));
+        await executeAcceptTransfer(
+          NETWORK.middlewareUrl,
+          address,
+          contractId,
+          prep.transferId,
+          derSignature,
+          fingerprint,
+        );
+        // Optimistically drop the accepted offer; the indexer catches up shortly.
+        setOffers((prev) =>
+          prev ? { ...prev, incoming: dropOffer(prev.incoming, contractId) } : prev,
+        );
+      } catch (e) {
+        setAcceptError((s) => ({ ...s, [contractId]: (e as Error).message }));
+      } finally {
+        setAcceptState((s) => {
+          const next = { ...s };
+          delete next[contractId];
+          return next;
+        });
+      }
+    },
+    [offers, isSample, snap, address, acceptState],
+  );
+
   const incomingRows = useMemo(
-    () => (offers?.incoming.items ?? []).map(toIncomingRow),
-    [offers?.incoming.items],
+    () => (offers?.incoming.items ?? []).map((o) => toIncomingRow(o, isNonCustodial)),
+    [offers?.incoming.items, isNonCustodial],
   );
   const pendingRows = useMemo(
     () => (offers?.pending.items ?? []).map((o) => toOutgoingRow(o, now)),
@@ -486,15 +567,10 @@ export function DashboardOffersPage({
         activeTab={activeTab}
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}
+        title="Offers"
+        subtitle="Transfer offers waiting on you to accept, and the ones you've sent."
       >
-        <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Offers</h1>
-        </div>
-        <p className={styles.pageSubtitle}>
-          Transfer offers waiting on you to accept, and the ones you&apos;ve sent.
-        </p>
-
-        <div className={styles.column}>
+        <>
           {loading && (
             <div className={styles.centred}>
               <Spinner />
@@ -566,7 +642,12 @@ export function DashboardOffersPage({
                         <span className={styles.sectionMeta}>Sent to you by another party</span>
                       </div>
                       <PageCard className={styles.offersCard}>
-                        <OffersTable rows={incomingRows} />
+                        <OffersTable
+                          rows={incomingRows}
+                          acceptState={acceptState}
+                          acceptError={acceptError}
+                          onAccept={isNonCustodial ? handleAccept : undefined}
+                        />
                         <SectionFooter
                           shown={incomingRows.length}
                           total={incomingTotal}
@@ -645,7 +726,7 @@ export function DashboardOffersPage({
               )}
             </>
           )}
-        </div>
+        </>
       </DashboardLayout>
     </>
   );
@@ -714,15 +795,22 @@ function OffersTable({
   withdrawState,
   withdrawError,
   onWithdraw,
+  acceptState,
+  acceptError,
+  onAccept,
 }: {
   rows: OfferRow[];
   // Withdraw wiring — only passed for the outgoing tables.
   withdrawState?: Record<string, WithdrawState>;
   withdrawError?: Record<string, string>;
   onWithdraw?: (contractId: string) => void;
+  // Accept wiring — only passed for the incoming table (non-custodial).
+  acceptState?: Record<string, WithdrawState>;
+  acceptError?: Record<string, string>;
+  onAccept?: (contractId: string) => void;
 }) {
-  // Reserve the action column only when this table can withdraw (outgoing).
-  const withActions = !!onWithdraw;
+  // Reserve the action column only when this table has row actions.
+  const withActions = !!onWithdraw || !!onAccept;
   return (
     <>
       <div className={cn(styles.colHeaders, withActions && styles.colHeadersAction)}>
@@ -733,8 +821,17 @@ function OffersTable({
       </div>
       {rows.map((row, i) => {
         const wd = row.withdraw;
-        const busy = wd ? withdrawState?.[wd.contractId] : undefined;
-        const err = wd ? withdrawError?.[wd.contractId] : undefined;
+        const ac = row.accept;
+        const busy = wd
+          ? withdrawState?.[wd.contractId]
+          : ac
+            ? acceptState?.[ac.contractId]
+            : undefined;
+        const err = wd
+          ? withdrawError?.[wd.contractId]
+          : ac
+            ? acceptError?.[ac.contractId]
+            : undefined;
         return (
           <div key={row.key}>
             {i > 0 && <div className={styles.rowDivider} />}
@@ -768,12 +865,12 @@ function OffersTable({
 
               {withActions && (
                 <div className={styles.offerAction}>
-                  {wd &&
+                  {(wd || ac) &&
                     (busy ? (
                       <span className={styles.actionSpinnerWrap} aria-busy="true">
                         <Spinner size={20} />
                       </span>
-                    ) : (
+                    ) : wd ? (
                       <button
                         type="button"
                         className={cn(
@@ -786,7 +883,15 @@ function OffersTable({
                       >
                         {wd.label}
                       </button>
-                    ))}
+                    ) : ac ? (
+                      <button
+                        type="button"
+                        className={styles.acceptBtn}
+                        onClick={() => onAccept?.(ac.contractId)}
+                      >
+                        Accept
+                      </button>
+                    ) : null)}
                 </div>
               )}
             </div>
@@ -805,7 +910,7 @@ function formatAmount(amount: string, decimals?: number): string {
   return formatTokenAmount(parseAmountToBigInt(amount, decimals), decimals);
 }
 
-function toIncomingRow(o: IncomingTransfer): OfferRow {
+function toIncomingRow(o: IncomingTransfer, canAccept: boolean): OfferRow {
   const symbol = o.symbol ?? o.instrumentId;
   return {
     key: o.contractId,
@@ -815,6 +920,7 @@ function toIncomingRow(o: IncomingTransfer): OfferRow {
     counterparty: `from ${shortenPartyId(o.senderPartyId)}`,
     chipKind: "incoming",
     chipText: "awaiting your acceptance",
+    accept: canAccept ? { contractId: o.contractId } : undefined,
   };
 }
 

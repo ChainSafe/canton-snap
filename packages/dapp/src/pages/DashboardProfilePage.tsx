@@ -77,11 +77,9 @@ export function DashboardProfilePage({
         activeTab={activeTab}
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}
+        title="Profile"
+        subtitle="Your Canton identity and quick actions."
       >
-        {/* Page heading */}
-        <h1 className={styles.pageTitle}>Profile</h1>
-        <p className={styles.pageSubtitle}>Your Canton identity and quick actions.</p>
-
         {/* ── Identity card ── */}
         <div className={styles.identityCard}>
           <div>

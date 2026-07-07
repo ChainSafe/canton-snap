@@ -359,13 +359,7 @@ export default function App() {
     };
 
     if (dashboardTab === "balances") {
-      return (
-        <DashboardBalancesPage
-          {...sharedProps}
-          keyMode={profile.keyMode}
-          onSendToken={handleSendToken}
-        />
-      );
+      return <DashboardBalancesPage {...sharedProps} onSendToken={handleSendToken} />;
     }
 
     if (dashboardTab === "transfer") {

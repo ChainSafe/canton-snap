@@ -1,24 +1,4 @@
-/* ── Page header ── */
-.pageHeader {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 6px;
-}
-
-.pageTitle {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
-  color: var(--text-primary);
-}
-
-.pageSubtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 20px;
-}
-
+/* Mode pill — rendered on the shared header's title row via titleExtra. */
 .modePill {
   font-size: 11px;
   font-weight: 600;
@@ -45,9 +25,7 @@
   display: flex;
   align-items: center;
   margin-bottom: 20px;
-  max-width: 768px;
-  margin-left: max(0px, calc(50% - 432px));
-  margin-right: auto;
+  max-width: 760px;
 }
 
 .stepSegment {
@@ -134,6 +112,7 @@
 /* ── Form card ── */
 .card {
   padding: 32px;
+  max-width: 760px;
 }
 
 .fieldLabel {
@@ -594,9 +573,7 @@
   font-size: 13px;
   color: var(--red);
   margin-bottom: 16px;
-  max-width: 768px;
-  margin-left: max(0px, calc(50% - 432px));
-  margin-right: auto;
+  max-width: 760px;
 }
 
 /* ── Sign card ── */
@@ -609,9 +586,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  max-width: 768px;
-  margin-left: max(0px, calc(50% - 432px));
-  margin-right: auto;
+  max-width: 760px;
 }
 
 .signIconWrap {
@@ -818,6 +793,7 @@
 
 /* ── Done card ── */
 .doneCard {
+  max-width: 760px;
   padding: 48px 32px;
   display: flex;
   flex-direction: column;
@@ -941,10 +917,6 @@
 /* ── Mobile: stack the receipt rows and the two fixed-width Done buttons so
    long values and the 280px buttons don't overflow a phone. ── */
 @media (max-width: 560px) {
-  .pageHeader {
-    flex-wrap: wrap;
-  }
-
   .rtypeGrid {
     grid-template-columns: 1fr;
   }

@@ -1,43 +1,3 @@
-/* ── Page header ── */
-.pageHeader {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 6px;
-}
-
-.pageTitle {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
-  color: var(--text-primary);
-}
-
-.pageSubtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 22px;
-}
-
-.modePill {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.6px;
-  padding: 4px 12px;
-  border-radius: 12px;
-  flex-shrink: 0;
-  background: rgba(0, 212, 164, 0.12);
-  color: #00d4a4;
-  border: 1px solid rgba(0, 212, 164, 0.3);
-}
-
-/* Same content column as the other dashboard pages. */
-.column {
-  max-width: 768px;
-  margin-left: max(0px, calc(50% - 432px));
-  margin-right: auto;
-}
-
 /* ── Filter chips ── */
 .filters {
   display: flex;
@@ -375,6 +335,30 @@
   min-width: 92px;
 }
 
+/* Accept button on incoming rows — same treatment it had on Balances. */
+.acceptBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 72px;
+  padding: 0 14px;
+  border-radius: 7px;
+  border: none;
+  background: var(--teal-gradient);
+  color: #0a0b14;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.acceptBtn:hover {
+  opacity: 0.85;
+}
+
 .rowError {
   font-size: 11px;
   color: var(--amber);
@@ -452,10 +436,6 @@
 /* ── Mobile: drop the column headers, lay each row out as [token | amount]
    with the status chip wrapping to its own line beneath. ── */
 @media (max-width: 560px) {
-  .pageHeader {
-    flex-wrap: wrap;
-  }
-
   .colHeaders {
     display: none;
   }
