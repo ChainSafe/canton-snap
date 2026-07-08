@@ -47,6 +47,7 @@ interface Props {
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
+  keyMode: "custodial" | "external";
   /** Open the Transfer tab with this token pre-selected. */
   onSendToken: (tokenAddress: string) => void;
 }
@@ -193,6 +194,7 @@ export function DashboardBalancesPage({
   activeTab,
   onTabChange,
   onDisconnect,
+  keyMode,
   onSendToken,
 }: Props) {
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
@@ -203,6 +205,7 @@ export function DashboardBalancesPage({
       : { address, incomingOffers: null, outgoingOffers: null, lastActivity: null };
 
   const loading = fetchState?.url !== NETWORK.middlewareUrl || fetchState?.address !== address;
+  const isNonCustodial = keyMode === "external";
 
   const mmImport = useMetaMaskImport(NETWORK, address);
 
@@ -250,7 +253,10 @@ export function DashboardBalancesPage({
     const url = NETWORK.middlewareUrl;
 
     void Promise.allSettled([
-      listIncomingTransfers(url, address, 1, 1),
+      // The incoming endpoint requires key_mode=external (custodial offers are
+      // auto-accepted server-side, so there is nothing to list) — don't call
+      // it for custodial accounts; their tile renders "Auto-accepted" instead.
+      isNonCustodial ? listIncomingTransfers(url, address, 1, 1) : Promise.resolve(null),
       listOutgoingTransfers(url, address, "pending", 1, 1),
       listOutgoingTransfers(url, address, "expired", 1, 1),
       listCompletedTransfers(url, address, 1, 1),
@@ -258,7 +264,7 @@ export function DashboardBalancesPage({
       if (cancelled) return;
       setStatsState({
         address,
-        incomingOffers: inc.status === "fulfilled" ? inc.value.total : null,
+        incomingOffers: inc.status === "fulfilled" && inc.value ? inc.value.total : null,
         outgoingOffers:
           pen.status === "fulfilled" && exp.status === "fulfilled"
             ? pen.value.total + exp.value.total
@@ -273,7 +279,7 @@ export function DashboardBalancesPage({
     return () => {
       cancelled = true;
     };
-  }, [address]);
+  }, [address, isNonCustodial]);
 
   // "Add to MetaMask" banner — shown until every listed token is marked
   // imported. MetaMask exposes no way to query already-watched assets, so this
@@ -315,11 +321,22 @@ export function DashboardBalancesPage({
           <div className={styles.stat}>
             <p className={styles.statLabel}>INCOMING OFFERS</p>
             <p className={styles.statValue}>
-              {stats.incomingOffers ?? "—"}
-              {(stats.incomingOffers ?? 0) > 0 && (
-                <button className={styles.statLink} onClick={() => onTabChange("offers")}>
-                  Accept →
-                </button>
+              {isNonCustodial ? (
+                <>
+                  {stats.incomingOffers ?? "—"}
+                  {(stats.incomingOffers ?? 0) > 0 && (
+                    <button className={styles.statLink} onClick={() => onTabChange("offers")}>
+                      Accept →
+                    </button>
+                  )}
+                </>
+              ) : (
+                <span
+                  className={styles.statSoft}
+                  title="Incoming offers are accepted automatically for custodial accounts"
+                >
+                  Auto-accepted
+                </span>
               )}
             </p>
           </div>
