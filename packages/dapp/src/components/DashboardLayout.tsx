@@ -15,6 +15,11 @@ interface Props {
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
   onDisconnect: () => void;
+  /** Page heading rendered in the shared header band, left of the pills. */
+  title: string;
+  subtitle?: string;
+  /** Extra element on the title row (e.g. the Transfer page's mode pill). */
+  titleExtra?: ReactNode;
   children: ReactNode;
 }
 
@@ -111,6 +116,9 @@ export function DashboardLayout({
   activeTab,
   onTabChange,
   onDisconnect,
+  title,
+  subtitle,
+  titleExtra,
   children,
 }: Props) {
   const [walletOpen, setWalletOpen] = useState(false);
@@ -162,35 +170,50 @@ export function DashboardLayout({
 
       {/* ── Main area ── */}
       <div className={styles.main}>
-        {/* Top-right pills */}
-        <div className={styles.mainHeader}>
-          <div className="pill pill-static" aria-label={`Network: ${NETWORK.name}`}>
-            <span className="pill-dot" style={{ background: NETWORK.color }} />
-            <span>{NETWORK.name}</span>
+        {/* One shared content column: the page header and every card lay out in
+            it, so titles and cards always share the same left/right edges. */}
+        <div className={styles.content}>
+          {/* Header band: side-band title on the left, network + wallet pills
+              right-aligned on the same y-axis. */}
+          <div className={styles.pageHead}>
+            <div className={styles.pageHeadText}>
+              <div className={styles.pageTitleRow}>
+                <h1 className={styles.pageTitle}>{title}</h1>
+                {titleExtra}
+              </div>
+              {subtitle && <p className={styles.pageSubtitle}>{subtitle}</p>}
+            </div>
+
+            <div className={styles.pageHeadPills}>
+              <div className="pill pill-static" aria-label={`Network: ${NETWORK.name}`}>
+                <span className="pill-dot" style={{ background: NETWORK.color }} />
+                <span>{NETWORK.name}</span>
+              </div>
+
+              <div ref={walletRef} className={styles.pillAnchor}>
+                <button
+                  className={`pill pill-mono ${walletOpen ? "active-teal" : ""}`}
+                  onClick={() => setWalletOpen((o) => !o)}
+                >
+                  <span className="pill-dot" style={{ background: "#34d399" }} />
+                  <span>{shortenAddress(address)}</span>
+                  <Caret open={walletOpen} />
+                </button>
+                {walletOpen && (
+                  <WalletMenu
+                    address={address}
+                    onDisconnect={() => {
+                      setWalletOpen(false);
+                      onDisconnect();
+                    }}
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
-          <div ref={walletRef} className={styles.pillAnchor}>
-            <button
-              className={`pill pill-mono ${walletOpen ? "active-teal" : ""}`}
-              onClick={() => setWalletOpen((o) => !o)}
-            >
-              <span className="pill-dot" style={{ background: "#34d399" }} />
-              <span>{shortenAddress(address)}</span>
-              <Caret open={walletOpen} />
-            </button>
-            {walletOpen && (
-              <WalletMenu
-                address={address}
-                onDisconnect={() => {
-                  setWalletOpen(false);
-                  onDisconnect();
-                }}
-              />
-            )}
-          </div>
+          {children}
         </div>
-
-        {children}
       </div>
     </div>
   );

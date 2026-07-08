@@ -1,41 +1,19 @@
-/* ── Page header ── */
-.pageHeader {
-  margin-bottom: 18px;
-}
-
-.pageTitle {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
-  color: var(--text-primary);
-}
-
-.pageSubtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-top: 6px;
-}
-
-/* Constrain the table so it doesn't stretch across an ultrawide viewport,
-   which would balloon the flexible PARTY column into a large empty gap.
-   Left-aligned to sit under the page title. */
-.colHeaders,
-.card {
-  max-width: 960px;
-}
-
 /* ── Shared row grid (header + each row) ──
-   TYPE | TOKEN | AMOUNT | PARTY (flex) | LEDGER TX | DATE */
+   TYPE | TOKEN | AMOUNT | PARTY (flex) | LEDGER TX (flex) | DATE
+   Two flexible tracks so extra width on wide monitors distributes across
+   PARTY and TX instead of stranding the fixed columns at the far edge. */
 .colHeaders,
 .activityRow {
   display: grid;
-  grid-template-columns: 104px 92px 108px minmax(0, 1fr) 132px 120px;
+  grid-template-columns: 104px 92px 108px minmax(100px, 1.3fr) minmax(85px, 1fr) 148px;
   gap: 16px;
   align-items: center;
 }
 
+/* Header row lives inside the card, matching the other tabs' tables. */
 .colHeaders {
-  padding: 13px 22px 10px;
+  padding: 13px 0 10px;
+  border-bottom: 1px solid var(--border);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 1px;
@@ -50,8 +28,8 @@
 .card {
   background: var(--bg-card, linear-gradient(180deg, #1a1d2e 0%, #12141f 100%));
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: 0 22px;
+  border-radius: var(--radius-lg);
+  padding: 0 24px;
   position: relative;
   z-index: 1;
 }
@@ -280,7 +258,6 @@
   }
 
   .card {
-    max-width: none;
     padding: 0 16px;
   }
 

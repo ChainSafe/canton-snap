@@ -1,24 +1,4 @@
-/* ── Page header ── */
-.pageHeader {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 6px;
-}
-
-.pageTitle {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
-  color: var(--text-primary);
-}
-
-.pageSubtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 20px;
-}
-
+/* Mode pill — rendered on the shared header's title row via titleExtra. */
 .modePill {
   font-size: 11px;
   font-weight: 600;
@@ -45,9 +25,6 @@
   display: flex;
   align-items: center;
   margin-bottom: 20px;
-  max-width: 768px;
-  margin-left: max(0px, calc(50% - 432px));
-  margin-right: auto;
 }
 
 .stepSegment {
@@ -131,9 +108,111 @@
   background: #00d4a4;
 }
 
-/* ── Form card ── */
-.card {
+/* ── Details step: split card ──
+   One card surface spanning the content column — form pane left, summary
+   rail right, divided by the card's own border — so the card shares both
+   edges with the page header. */
+.splitCard {
+  display: flex;
+  align-items: stretch;
+}
+
+.splitMain {
+  flex: 1.5;
+  min-width: 0;
   padding: 32px;
+}
+
+.splitSide {
+  flex: 1;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  padding: 28px 30px;
+}
+
+.sideLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.sideLabel + .sideLabel,
+.sideSteps + .sideLabel {
+  margin-top: 18px;
+}
+
+.sumRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  padding: 5px 0;
+}
+
+.sumRow b {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sumMono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.sumTeal {
+  color: var(--teal) !important;
+}
+
+.sideDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 18px 0;
+}
+
+.sideSteps {
+  margin: 0;
+  padding-left: 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.sideSteps b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.sideHint {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: rgba(0, 212, 164, 0.05);
+  border: 1px solid rgba(0, 212, 164, 0.16);
+  border-radius: 9px;
+  padding: 10px 12px;
+}
+
+.sideHint b {
+  color: var(--teal);
+  font-weight: 600;
+}
+
+/* Narrow viewports: the summary rail would crowd the form — hide it and let
+   the form pane take the full card, matching the pre-split behaviour. */
+@media (max-width: 1100px) {
+  .splitSide {
+    display: none;
+  }
 }
 
 .fieldLabel {
@@ -594,9 +673,6 @@
   font-size: 13px;
   color: var(--red);
   margin-bottom: 16px;
-  max-width: 768px;
-  margin-left: max(0px, calc(50% - 432px));
-  margin-right: auto;
 }
 
 /* ── Sign card ── */
@@ -609,8 +685,8 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  max-width: 768px;
-  margin-left: max(0px, calc(50% - 432px));
+  max-width: 760px;
+  margin-left: auto;
   margin-right: auto;
 }
 
@@ -818,6 +894,9 @@
 
 /* ── Done card ── */
 .doneCard {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
   padding: 48px 32px;
   display: flex;
   flex-direction: column;
@@ -941,10 +1020,6 @@
 /* ── Mobile: stack the receipt rows and the two fixed-width Done buttons so
    long values and the 280px buttons don't overflow a phone. ── */
 @media (max-width: 560px) {
-  .pageHeader {
-    flex-wrap: wrap;
-  }
-
   .rtypeGrid {
     grid-template-columns: 1fr;
   }

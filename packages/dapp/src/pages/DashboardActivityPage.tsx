@@ -255,22 +255,19 @@ export function DashboardActivityPage({
         activeTab={activeTab}
         onTabChange={onTabChange}
         onDisconnect={onDisconnect}
+        title="Activity"
+        subtitle="Settled transfer history on Canton Network."
       >
-        <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Activity</h1>
-          <p className={styles.pageSubtitle}>Settled transfer history on Canton Network.</p>
-        </div>
-
-        <div className={styles.colHeaders}>
-          <span>TYPE</span>
-          <span>TOKEN</span>
-          <span>AMOUNT</span>
-          <span>PARTY</span>
-          <span>LEDGER TX</span>
-          <span className={styles.colRight}>DATE</span>
-        </div>
-
         <div className={styles.card}>
+          <div className={styles.colHeaders}>
+            <span>TYPE</span>
+            <span>TOKEN</span>
+            <span>AMOUNT</span>
+            <span>PARTY</span>
+            <span>LEDGER TX</span>
+            <span className={styles.colRight}>DATE</span>
+          </div>
+
           {loading && (
             <div className={styles.centred}>
               <Spinner />
