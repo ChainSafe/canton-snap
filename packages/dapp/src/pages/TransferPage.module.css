@@ -26,6 +26,8 @@
   align-items: center;
   margin-bottom: 20px;
   max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .stepSegment {
@@ -113,6 +115,8 @@
 .card {
   padding: 32px;
   max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .fieldLabel {
@@ -574,6 +578,8 @@
   color: var(--red);
   margin-bottom: 16px;
   max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ── Sign card ── */
@@ -587,6 +593,8 @@
   align-items: center;
   text-align: center;
   max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .signIconWrap {
@@ -794,6 +802,8 @@
 /* ── Done card ── */
 .doneCard {
   max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
   padding: 48px 32px;
   display: flex;
   flex-direction: column;

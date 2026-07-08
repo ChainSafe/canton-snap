@@ -89,9 +89,9 @@
 
 /* The shared content column. Every page's header and cards live inside it,
    so they always share the same edges. Fluid up to a cap: fills the main
-   area on typical monitors, stays proportionate on ultrawide/4K. */
+   area on laptops, stays a comfortable reading width on large monitors. */
 .content {
-  max-width: 1840px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -101,7 +101,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 18px;
-  margin-bottom: 20px;
+  margin-bottom: 32px;
 }
 
 /* Teal indicator bar — the same mark as the active nav item. */
@@ -203,7 +203,7 @@
   /* Pills wrap above the title so it keeps its full width. */
   .pageHead {
     flex-wrap: wrap;
-    margin-bottom: 16px;
+    margin-bottom: 22px;
   }
 
   .pageHeadPills {
