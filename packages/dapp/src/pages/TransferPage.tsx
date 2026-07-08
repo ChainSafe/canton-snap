@@ -947,8 +947,8 @@ export function TransferPage({
                   <p className={styles.fieldLabel}>OFFER EXPIRY</p>
                   <ExpiryPicker value={validitySeconds} onChange={setValiditySeconds} />
                   <p className={styles.balanceHint}>
-                    The recipient has this long to accept. After it expires the offer can be
-                    reclaimed.
+                    The recipient has this long to accept. You can cancel the offer and reclaim the
+                    funds at any time until it&apos;s accepted.
                   </p>
                 </div>
               )}
@@ -972,13 +972,13 @@ export function TransferPage({
                   )
                 ) : isNonCustodial ? (
                   <span>
-                    Gas-free on Canton · Settles in ~2–4s · You&apos;ll sign{" "}
+                    Gas-free on Canton · Settles in ~10–15s · You&apos;ll sign{" "}
                     <strong style={{ color: "var(--text-primary)" }}>three times</strong> (MetaMask
                     auth × 2 + Snap)
                   </span>
                 ) : (
                   <span>
-                    Gas-free on Canton · Settles in ~2–4s ·{" "}
+                    Gas-free on Canton · Settles in ~10–15s ·{" "}
                     <strong style={{ color: "var(--text-primary)" }}>one MetaMask signature</strong>{" "}
                     — server co-signs Canton side
                   </span>
@@ -1020,7 +1020,7 @@ export function TransferPage({
               ) : (
                 <div className={styles.sumRow}>
                   <span>Settlement</span>
-                  <b>Direct · ~2–4s</b>
+                  <b>Direct · ~10–15s</b>
                 </div>
               )}
               <div className={styles.sumRow}>
@@ -1042,7 +1042,7 @@ export function TransferPage({
                     <li>
                       The recipient gets an <b>offer to accept</b>
                     </li>
-                    <li>Unaccepted offers can be claimed back after expiry</li>
+                    <li>You can cancel and reclaim the funds any time before it&apos;s accepted</li>
                   </>
                 ) : (
                   <>
