@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.4.0...dapp-v1.4.1) (2026-07-08)
+
+
+### Bug Fixes
+
+* **dapp:** dapp v1.4.0  bugs ([#91](https://github.com/ChainSafe/canton-snap/issues/91)) ([073c98c](https://github.com/ChainSafe/canton-snap/commit/073c98ce4459bd892e8e728f439a77bc35d6fbbe))
+* **dapp:** unified dashboard layout with shared column and side-band header ([#93](https://github.com/ChainSafe/canton-snap/issues/93)) ([f5e2063](https://github.com/ChainSafe/canton-snap/commit/f5e20638da399e26c96523701d69c8b3960026be))
+
 ## [1.4.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.3.0...dapp-v1.4.0) (2026-07-03)
 
 
