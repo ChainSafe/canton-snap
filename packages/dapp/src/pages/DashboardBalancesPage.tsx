@@ -11,6 +11,13 @@ import { getTokenBalance, formatTokenAmount } from "../lib/ethrpc";
 import { TOKEN_COLORS } from "../lib/tokens";
 import { useMetaMaskImport, type ImportStatus } from "../hooks/useMetaMaskImport";
 import { ImportTokensBanner } from "../components/ImportTokensBanner";
+import { CopyButton } from "../components/CopyButton";
+import {
+  listIncomingTransfers,
+  listOutgoingTransfers,
+  listCompletedTransfers,
+} from "../lib/transfer";
+import { shortenAddress } from "../lib/ethereum";
 import { cn } from "../lib/cn";
 import styles from "./DashboardBalancesPage.module.css";
 
@@ -23,6 +30,18 @@ type FetchState =
   | { url: string; address: string; rows: TokenRow[]; error: null }
   | { url: string; address: string; rows: null; error: string };
 
+// Figures for the summary strip. Counts and times only — cross-token amounts
+// can't be compared without price data, so none are aggregated here. null =
+// still loading or the (non-critical) fetch failed; tiles render "—".
+interface BalancesStats {
+  // Staleness key, same pattern as FetchState: stats for another address are
+  // ignored rather than reset synchronously in the effect.
+  address: string;
+  incomingOffers: number | null;
+  outgoingOffers: number | null;
+  lastActivity: string | null;
+}
+
 interface Props {
   address: string;
   activeTab: DashboardTab;
@@ -30,6 +49,20 @@ interface Props {
   onDisconnect: () => void;
   /** Open the Transfer tab with this token pre-selected. */
   onSendToken: (tokenAddress: string) => void;
+}
+
+// Compact "2h ago"-style timestamp for the summary strip. Returns undefined
+// for a missing/invalid timestamp so callers can fall back.
+function relativeTime(iso: string | undefined): string | undefined {
+  if (!iso) return undefined;
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return undefined;
+  const diff = (Date.now() - ts) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 172800) return "Yesterday";
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 function TokenIcon({ symbol }: { symbol: string }) {
@@ -163,6 +196,11 @@ export function DashboardBalancesPage({
   onSendToken,
 }: Props) {
   const [fetchState, setFetchState] = useState<FetchState | null>(null);
+  const [statsState, setStatsState] = useState<BalancesStats | null>(null);
+  const stats =
+    statsState?.address === address
+      ? statsState
+      : { address, incomingOffers: null, outgoingOffers: null, lastActivity: null };
 
   const loading = fetchState?.url !== NETWORK.middlewareUrl || fetchState?.address !== address;
 
@@ -204,6 +242,39 @@ export function DashboardBalancesPage({
     };
   }, [fetchBalances]);
 
+  // Summary strip figures — offer counts (server-side totals) and the newest
+  // settled transfer. Non-critical: each tile independently falls back to "—"
+  // if its fetch fails, without touching the balances list.
+  useEffect(() => {
+    let cancelled = false;
+    const url = NETWORK.middlewareUrl;
+
+    void Promise.allSettled([
+      listIncomingTransfers(url, address, 1, 1),
+      listOutgoingTransfers(url, address, "pending", 1, 1),
+      listOutgoingTransfers(url, address, "expired", 1, 1),
+      listCompletedTransfers(url, address, 1, 1),
+    ]).then(([inc, pen, exp, done]) => {
+      if (cancelled) return;
+      setStatsState({
+        address,
+        incomingOffers: inc.status === "fulfilled" ? inc.value.total : null,
+        outgoingOffers:
+          pen.status === "fulfilled" && exp.status === "fulfilled"
+            ? pen.value.total + exp.value.total
+            : null,
+        lastActivity:
+          done.status === "fulfilled"
+            ? (relativeTime(done.value.items[0]?.timestamp) ?? "No transfers yet")
+            : null,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
   // "Add to MetaMask" banner — shown until every listed token is marked
   // imported. MetaMask exposes no way to query already-watched assets, so this
   // relies on the hook's best-effort localStorage mirror; if nothing is known
@@ -235,11 +306,46 @@ export function DashboardBalancesPage({
           />
         )}
 
+        {/* Summary strip — counts and times only (no cross-token amounts). */}
+        <div className={styles.statStrip}>
+          <div className={styles.stat}>
+            <p className={styles.statLabel}>TOKENS HELD</p>
+            <p className={styles.statValue}>{fetchState?.rows?.length ?? "—"}</p>
+          </div>
+          <div className={styles.stat}>
+            <p className={styles.statLabel}>INCOMING OFFERS</p>
+            <p className={styles.statValue}>
+              {stats.incomingOffers ?? "—"}
+              {(stats.incomingOffers ?? 0) > 0 && (
+                <button className={styles.statLink} onClick={() => onTabChange("offers")}>
+                  Accept →
+                </button>
+              )}
+            </p>
+          </div>
+          <div className={styles.stat}>
+            <p className={styles.statLabel}>OUTGOING OFFERS</p>
+            <p className={styles.statValue}>
+              {stats.outgoingOffers ?? "—"}
+              {(stats.outgoingOffers ?? 0) > 0 && (
+                <button className={styles.statLink} onClick={() => onTabChange("offers")}>
+                  View →
+                </button>
+              )}
+            </p>
+          </div>
+          <div className={styles.stat}>
+            <p className={styles.statLabel}>LAST ACTIVITY</p>
+            <p className={styles.statValue}>{stats.lastActivity ?? "—"}</p>
+          </div>
+        </div>
+
         {/* Token card */}
         <PageCard className={styles.card}>
           {/* Column headers */}
           <div className={styles.colHeaders}>
             <span>TOKEN</span>
+            <span>CONTRACT</span>
             <span className={styles.colBalance}>BALANCE</span>
             <span />
           </div>
@@ -282,6 +388,10 @@ export function DashboardBalancesPage({
                           error={tokenState?.error}
                           onClick={() => void mmImport.importToken(token)}
                         />
+                      </div>
+                      <div className={styles.contractCell}>
+                        <span className={styles.contractAddr}>{shortenAddress(token.address)}</span>
+                        <CopyButton text={token.address} />
                       </div>
                       <div className={styles.balanceInfo}>
                         <p className={styles.amount}>
