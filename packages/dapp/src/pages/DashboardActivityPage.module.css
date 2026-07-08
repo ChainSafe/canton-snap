@@ -5,7 +5,7 @@
 .colHeaders,
 .activityRow {
   display: grid;
-  grid-template-columns: 104px 92px 108px minmax(150px, 1.3fr) minmax(140px, 1fr) 148px;
+  grid-template-columns: 104px 92px 108px minmax(100px, 1.3fr) minmax(85px, 1fr) 148px;
   gap: 16px;
   align-items: center;
 }

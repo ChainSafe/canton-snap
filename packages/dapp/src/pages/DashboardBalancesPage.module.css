@@ -250,6 +250,13 @@
   padding: 20px 0;
 }
 
+/* Four tiles in a row need ~900px; below that go 2×2 so the labels fit. */
+@media (max-width: 900px) {
+  .statStrip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* ── Contract column ── */
 .contractCell {
   display: flex;
@@ -287,7 +294,6 @@
   }
 
   .statStrip {
-    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
 
