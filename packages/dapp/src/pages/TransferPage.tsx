@@ -129,6 +129,27 @@ function customSeconds(value: string, unit: CustomUnit): number {
   return Math.floor(n * per);
 }
 
+// Human label for the chosen offer validity, shown in the summary rail:
+// preset values reuse their picker label ("1 day"), custom ones are rendered
+// as the largest whole unit ("36 hours", "3 days").
+function formatValiditySpan(seconds: number): string {
+  const preset = VALIDITY_PRESETS.find((p) => p.seconds === seconds);
+  if (preset) return `in ${preset.label}`;
+  if (!Number.isFinite(seconds) || seconds <= 0) return "—";
+  const units = [
+    { per: 86400, name: "day" },
+    { per: 3600, name: "hour" },
+    { per: 60, name: "minute" },
+  ];
+  for (const { per, name } of units) {
+    if (seconds >= per) {
+      const n = Math.round(seconds / per);
+      return `in ${n} ${name}${n === 1 ? "" : "s"}`;
+    }
+  }
+  return "in under a minute";
+}
+
 function EvmAddressIcon({ active }: { active: boolean }) {
   const stroke = active ? "#00d4a4" : "#a1a6c4";
   return (
@@ -822,151 +843,229 @@ export function TransferPage({
         {error && <div className={styles.errorBanner}>{error}</div>}
 
         {/* ── Details step ── */}
+        {/* Details step: one full-column card — form on the left, a live
+            summary rail on the right, divided by the card's own border — so
+            the card shares both edges with the page header. */}
         {step === "details" && (
-          <PageCard className={styles.card}>
-            {/* Token */}
-            <div className={styles.fieldGroup}>
-              <p className={styles.fieldLabel}>TOKEN</p>
-              {tokensLoading ? (
-                <Spinner />
-              ) : (
-                <TokenDropdown
-                  tokens={tokens}
-                  selected={selectedToken}
-                  balances={balances}
-                  onSelect={(t) => {
-                    setSelectedToken(t);
-                    setAmount("");
-                    setError(null);
-                  }}
-                />
-              )}
-            </div>
-
-            {/* Recipient type — EVM address or Canton party id. Both modes
-                support party id: non-custodial via prepare/execute, custodial
-                via the server-signed /custodial endpoint. */}
-            <div className={styles.fieldGroup}>
-              <p className={styles.fieldLabel}>RECIPIENT TYPE</p>
-              <RecipientTypeToggle value={recipientType} onChange={handleRecipientTypeChange} />
-            </div>
-
-            {/* Recipient */}
-            <div className={styles.fieldGroup}>
-              <p className={styles.fieldLabel}>RECIPIENT</p>
-              <div className={styles.recipientWrapper}>
-                <input
-                  className={styles.recipientInput}
-                  type="text"
-                  placeholder={recipientType === "party" ? "name::fingerprint" : "0x..."}
-                  value={recipient}
-                  onChange={(e) => setRecipient(e.target.value.trim())}
-                  onBlur={handleRecipientBlur}
-                  spellCheck={false}
-                />
-                <button className={styles.pasteBtn} type="button" onClick={handlePaste}>
-                  Paste
-                </button>
-              </div>
-              {recipientValid && (
-                <p className={styles.recipientHint}>
-                  ✓ Valid {recipientType === "party" ? "Canton party ID" : "EVM address"}
-                </p>
-              )}
-            </div>
-
-            {/* Amount */}
-            <div className={styles.fieldGroup}>
-              <p className={styles.fieldLabel}>AMOUNT</p>
-              <div className={styles.amountRow}>
-                <input
-                  className={styles.amountInput}
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={amount}
-                  onChange={(e) => {
-                    setAmount(e.target.value);
-                    setError(null);
-                  }}
-                />
-                {selectedBalance !== undefined && selectedToken && (
-                  <button
-                    className={styles.maxBtn}
-                    type="button"
-                    onClick={() => {
-                      setAmount(formatTokenAmount(selectedBalance, selectedToken.decimals));
+          <PageCard className={styles.splitCard}>
+            <div className={styles.splitMain}>
+              {/* Token */}
+              <div className={styles.fieldGroup}>
+                <p className={styles.fieldLabel}>TOKEN</p>
+                {tokensLoading ? (
+                  <Spinner />
+                ) : (
+                  <TokenDropdown
+                    tokens={tokens}
+                    selected={selectedToken}
+                    balances={balances}
+                    onSelect={(t) => {
+                      setSelectedToken(t);
+                      setAmount("");
                       setError(null);
                     }}
-                  >
-                    MAX
-                  </button>
-                )}
-                {selectedToken && (
-                  <span className={styles.amountSymbol}>{selectedToken.symbol}</span>
+                  />
                 )}
               </div>
-              {selectedBalance !== undefined && selectedToken && (
-                <p className={styles.balanceHint}>
-                  Balance: {formatTokenAmount(selectedBalance, selectedToken.decimals)}{" "}
-                  {selectedToken.symbol}
-                </p>
-              )}
-            </div>
 
-            {/* Offer expiry — sets validity_seconds: how long the recipient has
+              {/* Recipient type — EVM address or Canton party id. Both modes
+                support party id: non-custodial via prepare/execute, custodial
+                via the server-signed /custodial endpoint. */}
+              <div className={styles.fieldGroup}>
+                <p className={styles.fieldLabel}>RECIPIENT TYPE</p>
+                <RecipientTypeToggle value={recipientType} onChange={handleRecipientTypeChange} />
+              </div>
+
+              {/* Recipient */}
+              <div className={styles.fieldGroup}>
+                <p className={styles.fieldLabel}>RECIPIENT</p>
+                <div className={styles.recipientWrapper}>
+                  <input
+                    className={styles.recipientInput}
+                    type="text"
+                    placeholder={recipientType === "party" ? "name::fingerprint" : "0x..."}
+                    value={recipient}
+                    onChange={(e) => setRecipient(e.target.value.trim())}
+                    onBlur={handleRecipientBlur}
+                    spellCheck={false}
+                  />
+                  <button className={styles.pasteBtn} type="button" onClick={handlePaste}>
+                    Paste
+                  </button>
+                </div>
+                {recipientValid && (
+                  <p className={styles.recipientHint}>
+                    ✓ Valid {recipientType === "party" ? "Canton party ID" : "EVM address"}
+                  </p>
+                )}
+              </div>
+
+              {/* Amount */}
+              <div className={styles.fieldGroup}>
+                <p className={styles.fieldLabel}>AMOUNT</p>
+                <div className={styles.amountRow}>
+                  <input
+                    className={styles.amountInput}
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={amount}
+                    onChange={(e) => {
+                      setAmount(e.target.value);
+                      setError(null);
+                    }}
+                  />
+                  {selectedBalance !== undefined && selectedToken && (
+                    <button
+                      className={styles.maxBtn}
+                      type="button"
+                      onClick={() => {
+                        setAmount(formatTokenAmount(selectedBalance, selectedToken.decimals));
+                        setError(null);
+                      }}
+                    >
+                      MAX
+                    </button>
+                  )}
+                  {selectedToken && (
+                    <span className={styles.amountSymbol}>{selectedToken.symbol}</span>
+                  )}
+                </div>
+                {selectedBalance !== undefined && selectedToken && (
+                  <p className={styles.balanceHint}>
+                    Balance: {formatTokenAmount(selectedBalance, selectedToken.decimals)}{" "}
+                    {selectedToken.symbol}
+                  </p>
+                )}
+              </div>
+
+              {/* Offer expiry — sets validity_seconds: how long the recipient has
                 to accept before the offer expires and the funds can be reclaimed.
                 Shown for every send that creates an on-ledger offer. */}
-            {usesValidity && (
-              <div className={styles.fieldGroup}>
-                <p className={styles.fieldLabel}>OFFER EXPIRY</p>
-                <ExpiryPicker value={validitySeconds} onChange={setValiditySeconds} />
-                <p className={styles.balanceHint}>
-                  The recipient has this long to accept. After it expires the offer can be
-                  reclaimed.
-                </p>
-              </div>
-            )}
+              {usesValidity && (
+                <div className={styles.fieldGroup}>
+                  <p className={styles.fieldLabel}>OFFER EXPIRY</p>
+                  <ExpiryPicker value={validitySeconds} onChange={setValiditySeconds} />
+                  <p className={styles.balanceHint}>
+                    The recipient has this long to accept. After it expires the offer can be
+                    reclaimed.
+                  </p>
+                </div>
+              )}
 
-            {/* Info strip */}
-            <div className={styles.infoStrip}>
-              <InfoIcon />
-              {isCustodialParty ? (
-                offerBased ? (
+              {/* Info strip */}
+              <div className={styles.infoStrip}>
+                <InfoIcon />
+                {isCustodialParty ? (
+                  offerBased ? (
+                    <span>
+                      Gas-free on Canton · The recipient party receives an{" "}
+                      <strong style={{ color: "var(--text-primary)" }}>offer to accept</strong> —
+                      the server co-signs on your behalf.
+                    </span>
+                  ) : (
+                    <span>
+                      Gas-free on Canton · Sent{" "}
+                      <strong style={{ color: "var(--text-primary)" }}>directly</strong> to the
+                      party — the server co-signs on your behalf.
+                    </span>
+                  )
+                ) : isNonCustodial ? (
                   <span>
-                    Gas-free on Canton · The recipient party receives an{" "}
-                    <strong style={{ color: "var(--text-primary)" }}>offer to accept</strong> — the
-                    server co-signs on your behalf.
+                    Gas-free on Canton · Settles in ~2–4s · You&apos;ll sign{" "}
+                    <strong style={{ color: "var(--text-primary)" }}>three times</strong> (MetaMask
+                    auth × 2 + Snap)
                   </span>
                 ) : (
                   <span>
-                    Gas-free on Canton · Sent{" "}
-                    <strong style={{ color: "var(--text-primary)" }}>directly</strong> to the party
-                    — the server co-signs on your behalf.
+                    Gas-free on Canton · Settles in ~2–4s ·{" "}
+                    <strong style={{ color: "var(--text-primary)" }}>one MetaMask signature</strong>{" "}
+                    — server co-signs Canton side
                   </span>
-                )
-              ) : isNonCustodial ? (
-                <span>
-                  Gas-free on Canton · Settles in ~2–4s · You&apos;ll sign{" "}
-                  <strong style={{ color: "var(--text-primary)" }}>three times</strong> (MetaMask
-                  auth × 2 + Snap)
-                </span>
-              ) : (
-                <span>
-                  Gas-free on Canton · Settles in ~2–4s ·{" "}
-                  <strong style={{ color: "var(--text-primary)" }}>one MetaMask signature</strong> —
-                  server co-signs Canton side
-                </span>
-              )}
+                )}
+              </div>
+
+              <button
+                className={styles.btnContinue}
+                onClick={handleContinue}
+                disabled={tokensLoading}
+              >
+                Continue
+              </button>
             </div>
 
-            <button
-              className={styles.btnContinue}
-              onClick={handleContinue}
-              disabled={tokensLoading}
-            >
-              Continue
-            </button>
+            {/* Summary rail — mirrors the drafted transfer live. Hidden on
+                narrow viewports where the form needs the full column. */}
+            <aside className={styles.splitSide}>
+              <p className={styles.sideLabel}>TRANSFER SUMMARY</p>
+              <div className={styles.sumRow}>
+                <span>You send</span>
+                <b>{amount && selectedToken ? `${amount} ${selectedToken.symbol}` : "—"}</b>
+              </div>
+              <div className={styles.sumRow}>
+                <span>To</span>
+                <b className={styles.sumMono}>
+                  {recipientValid
+                    ? recipientType === "party"
+                      ? shortenPartyId(recipient)
+                      : shortenAddress(recipient)
+                    : "—"}
+                </b>
+              </div>
+              {usesValidity ? (
+                <div className={styles.sumRow}>
+                  <span>Offer expires</span>
+                  <b>{formatValiditySpan(validitySeconds)}</b>
+                </div>
+              ) : (
+                <div className={styles.sumRow}>
+                  <span>Settlement</span>
+                  <b>Direct · ~2–4s</b>
+                </div>
+              )}
+              <div className={styles.sumRow}>
+                <span>Network fee</span>
+                <b className={styles.sumTeal}>Gas-free</b>
+              </div>
+
+              <div className={styles.sideDivider} />
+
+              <p className={styles.sideLabel}>WHAT HAPPENS NEXT</p>
+              <ol className={styles.sideSteps}>
+                <li>
+                  {isNonCustodial
+                    ? "You sign in MetaMask and Canton Snap"
+                    : "You sign once in MetaMask — the server co-signs on Canton"}
+                </li>
+                {usesValidity ? (
+                  <>
+                    <li>
+                      The recipient gets an <b>offer to accept</b>
+                    </li>
+                    <li>Unaccepted offers can be claimed back after expiry</li>
+                  </>
+                ) : (
+                  <>
+                    <li>The transfer settles directly on Canton</li>
+                    <li>
+                      It appears under <b>Activity</b> once confirmed
+                    </li>
+                  </>
+                )}
+              </ol>
+
+              <div className={styles.sideHint}>
+                {usesValidity ? (
+                  <>
+                    Track sent offers under <b>Offers → Outgoing</b>.
+                  </>
+                ) : (
+                  <>
+                    View settled transfers under <b>Activity</b>.
+                  </>
+                )}
+              </div>
+            </aside>
           </PageCard>
         )}
 
