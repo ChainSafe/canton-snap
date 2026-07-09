@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Canton Devnet Faucet — Design Mock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Design tokens — mirrors packages/dapp/src/index.css */
+  :root {
+    color-scheme: dark;
+    --bg: #0a0b14;
+    --bg-card: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);
+    --bg-surface: #12141f;
+    --bg-input: #0a0b14;
+    --border: #252840;
+    --border-muted: #353a5a;
+    --teal: #00d4a4;
+    --teal-bright: #00f0b8;
+    --teal-gradient: linear-gradient(135deg, #00f0b8 0%, #00d4a4 100%);
+    --devnet: #a78bfa;
+    --text-primary: #f1f3f9;
+    --text-secondary: #a1a6c4;
+    --text-muted: #656a8a;
+    --text-on-teal: #0a0b14;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-xl: 20px;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 14px; border-radius: var(--radius-sm);
+    background: var(--bg-surface); border: 1px solid var(--border);
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.devnet { background: var(--devnet); box-shadow: 0 0 8px rgba(167,139,250,.7); }
+  .dot.live { background: var(--teal); animation: pulseDot 2.2s ease-in-out infinite; }
+
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 2.2px;
+    text-transform: uppercase; color: var(--teal);
+  }
+
+  .tokIcon {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex: none;
+  }
+  .tok-demo   { background: #00d4a4; color: #0a0b14; }
+  .tok-prompt { background: #8b7cff; color: #0a0b14; }
+  .tok-usdcx  { background: #2775ca; color: #ffffff; }
+
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .btnPrimary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--teal-gradient); color: var(--text-on-teal);
+    border: none; border-radius: var(--radius-md);
+    padding: 14px 32px; font-size: 15px; font-weight: 600;
+    font-family: var(--font-sans); cursor: pointer;
+    transition: filter .15s ease, transform .15s ease;
+  }
+  .btnPrimary:hover:not(:disabled) { filter: brightness(1.1); }
+  .btnPrimary:active:not(:disabled) { transform: translateY(1px); }
+  .btnPrimary:disabled { opacity: .45; cursor: default; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  .spinner {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid rgba(10,11,20,.25); border-top-color: #0a0b14;
+    animation: spin .7s linear infinite; flex: none;
+  }
+
+  .field label {
+    display: block; font-size: 11px; font-weight: 600; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+  }
+  .inputWrap { position: relative; }
+  .inputWrap input {
+    width: 100%; background: var(--bg-input);
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    color: var(--text-primary); font-family: var(--font-mono); font-size: 13px;
+    padding: 14px 76px 14px 16px; transition: border-color .15s ease;
+  }
+  .inputWrap input::placeholder { color: var(--text-muted); }
+  .inputWrap input:focus { border-color: var(--teal); outline: none; }
+  .pasteBtn {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: #232640; border: 1px solid var(--border-muted); border-radius: 6px;
+    color: var(--text-secondary); font-size: 11px; font-weight: 600;
+    font-family: var(--font-sans); padding: 5px 10px; cursor: pointer;
+  }
+  .pasteBtn:hover { background: #2a2e50; color: var(--text-primary); }
+
+  .logoMark {
+    width: 32px; height: 32px; border-radius: 9px; flex: none;
+    background: var(--teal-gradient);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .logoMark svg { display: block; }
+
+  .successBox {
+    border: 1px solid rgba(0,212,164,.45); border-radius: var(--radius-md);
+    background: rgba(0,212,164,.07); padding: 16px;
+    display: none; animation: fadeIn .3s ease;
+  }
+  .successBox.on { display: block; }
+  .successBox .sTitle { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--teal-bright); }
+  .successBox .sHash { margin-top: 8px; font-size: 12px; color: var(--text-secondary); word-break: break-all; }
+  .successBox .sHash span { color: var(--text-primary); }
+
+  .a-wrap { position: relative; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+  .a-orb {
+    position: fixed; pointer-events: none; z-index: 0;
+    width: 840px; height: 840px; border-radius: 50%;
+    top: -300px; left: 50%; transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(0,212,164,.16) 0%, transparent 65%);
+  }
+  .a-top {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 96px;
+  }
+  .a-brand { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .a-brand small { display: block; font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: .2px; }
+  .a-main { position: relative; z-index: 1; flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 24px 64px; }
+  .a-card {
+    width: 100%; max-width: 520px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-xl); padding: 36px;
+  }
+  .a-card h1 { margin: 12px 0 8px; font-size: 32px; font-weight: 700; letter-spacing: -.6px; text-wrap: balance; }
+  .a-card .sub { margin: 0 0 28px; font-size: 14px; line-height: 1.6; color: var(--text-secondary); max-width: 40ch; }
+
+  .a-tokens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
+  .a-tok {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 14px; cursor: pointer;
+    font-family: var(--font-sans); text-align: left; color: var(--text-primary);
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .a-tok:hover { border-color: var(--border-muted); }
+  .a-tok.on { border-color: rgba(0,212,164,.45); background: linear-gradient(180deg, #1e2238 0%, #141729 100%); }
+  .a-tok .sym { font-size: 13px; font-weight: 700; }
+  .a-tok .amt { font-size: 11px; color: var(--text-muted); }
+  .a-tok.on .amt { color: var(--text-secondary); }
+
+  .a-form { display: flex; flex-direction: column; gap: 18px; }
+  .a-meta { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
+  .a-meta i { font-style: normal; color: var(--border-muted); }
+
+  .a-drips { position: relative; z-index: 1; padding: 0 24px 56px; }
+  .a-dripsInner { max-width: 520px; margin: 0 auto; }
+  .a-dripsHead { font-size: 11px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .a-dripRow {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 4px; border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .a-dripRow .tokIcon { width: 22px; height: 22px; font-size: 10px; }
+  .a-dripRow .addr { color: var(--text-primary); }
+  .a-dripRow .qty { margin-left: auto; color: var(--text-primary); }
+  .a-dripRow .ago { color: var(--text-muted); width: 64px; text-align: right; }
+
+  @media (max-width: 768px) {
+    .a-top { padding: 16px 20px; }
+    .a-card { padding: 24px 20px; }
+    .a-card h1 { font-size: 26px; }
+    .a-tokens { grid-template-columns: 1fr; }
+    .a-tok { flex-direction: row; align-items: center; }
+    .a-tok .amt { margin-left: auto; }
+  }
+</style>
+</head>
+<body>
+  <div class="a-wrap">
+    <div class="a-orb" aria-hidden="true"></div>
+
+    <header class="a-top">
+      <div class="a-brand">
+        <span class="logoMark" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3.2c3.2 4.3 5.6 7.6 5.6 10.4a5.6 5.6 0 1 1-11.2 0c0-2.8 2.4-6.1 5.6-10.4Z" fill="#0a0b14"/></svg>
+        </span>
+        <div>Canton Faucet<small>Devnet · EVM Middleware</small></div>
+      </div>
+      <span class="pill"><span class="dot devnet"></span>Devnet</span>
+    </header>
+
+    <main class="a-main">
+      <div class="a-card">
+        <span class="eyebrow">Canton devnet faucet</span>
+        <h1>Test tokens, on tap.</h1>
+        <p class="sub">Fund any devnet address with DEMO, PROMPT, or USDCX. Free, rate-limited, no wallet connection needed.</p>
+
+        <div class="a-tokens" role="radiogroup" aria-label="Token">
+          <button class="a-tok on" data-sym="DEMO" data-amt="100" role="radio" aria-checked="true">
+            <span class="tokIcon tok-demo">D</span>
+            <span><span class="sym">DEMO</span><br><span class="amt mono">100 / drip</span></span>
+          </button>
+          <button class="a-tok" data-sym="PROMPT" data-amt="50" role="radio" aria-checked="false">
+            <span class="tokIcon tok-prompt">P</span>
+            <span><span class="sym">PROMPT</span><br><span class="amt mono">50 / drip</span></span>
+          </button>
+          <button class="a-tok" data-sym="USDCX" data-amt="250" role="radio" aria-checked="false">
+            <span class="tokIcon tok-usdcx">U</span>
+            <span><span class="sym">USDCX</span><br><span class="amt mono">250 / drip</span></span>
+          </button>
+        </div>
+
+        <div class="a-form">
+          <div class="field">
+            <label for="a-addr">Recipient address</label>
+            <div class="inputWrap">
+              <input id="a-addr" spellcheck="false" placeholder="0x0000…0000" value="0x4f8AC1b02fA9DcB4f21e83Ec5700A3B2E1D09a21">
+              <button class="pasteBtn" type="button">Paste</button>
+            </div>
+          </div>
+          <button class="btnPrimary" id="a-go">Drip 100 DEMO</button>
+          <div class="successBox" id="a-done">
+            <div class="sTitle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#00f0b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span id="a-doneMsg">100 DEMO sent</span>
+            </div>
+            <div class="sHash mono">tx <span>0x7c31…e8f2a94b</span> · arriving in your dapp balance shortly</div>
+          </div>
+        </div>
+
+        <div class="a-meta">
+          <span>1 drip / token / hour</span><i>·</i><span>No sign-in</span><i>·</i><span>Devnet only — tokens have no value</span>
+        </div>
+      </div>
+    </main>
+
+    <div class="a-drips">
+      <div class="a-dripsInner">
+        <div class="a-dripsHead"><span class="dot live"></span>Recent drips</div>
+        <div class="a-dripRow"><span class="tokIcon tok-usdcx">U</span><span class="addr mono">0x91bD…44eC</span><span class="qty mono">250 USDCX</span><span class="ago">just now</span></div>
+        <div class="a-dripRow"><span class="tokIcon tok-demo">D</span><span class="addr mono">0x4f8A…9a21</span><span class="qty mono">100 DEMO</span><span class="ago">2m ago</span></div>
+        <div class="a-dripRow"><span class="tokIcon tok-prompt">P</span><span class="addr mono">0xA30f…D7c8</span><span class="qty mono">50 PROMPT</span><span class="ago">11m ago</span></div>
+        <div class="a-dripRow"><span class="tokIcon tok-demo">D</span><span class="addr mono">0x77E2…0b3F</span><span class="qty mono">100 DEMO</span><span class="ago">26m ago</span></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let aSel = { sym: 'DEMO', amt: '100' };
+  const aGo = document.getElementById('a-go');
+  document.querySelectorAll('.a-tok').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.a-tok').forEach(x => { x.classList.toggle('on', x === t); x.setAttribute('aria-checked', x === t); });
+      aSel = { sym: t.dataset.sym, amt: t.dataset.amt };
+      aGo.textContent = `Drip ${aSel.amt} ${aSel.sym}`;
+      document.getElementById('a-done').classList.remove('on');
+    });
+  });
+  aGo.addEventListener('click', () => {
+    aGo.disabled = true;
+    aGo.innerHTML = '<span class="spinner"></span>Dripping…';
+    setTimeout(() => {
+      aGo.disabled = false;
+      aGo.textContent = `Drip ${aSel.amt} ${aSel.sym}`;
+      document.getElementById('a-doneMsg').textContent = `${aSel.amt} ${aSel.sym} sent`;
+      document.getElementById('a-done').classList.add('on');
+    }, 1400);
+  });
+</script>
+</body>
+</html>
