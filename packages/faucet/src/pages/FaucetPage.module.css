@@ -1,0 +1,307 @@
+.root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.brandSub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  padding: 24px 24px 96px;
+  gap: 40px;
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  padding: 36px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2.2px;
+  color: var(--teal);
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.6px;
+  margin: 12px 0 8px;
+}
+
+.subtitle {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+  max-width: 40ch;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+/* ── Token selector ── */
+.tokenGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.tokenOption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  text-align: left;
+  color: var(--text-primary);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.tokenOption:hover {
+  border-color: var(--border-muted);
+}
+
+.tokenOptionOn {
+  border-color: rgba(0, 212, 164, 0.45);
+  background: var(--bg-card-active);
+}
+
+.tokenSym {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tokenAmt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: -6px;
+}
+
+.tokenOptionOn .tokenAmt {
+  color: var(--text-secondary);
+}
+
+/* ── Address field ── */
+.fieldLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.inputWrap {
+  position: relative;
+}
+
+.input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 14px 76px 14px 16px;
+  transition: border-color 0.15s;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus {
+  border-color: var(--teal);
+  outline: none;
+}
+
+.pasteBtn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #232640;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.pasteBtn:hover {
+  background: #2a2e50;
+  color: var(--text-primary);
+}
+
+.inputHint {
+  font-size: 12px;
+  color: var(--amber);
+  margin-top: 8px;
+}
+
+.drip {
+  width: 100%;
+  margin-top: 18px;
+}
+
+/* ── Success receipt ── */
+.receipt {
+  border: 1px solid rgba(0, 212, 164, 0.45);
+  border-radius: var(--radius-md);
+  background: rgba(0, 212, 164, 0.07);
+  padding: 16px;
+  margin-top: 18px;
+}
+
+.receiptTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--teal-bright);
+}
+
+.receiptDetail {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.receiptId {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+/* ── Meta strip ── */
+.meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.metaSep {
+  color: var(--border-muted);
+}
+
+/* ── Recent drips ── */
+.drips {
+  width: 100%;
+  max-width: 520px;
+}
+
+.dripsHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.dripsDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+
+.dripRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dripAddr {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.dripQty {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  margin-left: auto;
+}
+
+.dripAgo {
+  color: var(--text-muted);
+  width: 64px;
+  text-align: right;
+}
+
+.footerLink {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+/* ── Mobile ── */
+@media (max-width: 560px) {
+  .card {
+    padding: 24px 20px;
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .tokenGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tokenOption {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .tokenAmt {
+    margin-top: 0;
+    margin-left: auto;
+  }
+}
