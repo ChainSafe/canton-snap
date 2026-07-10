@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AmbientOrb } from "../components/AmbientOrb";
 import { Button } from "../components/Button";
 import { Logo } from "../components/Logo";
@@ -65,9 +65,17 @@ export function FaucetPage() {
 
   const [recent, setRecent] = useState<RecentDrip[] | null>(null);
 
+  // When a drip (or a 429) records a cooldown, status lookups that started
+  // earlier are stale — applying one would wipe the fresh entry and re-enable
+  // the button. Stamp cooldown writes so older responses get dropped.
+  const cooldownWrittenAtRef = useRef(0);
+
   const loadTokens = useCallback(() => {
-    setTokensError(null);
-    getFaucetTokens(NETWORK.middlewareUrl)
+    // setTokensError via .then() so it's in a callback, not the synchronous
+    // effect body (react-hooks/set-state-in-effect).
+    Promise.resolve()
+      .then(() => setTokensError(null))
+      .then(() => getFaucetTokens(NETWORK.middlewareUrl))
       .then((items) => {
         const enabled = items.filter((t) => t.enabled);
         setTokens(enabled);
@@ -92,36 +100,45 @@ export function FaucetPage() {
     return () => clearInterval(id);
   }, [refreshRecent]);
 
+  // The server may omit retry_after_seconds; assume the token's full cooldown
+  // so the button still shows a countdown instead of silently re-enabling.
+  const fallbackCooldownSeconds = useCallback(
+    (symbol: string) => tokens?.find((t) => t.symbol === symbol)?.cooldownSeconds ?? 3600,
+    [tokens],
+  );
+
   // Cooldown lookup for the typed address, debounced. Advisory only — the
   // drip endpoint enforces the real limit, so a failed lookup just clears.
   useEffect(() => {
     const addr = address.trim();
     if (!isEvmAddress(addr)) {
-      setAvailableAt({});
-      return;
+      const clear = setTimeout(() => setAvailableAt({}), 0);
+      return () => clearTimeout(clear);
     }
     let cancelled = false;
     const t = setTimeout(() => {
+      const startedAt = Date.now();
       getFaucetStatus(NETWORK.middlewareUrl, addr)
         .then((items) => {
-          if (cancelled) return;
+          if (cancelled || startedAt < cooldownWrittenAtRef.current) return;
           const next: Record<string, number> = {};
           for (const item of items) {
             if (!item.available) {
-              next[item.token] = Date.now() + (item.retryAfterSeconds ?? 0) * 1000;
+              next[item.token] =
+                Date.now() + (item.retryAfterSeconds ?? fallbackCooldownSeconds(item.token)) * 1000;
             }
           }
           setAvailableAt(next);
         })
         .catch(() => {
-          if (!cancelled) setAvailableAt({});
+          if (!cancelled && startedAt >= cooldownWrittenAtRef.current) setAvailableAt({});
         });
     }, STATUS_DEBOUNCE_MS);
     return () => {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [address]);
+  }, [address, fallbackCooldownSeconds]);
 
   const selectedToken = useMemo(
     () => tokens?.find((t) => t.symbol === selected) ?? null,
@@ -135,13 +152,27 @@ export function FaucetPage() {
 
   // Tick the countdown only while one is showing. Sync immediately — `now`
   // may be stale from a render seconds ago, which would overshoot the first
-  // displayed remaining time.
+  // displayed remaining time. Once the cooldown lapses, drop its entry so the
+  // interval stops instead of re-rendering an idle page forever.
   useEffect(() => {
-    if (!selectedAvailableAt) return;
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [selectedAvailableAt]);
+    if (!selectedAvailableAt || selected === null) return;
+    const tick = () => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= selectedAvailableAt) {
+        setAvailableAt((cur) => {
+          const { [selected]: _expired, ...rest } = cur;
+          return rest;
+        });
+      }
+    };
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [selectedAvailableAt, selected]);
 
   function selectToken(symbol: string) {
     setSelected(symbol);
@@ -149,10 +180,16 @@ export function FaucetPage() {
     setDripError(null);
   }
 
+  function updateAddress(value: string) {
+    setAddress(value);
+    setReceipt(null);
+    setDripError(null);
+  }
+
   async function handlePaste() {
     try {
       const text = await navigator.clipboard.readText();
-      if (text) setAddress(text.trim());
+      if (text) updateAddress(text.trim());
     } catch {
       // Clipboard access denied — user can paste manually.
     }
@@ -168,6 +205,7 @@ export function FaucetPage() {
       const result = await requestDrip(NETWORK.middlewareUrl, addr, selectedToken.symbol);
       setReceipt(result);
       const nextAt = result.nextAvailableAt ? Date.parse(result.nextAvailableAt) : NaN;
+      cooldownWrittenAtRef.current = Date.now();
       setAvailableAt((cur) => ({
         ...cur,
         [selectedToken.symbol]: Number.isNaN(nextAt)
@@ -184,9 +222,12 @@ export function FaucetPage() {
         setDripError(
           "This address already got a drip recently — the countdown shows when the next one unlocks.",
         );
+        const retrySeconds =
+          e.retryAfterSeconds > 0 ? e.retryAfterSeconds : selectedToken.cooldownSeconds;
+        cooldownWrittenAtRef.current = Date.now();
         setAvailableAt((cur) => ({
           ...cur,
-          [selectedToken.symbol]: Date.now() + e.retryAfterSeconds * 1000,
+          [selectedToken.symbol]: Date.now() + retrySeconds * 1000,
         }));
       } else if (e instanceof FaucetDrainedError) {
         setDripError(
@@ -284,11 +325,7 @@ export function FaucetPage() {
                   autoComplete="off"
                   placeholder="0x0000…0000"
                   value={address}
-                  onChange={(e) => {
-                    setAddress(e.target.value);
-                    setReceipt(null);
-                    setDripError(null);
-                  }}
+                  onChange={(e) => updateAddress(e.target.value)}
                 />
                 <button className={styles.pasteBtn} type="button" onClick={handlePaste}>
                   Paste

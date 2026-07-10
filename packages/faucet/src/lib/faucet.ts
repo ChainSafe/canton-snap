@@ -105,7 +105,13 @@ async function get<T>(baseUrl: string, path: string): Promise<T> {
 export async function getFaucetTokens(baseUrl: string): Promise<FaucetToken[]> {
   const data = await get<{ items: unknown[] }>(baseUrl, "/api/v2/faucet/tokens");
   if (!Array.isArray(data.items)) throw new Error("Unexpected faucet tokens response shape");
-  return data.items.filter(isFaucetToken).map((r) => ({
+  const valid = data.items.filter(isFaucetToken);
+  // A non-empty list where nothing validates is a contract mismatch, not an
+  // empty faucet — surface it instead of rendering "no tokens enabled".
+  if (data.items.length > 0 && valid.length === 0) {
+    throw new Error("Unexpected faucet tokens response shape");
+  }
+  return valid.map((r) => ({
     symbol: r.symbol as string,
     name: r.name as string,
     dripAmount: r.drip_amount as string,
@@ -181,7 +187,11 @@ export async function requestDrip(
   });
   const text = await res.text();
 
-  if (res.status === 404) throw new NotRegisteredError();
+  // A 404 also comes from a wrong middleware URL or a proxy that doesn't
+  // route this path — only treat it as "not registered" when the body says so.
+  if (res.status === 404 && errorMessage(text).toLowerCase().includes("not registered")) {
+    throw new NotRegisteredError();
+  }
   if (res.status === 429) {
     let retryAfter = 0;
     try {

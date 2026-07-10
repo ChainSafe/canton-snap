@@ -180,6 +180,11 @@ body {
   opacity: 0.8;
 }
 
+/* ── Spinner ── */
+.spinner-ring {
+  animation: spin 0.9s linear infinite;
+}
+
 /* ── Card ── */
 .card {
   background: linear-gradient(180deg, #1a1d2e 0%, #12141f 100%);

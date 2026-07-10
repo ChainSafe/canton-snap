@@ -43,6 +43,10 @@ jobs:
           REF: ${{ github.ref_name }}
         run: |
           if [ -n "$INPUT" ]; then
+            if [[ "$INPUT" != faucet-v* ]]; then
+              echo "ERROR: tag input must start with 'faucet-v' (got '$INPUT')" >&2
+              exit 1
+            fi
             VERSION="${INPUT#faucet-v}"
           elif [[ "$REF" == faucet-v* ]]; then
             VERSION="${REF#faucet-v}"
