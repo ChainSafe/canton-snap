@@ -7,21 +7,25 @@
   "license": "Apache-2.0",
   "workspaces": [
     "packages/snap",
-    "packages/dapp"
+    "packages/dapp",
+    "packages/faucet"
   ],
   "scripts": {
-    "build": "npm run build:snap && npm run build:dapp",
+    "build": "npm run build:snap && npm run build:dapp && npm run build:faucet",
     "build:snap": "npm -w packages/snap run build",
     "build:dapp": "npm -w packages/dapp run build",
+    "build:faucet": "npm -w packages/faucet run build",
     "watch:snap": "npm -w packages/snap run watch",
     "serve:snap": "npm -w packages/snap run serve",
     "dev:dapp": "npm -w packages/dapp run dev",
+    "dev:faucet": "npm -w packages/faucet run dev",
     "serve": "concurrently -n snap,dapp -c cyan,magenta \"npm run serve:snap\" \"npm run dev:dapp\"",
-    "test": "npm run test:snap && npm run test:dapp",
+    "test": "npm run test:snap && npm run test:dapp && npm run test:faucet",
     "test:snap": "npm -w packages/snap run test",
     "test:dapp": "npm -w packages/dapp run test",
-    "lint": "eslint packages/snap/src packages/dapp/src",
-    "lint:fix": "eslint packages/snap/src packages/dapp/src --fix",
+    "test:faucet": "npm -w packages/faucet run test",
+    "lint": "eslint packages/snap/src packages/dapp/src packages/faucet/src",
+    "lint:fix": "eslint packages/snap/src packages/dapp/src packages/faucet/src --fix",
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\""
   },

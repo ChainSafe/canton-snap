@@ -1,4 +1,5 @@
 {
   "packages/snap": "1.0.0",
-  "packages/dapp": "1.4.1"
+  "packages/dapp": "1.4.1",
+  "packages/faucet": "0.1.0"
 }

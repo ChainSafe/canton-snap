@@ -24,7 +24,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["packages/dapp/src/**/*.{ts,tsx}"],
+    files: ["packages/dapp/src/**/*.{ts,tsx}", "packages/faucet/src/**/*.{ts,tsx}"],
     plugins: { "react-hooks": reactHooks },
     rules: { ...reactHooks.configs.recommended.rules },
   },

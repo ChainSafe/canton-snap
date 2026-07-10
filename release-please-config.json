@@ -25,6 +25,12 @@
       "package-name": "@chainsafe/canton-dapp",
       "changelog-path": "CHANGELOG.md",
       "include-paths": ["packages/dapp"]
+    },
+    "packages/faucet": {
+      "component": "faucet",
+      "package-name": "@chainsafe/canton-faucet",
+      "changelog-path": "CHANGELOG.md",
+      "include-paths": ["packages/faucet"]
     }
   },
   "changelog-sections": [
