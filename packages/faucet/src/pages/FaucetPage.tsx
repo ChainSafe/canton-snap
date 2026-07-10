@@ -274,8 +274,7 @@ export function FaucetPage() {
           <p className={styles.eyebrow}>{NETWORK.name} · Faucet</p>
           <h1 className={styles.title}>Test tokens, on tap.</h1>
           <p className={styles.subtitle}>
-            Fund any registered devnet address with test tokens. Free, rate-limited, no wallet
-            connection needed.
+            Test tokens for the dapp, sent to any registered devnet address. Paste, drip, done.
           </p>
 
           {tokensError && (
