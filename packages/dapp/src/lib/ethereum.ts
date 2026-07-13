@@ -111,6 +111,11 @@ export async function sendEthTransaction(params: {
   }) as Promise<string>;
 }
 
+// EIP-1193 userRejectedRequest — the user dismissed a MetaMask prompt.
+export function isUserRejection(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: unknown }).code === 4001;
+}
+
 export function shortenAddress(address: string, chars = 4): string {
   return `${address.slice(0, chars + 2)}…${address.slice(-chars)}`;
 }

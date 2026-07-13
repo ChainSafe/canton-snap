@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import { authorizedFetch } from "./auth";
+
 export interface TokenConfig {
   address: string;
   name: string;
@@ -58,28 +60,17 @@ export interface UserProfile {
   keyMode: "custodial" | "external";
 }
 
-export class SessionExpiredError extends Error {
-  constructor() {
-    super("Session expired — please reconnect");
-  }
-}
-
+// GET /profile as `address`. Authenticated with a SIWE-issued bearer token via
+// authorizedFetch, which runs the sign-in flow when no live token is cached
+// (pass `interactive: false` to fail with SessionExpiredError instead of
+// prompting). Returns null when the address is not registered.
 export async function getUser(
   baseUrl: string,
   address: string,
-  signature: string,
-  message: string,
+  opts?: { interactive?: boolean },
 ): Promise<UserProfile | null> {
-  const res = await fetch(`${baseUrl}/profile?address=${encodeURIComponent(address)}`, {
-    headers: { "X-Signature": signature, "X-Message": message },
-  });
+  const res = await authorizedFetch(baseUrl, address, new URL(`${baseUrl}/profile`), opts);
   if (res.status === 404) return null;
-  if (res.status === 401) {
-    const body = await res.json().catch(() => ({}) as Record<string, unknown>);
-    const msg = typeof body.error === "string" ? body.error : "";
-    if (msg.includes("expired")) throw new SessionExpiredError();
-    throw new Error(msg || "Unauthorized");
-  }
   if (!res.ok) throw new Error(`Middleware error ${res.status}: ${await res.text()}`);
   const data = await res.json();
   return {
