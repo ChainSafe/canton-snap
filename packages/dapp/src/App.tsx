@@ -7,7 +7,7 @@ import { useAutoNetworkSwitch } from "./hooks/useAutoNetworkSwitch";
 import { NETWORK } from "./lib/config";
 import { NON_CUSTODIAL_ENABLED } from "./lib/features";
 import { isUserRejection } from "./lib/ethereum";
-import { NotRegisteredError, SessionExpiredError } from "./lib/auth";
+import { ensureAuthToken, NotRegisteredError, SessionExpiredError } from "./lib/auth";
 import { getUser, type UserProfile } from "./lib/middleware";
 import { getSession, clearSession, clearAllSessions } from "./lib/session";
 import { Spinner } from "./components/Spinner";
@@ -299,13 +299,23 @@ export default function App() {
         cantonPartyId={done?.cantonPartyId ?? ""}
         fingerprint={done?.fingerprint ?? ""}
         wasAlreadyRegistered={reg.wasAlreadyRegistered}
-        onDashboard={() => {
+        onDashboard={async () => {
           if (done) {
             setProfile({
               cantonPartyId: done.cantonPartyId,
               fingerprint: done.fingerprint,
               keyMode: mode === "noncustodial" ? "external" : "custodial",
             });
+          }
+          // Registration is self-authenticating, so no JWT exists yet. Run the
+          // SIWE sign-in here, tied to an explicit click, rather than letting
+          // the dashboard's first read calls pop a surprise signature prompt.
+          // A dismissed prompt stays on this page so the user can click again;
+          // any other failure falls through and the reads retry the login.
+          try {
+            await ensureAuthToken(NETWORK.middlewareUrl, address);
+          } catch (e) {
+            if (isUserRejection(e)) return;
           }
           setPage("dashboard");
         }}

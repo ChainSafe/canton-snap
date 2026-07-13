@@ -111,9 +111,12 @@ export async function sendEthTransaction(params: {
   }) as Promise<string>;
 }
 
-// EIP-1193 userRejectedRequest — the user dismissed a MetaMask prompt.
+// The user dismissed a wallet prompt: EIP-1193 userRejectedRequest (code
+// 4001), with a message fallback for providers that don't set the numeric code.
 export function isUserRejection(err: unknown): boolean {
-  return typeof err === "object" && err !== null && (err as { code?: unknown }).code === 4001;
+  if (typeof err !== "object" || err === null) return false;
+  const e = err as { code?: unknown; message?: unknown };
+  return e.code === 4001 || (typeof e.message === "string" && /reject/i.test(e.message));
 }
 
 export function shortenAddress(address: string, chars = 4): string {

@@ -105,6 +105,13 @@ async function errorMessage(res: Response): Promise<string> {
 }
 
 async function login(baseUrl: string, address: string): Promise<string | null> {
+  // Start the chain-id lookup in parallel with the nonce fetch (neither depends
+  // on the other) so the nonce spends as little of its server-side TTL as
+  // possible before the user signs. The rejection guard keeps a failed /eth
+  // call from surfacing as unhandled when the nonce 404 path returns early.
+  const chainIdPromise = middlewareChainId(baseUrl);
+  chainIdPromise.catch(() => {});
+
   const nonceRes = await fetch(`${baseUrl}/auth/nonce?address=${encodeURIComponent(address)}`);
   if (nonceRes.status === 404) {
     // No /auth routes: the middleware runs without read auth. Store a marker
@@ -122,7 +129,7 @@ async function login(baseUrl: string, address: string): Promise<string | null> {
     domain: siweDomain(),
     address: toChecksumAddress(address),
     uri: siweUri(),
-    chainId: await middlewareChainId(baseUrl),
+    chainId: await chainIdPromise,
     nonce,
     issuedAt: new Date().toISOString(),
   });
@@ -135,7 +142,11 @@ async function login(baseUrl: string, address: string): Promise<string | null> {
   });
   if (!res.ok) {
     const msg = await errorMessage(res);
-    if (res.status === 401 && msg.includes("not registered")) throw new NotRegisteredError();
+    // Matches the login service's 401 "address is not registered"
+    // (canton-middleware pkg/auth/service/login.go); case-insensitive so a
+    // phrasing tweak on the server is less likely to break new-user routing.
+    if (res.status === 401 && msg.toLowerCase().includes("not registered"))
+      throw new NotRegisteredError();
     throw new Error(`Sign-in failed (${res.status}): ${msg}`);
   }
 
@@ -165,7 +176,12 @@ export async function ensureAuthToken(
 ): Promise<string | null> {
   const live = liveSession(address);
   if (live) return live.token;
-  if (authDisabled.get(baseUrl)) return null;
+  if (authDisabled.get(baseUrl)) {
+    // Re-store the marker: a disconnect clears sessions but not this in-memory
+    // map, and without a session the auto-reconnect effect never runs.
+    storeSession(address, { token: null, expiresAt: null });
+    return null;
+  }
   if (opts?.interactive === false) throw new SessionExpiredError();
 
   const key = `${baseUrl}|${address.toLowerCase()}`;
@@ -202,8 +218,13 @@ export async function authorizedFetch(
   const res = await fetchAsCaller(url, token, address);
   if (res.status !== 401) return res;
 
-  clearSession(address);
-  authDisabled.delete(baseUrl);
+  // Drop the session only if it still holds the credentials this request used:
+  // a concurrent 401 may already have re-logged-in and stored a fresh token,
+  // which the retry should reuse rather than discard (and re-prompt for).
+  if (getSession(address)?.token === token) {
+    clearSession(address);
+    authDisabled.delete(baseUrl);
+  }
   const fresh = await ensureAuthToken(baseUrl, address, opts);
   return fetchAsCaller(url, fresh, address);
 }
