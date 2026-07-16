@@ -675,6 +675,34 @@
   margin-bottom: 16px;
 }
 
+/* ── Field-anchored errors ── */
+/* Red ring on the input that caused the error… */
+.inputInvalid,
+.inputInvalid:focus-within {
+  border-color: rgba(255, 107, 107, 0.65);
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+/* …with the message directly beneath it. */
+.fieldError {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #ff8a8a;
+}
+
+.fieldErrorIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.fieldErrorHint {
+  color: var(--text-secondary);
+}
+
 /* ── Sign card ── */
 .signCard {
   background: linear-gradient(180deg, #1e2238 0%, #141729 100%);
@@ -868,8 +896,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .statusItemDone {

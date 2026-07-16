@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { personalSign } from "./ethereum";
-import { friendlyError } from "./middleware";
+import { ApiError, apiError } from "./middleware";
 
 export interface PrepareResult {
   transferId: string;
@@ -85,7 +85,9 @@ export async function prepareTransfer(
     headers: { "Content-Type": "application/json", ...authHeaders },
     body: JSON.stringify({ ...recipientField, amount, token, validity_seconds: validitySeconds }),
   });
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  // ApiError (not plain Error) so field-specific failures — e.g. an
+  // unregistered recipient party — can be anchored to the form field.
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = await res.json();
   return {
     transferId: data.transfer_id as string,
@@ -112,7 +114,7 @@ export async function executeTransfer(
     headers: { "Content-Type": "application/json", ...authHeaders },
     body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
   });
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw apiError(res.status, await res.text());
 }
 
 // Custodial single-call transfer to a Canton party id. The middleware holds the
@@ -143,7 +145,9 @@ export async function sendCustodialTransfer(
       validity_seconds: validitySeconds,
     }),
   });
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  // ApiError (not plain Error) so field-specific failures — e.g. an
+  // unregistered recipient party — can be anchored to the form field.
+  if (!res.ok) throw apiError(res.status, await res.text());
 }
 
 // One page of a paginated transfer listing. `total` is the server-side count
@@ -211,7 +215,7 @@ export async function listIncomingTransfers(
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
   const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = (await res.json()) as PagedResponse<IncomingItemResponse>;
   return toPage(data, page, limit, (o) => ({
     contractId: o.contract_id,
@@ -307,7 +311,7 @@ export async function listOutgoingTransfers(
   if (status && status !== "all") url.searchParams.set("status", status);
 
   const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = (await res.json()) as PagedResponse<OutgoingItemResponse>;
   return toPage(data, page, limit, mapOutgoing);
 }
@@ -377,7 +381,7 @@ export async function listCompletedTransfers(
   url.searchParams.set("limit", String(limit));
 
   const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = (await res.json()) as {
     items?: CompletedItemResponse[];
     total?: number;
@@ -425,7 +429,7 @@ export async function prepareAcceptTransfer(
       body: JSON.stringify({ instrument_admin: instrumentAdmin }),
     },
   );
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = await res.json();
   return {
     transferId: data.transfer_id as string,
@@ -452,7 +456,7 @@ export async function executeAcceptTransfer(
       body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
     },
   );
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw apiError(res.status, await res.text());
 }
 
 // ── Claim back / withdraw an outgoing offer ─────────────────────────────────
@@ -467,13 +471,17 @@ export async function executeAcceptTransfer(
 // Maps the withdraw endpoints' documented failure codes to user-facing copy:
 // 404 — the offer is gone or not the caller's; 409 — it was already accepted or
 // settled on-ledger. Anything else falls back to the generic formatter.
-async function withdrawErrorMessage(res: Response): Promise<string> {
+async function withdrawError(res: Response): Promise<ApiError> {
   const body = await res.text();
   if (res.status === 404)
-    return "This offer is no longer available — it may have been accepted or already claimed back.";
+    return new ApiError(
+      "This offer is no longer available — it may have been accepted or already claimed back.",
+    );
   if (res.status === 409)
-    return "This offer can no longer be claimed back — it was already accepted or settled.";
-  return friendlyError(res.status, body);
+    return new ApiError(
+      "This offer can no longer be claimed back — it was already accepted or settled.",
+    );
+  return apiError(res.status, body);
 }
 
 export async function prepareWithdrawTransfer(
@@ -486,7 +494,7 @@ export async function prepareWithdrawTransfer(
     `${baseUrl}/api/v2/transfer/outgoing/${encodeURIComponent(contractId)}/withdraw/prepare`,
     { method: "POST", headers: authHeaders },
   );
-  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
+  if (!res.ok) throw await withdrawError(res);
   const data = await res.json();
   return {
     transferId: data.transfer_id as string,
@@ -513,7 +521,7 @@ export async function executeWithdrawTransfer(
       body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
     },
   );
-  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
+  if (!res.ok) throw await withdrawError(res);
 }
 
 // Custodial claim-back: the middleware holds the user's Canton key and signs
@@ -528,5 +536,5 @@ export async function withdrawCustodialTransfer(
     `${baseUrl}/api/v2/transfer/outgoing/${encodeURIComponent(contractId)}/withdraw/custodial`,
     { method: "POST", headers: authHeaders },
   );
-  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
+  if (!res.ok) throw await withdrawError(res);
 }
