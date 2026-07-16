@@ -319,8 +319,14 @@ export function apiError(status: number, body: string): ApiError {
   // message so the user never sees the raw JSON envelope.
   let raw: string | null = null;
   try {
-    const parsed = JSON.parse(body);
-    if (typeof parsed.error === "string") raw = parsed.error;
+    const parsed: unknown = JSON.parse(body);
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      "error" in parsed &&
+      typeof parsed.error === "string"
+    )
+      raw = parsed.error;
   } catch {
     // body wasn't JSON — handled below
   }
