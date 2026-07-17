@@ -6,7 +6,7 @@ import { DashboardLayout, type DashboardTab } from "../components/DashboardLayou
 import { PageCard } from "../components/PageCard";
 import { Spinner } from "../components/Spinner";
 import { NETWORK, isOfferBasedToken } from "../lib/config";
-import { getTokens, type TokenConfig } from "../lib/middleware";
+import { ApiError, getTokens, type TokenConfig } from "../lib/middleware";
 import {
   getTokenBalance,
   formatTokenAmount,
@@ -35,6 +35,47 @@ type ReceiptStatus = "pending" | "success" | "failed";
 const RECEIPT_POLL_INTERVAL_MS = 3000;
 
 type Step = "details" | "sign" | "done";
+
+// A form error, anchored to the input that caused it when one is known.
+// `field: null` errors (network failures, rejected signatures, …) render in
+// the banner above the form; field errors render inline under their input
+// with a red ring, per the field-anchored error design.
+interface FormError {
+  field: "recipient" | "amount" | null;
+  message: string;
+  /** Optional dimmer "how to fix it" line after the message. */
+  hint?: string;
+}
+
+// Anchor middleware ApiErrors that name a form field; everything else
+// (plain Errors, MetaMask rejections) falls back to the banner.
+function toFormError(e: unknown): FormError {
+  if (e instanceof ApiError && e.field) return { field: e.field, message: e.message, hint: e.hint };
+  const message = e instanceof Error ? e.message : typeof e === "string" ? e : "";
+  return { field: null, message: message || "Something went wrong. Please try again." };
+}
+
+function FieldErrorIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className={styles.fieldErrorIcon}>
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 4.8V8.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="8" cy="11.2" r="0.85" fill="currentColor" />
+    </svg>
+  );
+}
+
+function FieldError({ error }: { error: FormError }) {
+  return (
+    <p className={styles.fieldError} role="alert">
+      <FieldErrorIcon />
+      <span>
+        {error.message}
+        {error.hint && <span className={styles.fieldErrorHint}> {error.hint}</span>}
+      </span>
+    </p>
+  );
+}
 // "authorizing" is the second MetaMask auth signature collected inside
 // executeTransfer; "executing" is the middleware settling on Canton after it.
 type SignPhase = "idle" | "preparing" | "awaiting-snap" | "signing" | "authorizing" | "executing";
@@ -478,7 +519,7 @@ export function TransferPage({
   const [recipient, setRecipient] = useState("");
   const [validitySeconds, setValiditySeconds] = useState<number>(DEFAULT_VALIDITY_SECONDS);
   const [amount, setAmount] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FormError | null>(null);
   const [pending, setPending] = useState(false);
   const [signPhase, setSignPhase] = useState<SignPhase>("idle");
   // Custodial party sends collect a MetaMask auth signature, then wait a few
@@ -576,7 +617,7 @@ export function TransferPage({
         setSignPhase("awaiting-snap");
       } catch (e: unknown) {
         if (cancelled) return;
-        setError((e as Error).message);
+        setError(toFormError(e));
         setStep("details");
         setSignPhase("idle");
       } finally {
@@ -591,25 +632,51 @@ export function TransferPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  function validate(): string | null {
-    if (!selectedToken) return "Select a token";
+  // Client-side pre-flight checks. Copy matches the middleware mappings in
+  // lib/middleware.ts KNOWN_ERRORS so the same mistake reads the same whether
+  // it's caught here or by the server.
+  function validate(): FormError | null {
+    if (!selectedToken) return { field: null, message: "Select a token" };
     if (recipientType === "party") {
-      if (!PARTY_ID_RE.test(recipient)) return "Enter a valid Canton party id (name::fingerprint)";
+      if (!PARTY_ID_RE.test(recipient))
+        return {
+          field: "recipient",
+          message: "Enter a valid Canton party ID (name::fingerprint).",
+        };
     } else if (!recipient.match(/^0x[0-9a-fA-F]{40}$/)) {
-      return "Enter a valid 0x EVM address";
+      return { field: "recipient", message: "Enter a valid 0x EVM address." };
     }
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return "Enter a positive amount";
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0)
+      return { field: "amount", message: "Enter a positive amount." };
+    // Number() accepts forms parseTokenAmount can't (scientific notation,
+    // more decimals than the token supports) — parse here so those surface
+    // as an amount error instead of an uncaught throw in the click handler.
+    let amountUnits: bigint;
+    try {
+      amountUnits = parseTokenAmount(amount, selectedToken.decimals);
+    } catch {
+      return {
+        field: "amount",
+        message: `Enter a plain decimal amount with at most ${selectedToken.decimals} decimal places.`,
+      };
+    }
     if (usesValidity) {
       if (!Number.isFinite(validitySeconds) || validitySeconds <= 0)
-        return "Enter a valid offer expiry";
-      if (validitySeconds > MAX_VALIDITY_SECONDS) return "Offer expiry can be at most 365 days";
+        return { field: null, message: "Enter a valid offer expiry" };
+      if (validitySeconds > MAX_VALIDITY_SECONDS)
+        return { field: null, message: "Offer expiry can be at most 365 days" };
     }
     const bal = balances.get(selectedToken.address);
-    if (bal !== undefined) {
-      if (parseTokenAmount(amount, selectedToken.decimals) > bal)
-        return "Amount exceeds your balance";
-    }
+    if (bal !== undefined && amountUnits > bal)
+      return { field: "amount", message: "Amount exceeds your available balance." };
     return null;
+  }
+
+  // Editing an input dismisses the current error unless it's anchored to a
+  // *different* field — fixing the recipient shouldn't clear feedback about
+  // the amount (and vice versa). Banner errors (field: null) always clear.
+  function clearErrorFor(field: FormError["field"]) {
+    setError((e) => (e && e.field && e.field !== field ? e : null));
   }
 
   function handleContinue() {
@@ -626,7 +693,10 @@ export function TransferPage({
     if (!prepared || !selectedToken) return;
 
     if (new Date(prepared.expiresAt) <= new Date()) {
-      setError("Transfer preparation expired — please go back and try again.");
+      setError({
+        field: null,
+        message: "Transfer preparation expired — please go back and try again.",
+      });
       setPrepared(null);
       setStep("details");
       setSignPhase("idle");
@@ -675,7 +745,7 @@ export function TransferPage({
       });
       setStep("done");
     } catch (e: unknown) {
-      setError((e as Error).message);
+      setError(toFormError(e));
       setPrepared(null);
       setStep("details");
       setSignPhase("idle");
@@ -709,7 +779,7 @@ export function TransferPage({
       setReceipt({ txHash, token: selectedToken, amount, to: recipient, offer: false });
       setStep("done");
     } catch (e: unknown) {
-      setError((e as Error).message);
+      setError(toFormError(e));
     } finally {
       setPending(false);
     }
@@ -739,7 +809,11 @@ export function TransferPage({
       setReceiptStatus("success");
       setStep("done");
     } catch (e: unknown) {
-      setError((e as Error).message);
+      const err = toFormError(e);
+      setError(err);
+      // A field error means the recipient must be edited — send the user back
+      // to the details step where the anchored field is visible.
+      if (err.field) setStep("details");
     } finally {
       setPending(false);
       setCustodialPhase("idle");
@@ -801,6 +875,7 @@ export function TransferPage({
       const text = (await navigator.clipboard.readText()).trim();
       // Only the EVM-address form is checksummed; party ids are opaque strings.
       setRecipient(recipientType === "party" ? text : toChecksumAddress(text));
+      clearErrorFor("recipient");
     } catch {
       // clipboard access denied — no-op
     }
@@ -840,7 +915,12 @@ export function TransferPage({
       >
         <StepsBar step={step} />
 
-        {error && <div className={styles.errorBanner}>{error}</div>}
+        {/* Field errors render inline under their input on the details step;
+            the banner is the fallback for everything else (and for the rare
+            case a field error surfaces on another step). */}
+        {error && (!error.field || step !== "details") && (
+          <div className={styles.errorBanner}>{error.message}</div>
+        )}
 
         {/* ── Details step ── */}
         {/* Details step: one full-column card — form on the left, a live
@@ -879,31 +959,46 @@ export function TransferPage({
               {/* Recipient */}
               <div className={styles.fieldGroup}>
                 <p className={styles.fieldLabel}>RECIPIENT</p>
-                <div className={styles.recipientWrapper}>
+                <div
+                  className={cn(
+                    styles.recipientWrapper,
+                    error?.field === "recipient" && styles.inputInvalid,
+                  )}
+                >
                   <input
                     className={styles.recipientInput}
                     type="text"
                     placeholder={recipientType === "party" ? "name::fingerprint" : "0x..."}
                     value={recipient}
-                    onChange={(e) => setRecipient(e.target.value.trim())}
+                    onChange={(e) => {
+                      setRecipient(e.target.value.trim());
+                      clearErrorFor("recipient");
+                    }}
                     onBlur={handleRecipientBlur}
                     spellCheck={false}
+                    aria-invalid={error?.field === "recipient" || undefined}
                   />
                   <button className={styles.pasteBtn} type="button" onClick={handlePaste}>
                     Paste
                   </button>
                 </div>
-                {recipientValid && (
-                  <p className={styles.recipientHint}>
-                    ✓ Valid {recipientType === "party" ? "Canton party ID" : "EVM address"}
-                  </p>
+                {error?.field === "recipient" ? (
+                  <FieldError error={error} />
+                ) : (
+                  recipientValid && (
+                    <p className={styles.recipientHint}>
+                      ✓ Valid {recipientType === "party" ? "Canton party ID" : "EVM address"}
+                    </p>
+                  )
                 )}
               </div>
 
               {/* Amount */}
               <div className={styles.fieldGroup}>
                 <p className={styles.fieldLabel}>AMOUNT</p>
-                <div className={styles.amountRow}>
+                <div
+                  className={cn(styles.amountRow, error?.field === "amount" && styles.inputInvalid)}
+                >
                   <input
                     className={styles.amountInput}
                     type="text"
@@ -912,8 +1007,9 @@ export function TransferPage({
                     value={amount}
                     onChange={(e) => {
                       setAmount(e.target.value);
-                      setError(null);
+                      clearErrorFor("amount");
                     }}
+                    aria-invalid={error?.field === "amount" || undefined}
                   />
                   {selectedBalance !== undefined && selectedToken && (
                     <button
@@ -921,7 +1017,7 @@ export function TransferPage({
                       type="button"
                       onClick={() => {
                         setAmount(formatTokenAmount(selectedBalance, selectedToken.decimals));
-                        setError(null);
+                        clearErrorFor("amount");
                       }}
                     >
                       MAX
@@ -931,6 +1027,10 @@ export function TransferPage({
                     <span className={styles.amountSymbol}>{selectedToken.symbol}</span>
                   )}
                 </div>
+                {/* Unlike the recipient's "✓ Valid" hint, the balance stays
+                    visible alongside an amount error — it's exactly the number
+                    the user needs to fix "exceeds your balance". */}
+                {error?.field === "amount" && <FieldError error={error} />}
                 {selectedBalance !== undefined && selectedToken && (
                   <p className={styles.balanceHint}>
                     Balance: {formatTokenAmount(selectedBalance, selectedToken.decimals)}{" "}
@@ -945,7 +1045,15 @@ export function TransferPage({
               {usesValidity && (
                 <div className={styles.fieldGroup}>
                   <p className={styles.fieldLabel}>OFFER EXPIRY</p>
-                  <ExpiryPicker value={validitySeconds} onChange={setValiditySeconds} />
+                  <ExpiryPicker
+                    value={validitySeconds}
+                    onChange={(s) => {
+                      setValiditySeconds(s);
+                      // Expiry errors are banner errors — clear those, but
+                      // keep any field-anchored error on another input.
+                      clearErrorFor(null);
+                    }}
+                  />
                   <p className={styles.balanceHint}>
                     The recipient has this long to accept. You can cancel the offer and reclaim the
                     funds at any time until it&apos;s accepted.
