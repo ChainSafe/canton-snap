@@ -41,6 +41,12 @@ interface Routes {
 async function setup(routes: Routes = {}) {
   vi.resetModules();
 
+  // Vitest loads the workspace .env like vite does; pin the SIWE overrides to
+  // empty (= "use window.location") so a developer's local values (e.g. the
+  // devnet-testing ones) can't leak into these tests.
+  vi.stubEnv("VITE_SIWE_DOMAIN", "");
+  vi.stubEnv("VITE_SIWE_URI", "");
+
   const storage = makeStorage();
   vi.stubGlobal("sessionStorage", storage);
 
@@ -92,6 +98,7 @@ async function setup(routes: Routes = {}) {
 
 beforeEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("buildSiweMessage", () => {
