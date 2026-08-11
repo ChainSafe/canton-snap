@@ -9,6 +9,25 @@ on:
       tag:
         description: 'Tag to build (e.g. dapp-v1.1.0)'
         required: true
+  # release-please calls this directly with the fresh dapp-v* tag: tags created
+  # with the workflow's own GITHUB_TOKEN never fire the push trigger above
+  # (GitHub suppresses workflow runs for GITHUB_TOKEN-created events), so the
+  # release run must invoke the build itself — same pattern as
+  # canton-middleware's docker-build-release.yml.
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. dapp-v1.1.0)'
+        required: true
+        type: string
+      deploy_devnet:
+        description: 'Also open the devnet deploy PR against infra-kubernetes'
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      INFRA_GH_TOKEN:
+        required: true
 
 concurrency:
   group: dapp-docker-${{ github.ref }}
@@ -26,7 +45,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          # `inputs` covers both workflow_dispatch and workflow_call; on tag
+          # pushes it is empty and github.ref is the tag itself.
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -41,7 +62,7 @@ jobs:
       - name: Compute image version
         id: version
         env:
-          INPUT: ${{ github.event.inputs.tag }}
+          INPUT: ${{ inputs.tag }}
           REF: ${{ github.ref_name }}
         run: |
           if [ -n "$INPUT" ]; then
@@ -83,10 +104,14 @@ jobs:
     name: Open devnet deploy PR
     needs: build-push
     runs-on: ubuntu-latest
-    # Devnet deploys automatically on dapp-v* tag pushes; manual dispatches
-    # rebuild images only, and prod (validator-prod1/prod2) promotion stays
-    # manual. See ChainSafe/infrastructure-general#1353.
-    if: github.event_name == 'push'
+    # Devnet deploys automatically on releases: either a direct dapp-v* tag
+    # push, or a workflow_call from release-please with deploy_devnet (release
+    # tags come from GITHUB_TOKEN, which cannot fire the push trigger). Manual
+    # dispatches rebuild images only, and prod (validator-prod1/prod2)
+    # promotion stays manual. See ChainSafe/infrastructure-general#1353.
+    # Note: called workflows inherit the caller's event (push to main), so the
+    # tag-push case must check the ref, not just the event name.
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/dapp-v')) || inputs.deploy_devnet
     env:
       DIR: definitions/canton/validator-dev1
       FILE: canton-dapp-ui-values.yml

@@ -5,9 +5,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# packages: write is not used here directly — it caps what the called
+# dapp-docker.yml workflow may hold, and its build job pushes to ghcr.
 permissions:
   contents: write
   pull-requests: write
+  packages: write
   id-token: write
 
 jobs:
@@ -18,12 +21,29 @@ jobs:
       release_created: ${{ steps.release.outputs['packages/snap--release_created'] }}
       tag_name: ${{ steps.release.outputs['packages/snap--tag_name'] }}
       version: ${{ steps.release.outputs['packages/snap--version'] }}
+      dapp_release_created: ${{ steps.release.outputs['packages/dapp--release_created'] }}
+      dapp_tag_name: ${{ steps.release.outputs['packages/dapp--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # The dapp-v* tag created above comes from the workflow's GITHUB_TOKEN, and
+  # GitHub never runs workflows for GITHUB_TOKEN-created events — so
+  # dapp-docker.yml's `on: push: tags:` trigger cannot fire for releases. Call
+  # it directly instead (same pattern as canton-middleware's release flow).
+  build-dapp-image:
+    name: Build dapp image + devnet deploy PR
+    needs: release-please
+    if: needs.release-please.outputs.dapp_release_created == 'true'
+    uses: ./.github/workflows/dapp-docker.yml
+    with:
+      tag: ${{ needs.release-please.outputs.dapp_tag_name }}
+      deploy_devnet: true
+    secrets:
+      INFRA_GH_TOKEN: ${{ secrets.INFRA_GH_TOKEN }}
 
   publish:
     name: Publish to npm
