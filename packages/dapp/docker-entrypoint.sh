@@ -22,10 +22,16 @@ ESC_NETWORK=$(escape_sed "$VITE_NETWORK")
 ESC_SNAP_ID=$(escape_sed "${VITE_SNAP_ID:-}")
 ESC_NON_CUSTODIAL=$(escape_sed "${VITE_ENABLE_NON_CUSTODIAL:-}")
 
+# Optional SIWE sign-in overrides; empty means "use the dapp's own origin".
+ESC_SIWE_DOMAIN=$(escape_sed "${VITE_SIWE_DOMAIN:-}")
+ESC_SIWE_URI=$(escape_sed "${VITE_SIWE_URI:-}")
+
 find /usr/share/nginx/html \( -name '*.js' -o -name '*.html' -o -name '*.css' -o -name '*.map' \) \
   -exec sed -i \
     -e "s|__VITE_MIDDLEWARE_URL__|${ESC_URL}|g" \
     -e "s|__VITE_NETWORK__|${ESC_NETWORK}|g" \
     -e "s|__VITE_SNAP_ID__|${ESC_SNAP_ID}|g" \
     -e "s|__VITE_ENABLE_NON_CUSTODIAL__|${ESC_NON_CUSTODIAL}|g" \
+    -e "s|__VITE_SIWE_DOMAIN__|${ESC_SIWE_DOMAIN}|g" \
+    -e "s|__VITE_SIWE_URI__|${ESC_SIWE_URI}|g" \
   {} +

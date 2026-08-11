@@ -45,6 +45,13 @@ cp packages/dapp/.env.example packages/dapp/.env
 
 Edit each `.env` as needed. For local snap dev set `VITE_SNAP_ID=local:http://localhost:4040` in `packages/dapp/.env`; the port must match `VITE_SNAP_PORT` in `packages/snap/.env` (default: `4040`).
 
+If the middleware stack has read-endpoint auth enabled (an `auth` block in its api-server config), the SIWE sign-in message must match that config's `domain`/`uri`. The local docker stack expects `localhost` / `http://localhost`, while the dev server runs on port 3000, so also set in `packages/dapp/.env`:
+
+```bash
+VITE_SIWE_DOMAIN=localhost
+VITE_SIWE_URI=http://localhost
+```
+
 ---
 
 ## Starting the Dev Servers
