@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.5.0...dapp-v1.6.0) (2026-08-11)
+
+
+### Features
+
+* **dapp:** authenticate read endpoints with SIWE-issued JWT ([#98](https://github.com/ChainSafe/canton-snap/issues/98)) ([97fb82d](https://github.com/ChainSafe/canton-snap/commit/97fb82dd9dc01cdda26d011aaf7748cdf778a837))
+
 ## [1.5.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.4.1...dapp-v1.5.0) (2026-07-17)
 
 
