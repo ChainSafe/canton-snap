@@ -23,6 +23,7 @@ jobs:
       packages: write
     outputs:
       version: ${{ steps.version.outputs.version }}
+      is_latest: ${{ steps.version.outputs.is_latest }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -83,10 +84,11 @@ jobs:
     name: Open devnet deploy PR
     needs: build-push
     runs-on: ubuntu-latest
-    # Devnet deploys automatically on dapp-v* tag pushes; manual dispatches
-    # rebuild images only, and prod (validator-prod1/prod2) promotion stays
-    # manual. See ChainSafe/infrastructure-general#1353.
-    if: github.event_name == 'push'
+    # Devnet deploys automatically on stable dapp-v* tag pushes (no prerelease
+    # suffix); manual dispatches rebuild images only, and prod
+    # (validator-prod1/prod2) promotion stays manual.
+    # See ChainSafe/infrastructure-general#1353.
+    if: github.event_name == 'push' && needs.build-push.outputs.is_latest == 'true' && needs.build-push.outputs.version != ''
     env:
       DIR: definitions/canton/validator-dev1
       FILE: canton-dapp-ui-values.yml
@@ -102,7 +104,8 @@ jobs:
         env:
           VERSION: ${{ needs.build-push.outputs.version }}
         run: |
-          yq e '.["canton-dapp-ui"].image.tag = strenv(VERSION)' -i "${DIR}/${FILE}"
+          yq e '.["canton-dapp-ui"].image.tag = strenv(VERSION) | .["canton-dapp-ui"].image.tag style="double"' \
+            -i "${DIR}/${FILE}"
 
       - name: Create signed commit and open PR
         env:
