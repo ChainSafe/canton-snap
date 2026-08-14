@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useCallback, useEffect, useState } from "react";
-import { watchAsset } from "../lib/ethereum";
+import { isUserRejection, watchAsset } from "../lib/ethereum";
 import { ensureChainAdded } from "../lib/network";
 import type { NetworkConfig } from "../lib/config";
 import type { TokenConfig } from "../lib/middleware";
@@ -62,11 +62,6 @@ function hydrate(address: string, networkId: string): State {
     tokens[addr] = { status: "success" };
   }
   return { tokens };
-}
-
-function isUserRejection(err: unknown): boolean {
-  const e = err as { code?: number; message?: string };
-  return e?.code === 4001 || /reject/i.test(e?.message ?? "");
 }
 
 function formatError(err: unknown): string {

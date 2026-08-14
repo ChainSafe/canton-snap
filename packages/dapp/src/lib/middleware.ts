@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import { authorizedFetch } from "./auth";
+
 export interface TokenConfig {
   address: string;
   name: string;
@@ -58,28 +60,17 @@ export interface UserProfile {
   keyMode: "custodial" | "external";
 }
 
-export class SessionExpiredError extends Error {
-  constructor() {
-    super("Session expired — please reconnect");
-  }
-}
-
+// GET /profile as `address`. Authenticated with a SIWE-issued bearer token via
+// authorizedFetch, which runs the sign-in flow when no live token is cached
+// (pass `interactive: false` to fail with SessionExpiredError instead of
+// prompting). Returns null when the address is not registered.
 export async function getUser(
   baseUrl: string,
   address: string,
-  signature: string,
-  message: string,
+  opts?: { interactive?: boolean },
 ): Promise<UserProfile | null> {
-  const res = await fetch(`${baseUrl}/profile?address=${encodeURIComponent(address)}`, {
-    headers: { "X-Signature": signature, "X-Message": message },
-  });
+  const res = await authorizedFetch(baseUrl, address, new URL(`${baseUrl}/profile`), opts);
   if (res.status === 404) return null;
-  if (res.status === 401) {
-    const body = await res.json().catch(() => ({}) as Record<string, unknown>);
-    const msg = typeof body.error === "string" ? body.error : "";
-    if (msg.includes("expired")) throw new SessionExpiredError();
-    throw new Error(msg || "Unauthorized");
-  }
   if (!res.ok) throw new Error(`Middleware error ${res.status}: ${await res.text()}`);
   const data = await res.json();
   return {
@@ -121,21 +112,233 @@ async function post<T>(baseUrl: string, path: string, body: unknown): Promise<T>
   return JSON.parse(text);
 }
 
-export function friendlyError(status: number, body: string): string {
-  if (status === 403) {
-    try {
-      const parsed = JSON.parse(body);
-      if (
-        typeof parsed.error === "string" &&
-        parsed.error.toLowerCase().includes("not whitelisted")
-      ) {
-        return "Your address is not whitelisted for registration. Ask your Canton administrator to whitelist this address on the middleware.";
-      }
-    } catch {
-      // body wasn't JSON — fall through
-    }
+// The form input a middleware error is about, when it maps to one. Pages use
+// this to anchor the message to that field (red ring + inline text) instead
+// of showing a generic banner.
+export type ApiErrorField = "recipient" | "amount";
+
+export class ApiError extends Error {
+  readonly field?: ApiErrorField;
+  /** Optional secondary "how to fix it" line, rendered dimmer than the message. */
+  readonly hint?: string;
+  constructor(message: string, field?: ApiErrorField, hint?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.field = field;
+    this.hint = hint;
   }
-  return `${status}: ${body}`;
+}
+
+// Known middleware error strings mapped to user-facing copy, covering every
+// client-facing message the transfer endpoints emit (canton-middleware
+// pkg/transfer/{http,service}.go — all responses there use fixed strings; the
+// only dynamic part is the token symbol below). Matched as lowercase
+// substrings of the server's `error` field so minor upstream wording changes
+// (punctuation, casing) don't break the mapping; first matching entry wins,
+// so keep more specific strings above general ones. Unmatched messages fall
+// through to apiError's cleaned-up default.
+const KNOWN_ERRORS: {
+  match: string[];
+  message: (raw: string) => string;
+  field?: ApiErrorField;
+  hint?: string;
+}[] = [
+  // ── Registration ──
+  {
+    match: ["not whitelisted"],
+    message: () =>
+      "Your address is not whitelisted for registration. Ask your Canton administrator to whitelist this address on the middleware.",
+  },
+
+  // ── Recipient (anchored to the recipient field) ──
+  {
+    // canton-middleware#362 — "recipient party is not registered with this
+    // service and <TOKEN> does not support transfers to external parties".
+    match: ["recipient party is not registered", "external parties"],
+    message: (raw) => {
+      const token = raw.match(/and (\S+) does not support/)?.[1];
+      return `Transfers to external parties aren't supported for ${token ?? "this token"}.`;
+    },
+    field: "recipient",
+  },
+  {
+    match: ["recipient party id is not known on the network"],
+    message: () => "This party ID isn't known on the Canton network.",
+    field: "recipient",
+    hint: "Double-check the party ID with the recipient.",
+  },
+  {
+    match: ["could not verify recipient party id"],
+    message: () => "Couldn't verify the recipient party ID — please try again in a moment.",
+    field: "recipient",
+  },
+  {
+    match: ["recipient not found"],
+    message: () => "This address isn't registered with this service.",
+    field: "recipient",
+    hint: "Double-check the address, or ask the recipient to register first.",
+  },
+  {
+    match: ["invalid recipient party id"],
+    message: () => "Enter a valid Canton party ID (name::fingerprint).",
+    field: "recipient",
+  },
+  {
+    match: ["invalid recipient address"],
+    message: () => "Enter a valid 0x EVM address.",
+    field: "recipient",
+  },
+  {
+    match: ["cannot transfer to self"],
+    message: () => "You can't send a transfer to yourself.",
+    field: "recipient",
+  },
+
+  // ── Amount (anchored to the amount field) ──
+  {
+    match: ["insufficient balance"],
+    message: () => "Amount exceeds your available balance.",
+    field: "amount",
+    hint: "Funds locked in pending outgoing offers can't be spent until the offer completes or is claimed back.",
+  },
+  {
+    match: ["invalid amount"],
+    message: () => "Enter a positive amount.",
+    field: "amount",
+  },
+
+  // ── Form / request validation (banner) ──
+  {
+    match: ["unsupported token"],
+    message: () => "This token isn't supported for transfers.",
+  },
+  {
+    match: ["validity_seconds must be a positive"],
+    message: () => "Enter a valid offer expiry.",
+  },
+  {
+    match: ["validity_seconds is too large"],
+    message: () => "Offer expiry is too long — pick a shorter one.",
+  },
+
+  // ── Auth / account state ──
+  {
+    match: ["message expired or invalid format"],
+    message: () => "Your authentication signature expired — please try again.",
+  },
+  {
+    match: ["authentication required"],
+    message: () => "Authentication failed — please reconnect your wallet and try again.",
+  },
+  {
+    match: ["user not found"],
+    message: () => "Your wallet isn't registered with this service — register before transferring.",
+  },
+  {
+    match: ["requires key_mode"],
+    message: () =>
+      "This action isn't available for your account type — try disconnecting and reconnecting your wallet.",
+  },
+
+  // ── Signing / prepared-transfer lifecycle ──
+  {
+    match: ["signature fingerprint does not match"],
+    message: () =>
+      "Your signing key doesn't match the key registered for this account — reconnect the Canton Snap and try again.",
+  },
+  {
+    match: ["signature verification failed"],
+    message: () => "Signature verification failed on the ledger — please try signing again.",
+  },
+  {
+    match: ["invalid der signature"],
+    message: () => "The signature couldn't be processed — please try signing again.",
+  },
+  // Auth-header signature check — distinct from the two above. Keep below
+  // them so their more specific strings match first.
+  {
+    match: ["invalid signature"],
+    message: () => "Wallet signature verification failed — please try again.",
+  },
+  {
+    match: ["transfer not found"],
+    message: () => "This transfer session has expired — please start again.",
+  },
+  {
+    match: ["transfer expired"],
+    message: () => "The prepared transfer expired — please start again.",
+  },
+
+  // ── Ledger / server side ──
+  {
+    match: ["transfer rejected by the ledger"],
+    message: () =>
+      "The ledger rejected this transfer — verify the recipient party ID and amount, then try again.",
+  },
+  {
+    match: ["conflicted with a concurrent operation"],
+    message: () => "The transfer conflicted with another operation — please try again.",
+  },
+  {
+    match: ["ledger temporarily unavailable"],
+    message: () => "The Canton ledger is temporarily unavailable — please try again in a moment.",
+  },
+  {
+    match: ["unexpected service error"],
+    message: () => "Something went wrong on the server — please try again in a moment.",
+  },
+  {
+    match: ["internal server error"],
+    message: () => "Something went wrong on the server — please try again in a moment.",
+  },
+
+  // ── Malformed requests (dapp bugs — users can't fix these by editing the
+  // form, so show a generic retry). Kept LAST: "required" would otherwise
+  // shadow more specific messages like "authentication required". ──
+  {
+    match: ["invalid json"],
+    message: () => "The request was malformed — please refresh the page and try again.",
+  },
+  {
+    match: ["required"],
+    message: () => "The request was malformed — please refresh the page and try again.",
+  },
+];
+
+export function apiError(status: number, body: string): ApiError {
+  // Middleware errors are `{"error": "...", "code": 400}` — pull out the
+  // message so the user never sees the raw JSON envelope.
+  let raw: string | null = null;
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      "error" in parsed &&
+      typeof parsed.error === "string"
+    )
+      raw = parsed.error;
+  } catch {
+    // body wasn't JSON — handled below
+  }
+
+  if (raw !== null) {
+    const lower = raw.toLowerCase();
+    for (const { match, message, field, hint } of KNOWN_ERRORS) {
+      if (match.every((m) => lower.includes(m))) return new ApiError(message(raw), field, hint);
+    }
+    const msg = raw.trim();
+    if (msg) return new ApiError(msg.charAt(0).toUpperCase() + msg.slice(1));
+  }
+
+  // Empty or non-JSON body — a proxy/gateway response, not the middleware.
+  // Never show it raw (it can be a whole HTML page); the status code is the
+  // one useful datum for a support report, so keep it.
+  return new ApiError(`The request failed (HTTP ${status}). Please try again.`);
+}
+
+export function friendlyError(status: number, body: string): string {
+  return apiError(status, body).message;
 }
 
 export interface RegisterResult {

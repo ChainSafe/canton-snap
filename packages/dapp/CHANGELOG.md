@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.5.0...dapp-v1.6.0) (2026-08-11)
+
+
+### Features
+
+* **dapp:** authenticate read endpoints with SIWE-issued JWT ([#98](https://github.com/ChainSafe/canton-snap/issues/98)) ([97fb82d](https://github.com/ChainSafe/canton-snap/commit/97fb82dd9dc01cdda26d011aaf7748cdf778a837))
+
+## [1.5.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.4.1...dapp-v1.5.0) (2026-07-17)
+
+
+### Features
+
+* **dapp:** user-friendly transfer errors with field-anchored display ([#99](https://github.com/ChainSafe/canton-snap/issues/99)) ([e9928d9](https://github.com/ChainSafe/canton-snap/commit/e9928d9166bdf5a43a35ad231303a3273332208a))
+
 ## [1.4.1](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.4.0...dapp-v1.4.1) (2026-07-08)
 
 

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import { authorizedFetch } from "./auth";
 import { personalSign } from "./ethereum";
-import { friendlyError } from "./middleware";
+import { ApiError, apiError } from "./middleware";
 
 export interface PrepareResult {
   transferId: string;
@@ -34,11 +35,10 @@ export const VALIDITY_PRESETS: readonly ValidityPreset[] = [
 // Default offer validity (1 day) — used when the caller doesn't specify one.
 export const DEFAULT_VALIDITY_SECONDS = 86400;
 
-// Server-truncated party identifiers (e.g. `user_2dA…4680b7ec`). The endpoint
-// is unauthenticated, so the middleware redacts the fingerprint portion of the
-// party id; the truncated form is sufficient for the dapp to disambiguate
-// offers in the UI and to display "From <short>" without leaking enough to
-// enumerate counterparties.
+// Server-truncated party identifiers (e.g. `user_2dA…4680b7ec`). The middleware
+// redacts the fingerprint portion of the party id; the truncated form is
+// sufficient for the dapp to disambiguate offers in the UI and to display
+// "From <short>" without leaking enough to enumerate counterparties.
 export interface IncomingTransfer {
   contractId: string;
   senderPartyId: string;
@@ -85,7 +85,9 @@ export async function prepareTransfer(
     headers: { "Content-Type": "application/json", ...authHeaders },
     body: JSON.stringify({ ...recipientField, amount, token, validity_seconds: validitySeconds }),
   });
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  // ApiError (not plain Error) so field-specific failures — e.g. an
+  // unregistered recipient party — can be anchored to the form field.
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = await res.json();
   return {
     transferId: data.transfer_id as string,
@@ -112,7 +114,7 @@ export async function executeTransfer(
     headers: { "Content-Type": "application/json", ...authHeaders },
     body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
   });
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw apiError(res.status, await res.text());
 }
 
 // Custodial single-call transfer to a Canton party id. The middleware holds the
@@ -143,7 +145,9 @@ export async function sendCustodialTransfer(
       validity_seconds: validitySeconds,
     }),
   });
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  // ApiError (not plain Error) so field-specific failures — e.g. an
+  // unregistered recipient party — can be anchored to the form field.
+  if (!res.ok) throw apiError(res.status, await res.text());
 }
 
 // One page of a paginated transfer listing. `total` is the server-side count
@@ -198,8 +202,9 @@ function toPage<T, R>(
   };
 }
 
-// GET /api/v2/transfer/incoming?address=<addr>&page=&limit=. Unauthenticated;
-// returns one page of pending inbound offers plus the server-side total.
+// GET /api/v2/transfer/incoming?page=&limit= as `address` (SIWE-issued bearer
+// token; legacy ?address= when the middleware runs without read auth). Returns
+// one page of pending inbound offers plus the server-side total.
 export async function listIncomingTransfers(
   baseUrl: string,
   address: string,
@@ -207,11 +212,10 @@ export async function listIncomingTransfers(
   limit: number = OFFERS_PAGE_LIMIT,
 ): Promise<TransfersPage<IncomingTransfer>> {
   const url = new URL(`${baseUrl}/api/v2/transfer/incoming`);
-  url.searchParams.set("address", address);
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  const res = await authorizedFetch(baseUrl, address, url);
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = (await res.json()) as PagedResponse<IncomingItemResponse>;
   return toPage(data, page, limit, (o) => ({
     contractId: o.contract_id,
@@ -229,8 +233,7 @@ export async function listIncomingTransfers(
 
 // An outgoing transfer the queried party has offered. Mirrors IncomingTransfer
 // but adds the lifecycle fields the Offers tab splits on: `status` and
-// `expiresAt`. Party ids are truncated server-side (the endpoint is
-// unauthenticated), same as incoming offers.
+// `expiresAt`. Party ids are truncated server-side, same as incoming offers.
 //
 // "canceled" = the sender withdrew (claimed back) the offer; "rejected" = the
 // receiver declined it. Both are terminal, funds returned to the sender; they
@@ -290,9 +293,9 @@ function mapOutgoing(o: OutgoingItemResponse): OutgoingTransfer {
   };
 }
 
-// GET /api/v2/transfer/outgoing?address=<addr>&status=<status>&page=&limit=.
-// Unauthenticated; returns one page plus the server-side total for the given
-// status filter (or all statuses when omitted).
+// GET /api/v2/transfer/outgoing?status=<status>&page=&limit= as `address`
+// (bearer-authenticated, same as incoming). Returns one page plus the
+// server-side total for the given status filter (or all statuses when omitted).
 export async function listOutgoingTransfers(
   baseUrl: string,
   address: string,
@@ -301,13 +304,12 @@ export async function listOutgoingTransfers(
   limit: number = OFFERS_PAGE_LIMIT,
 ): Promise<TransfersPage<OutgoingTransfer>> {
   const url = new URL(`${baseUrl}/api/v2/transfer/outgoing`);
-  url.searchParams.set("address", address);
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
   if (status && status !== "all") url.searchParams.set("status", status);
 
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  const res = await authorizedFetch(baseUrl, address, url);
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = (await res.json()) as PagedResponse<OutgoingItemResponse>;
   return toPage(data, page, limit, mapOutgoing);
 }
@@ -316,8 +318,8 @@ export async function listOutgoingTransfers(
 //
 // A settled transfer in the unified history, across all tokens and both
 // transfer shapes (direct CIP-56 and accepted offers). Party ids are truncated
-// server-side (the endpoint is unauthenticated). `txId` is a Canton ledger
-// update id — not an EVM tx hash, so it isn't block-explorer linkable.
+// server-side. `txId` is a Canton ledger update id — not an EVM tx hash, so it
+// isn't block-explorer linkable.
 export interface CompletedTransfer {
   contractId: string;
   kind: string; // "direct" | "offer"
@@ -362,9 +364,10 @@ interface CompletedItemResponse {
   contract_address?: string;
 }
 
-// GET /api/v2/transfer/completed?address=&page=&limit=. Unauthenticated; returns
-// one page of settled transfers (sender + receiver) for the address. Page-based
-// so the Activity tab can "Load more" rather than buffer the whole history.
+// GET /api/v2/transfer/completed?page=&limit= as `address` (bearer-
+// authenticated, same as incoming). Returns one page of settled transfers
+// (sender + receiver) for the caller. Page-based so the Activity tab can
+// "Load more" rather than buffer the whole history.
 export async function listCompletedTransfers(
   baseUrl: string,
   address: string,
@@ -372,12 +375,11 @@ export async function listCompletedTransfers(
   limit: number = COMPLETED_PAGE_LIMIT,
 ): Promise<CompletedTransfersPage> {
   const url = new URL(`${baseUrl}/api/v2/transfer/completed`);
-  url.searchParams.set("address", address);
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
 
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  const res = await authorizedFetch(baseUrl, address, url);
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = (await res.json()) as {
     items?: CompletedItemResponse[];
     total?: number;
@@ -425,7 +427,7 @@ export async function prepareAcceptTransfer(
       body: JSON.stringify({ instrument_admin: instrumentAdmin }),
     },
   );
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw apiError(res.status, await res.text());
   const data = await res.json();
   return {
     transferId: data.transfer_id as string,
@@ -452,7 +454,7 @@ export async function executeAcceptTransfer(
       body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
     },
   );
-  if (!res.ok) throw new Error(friendlyError(res.status, await res.text()));
+  if (!res.ok) throw apiError(res.status, await res.text());
 }
 
 // ── Claim back / withdraw an outgoing offer ─────────────────────────────────
@@ -467,13 +469,17 @@ export async function executeAcceptTransfer(
 // Maps the withdraw endpoints' documented failure codes to user-facing copy:
 // 404 — the offer is gone or not the caller's; 409 — it was already accepted or
 // settled on-ledger. Anything else falls back to the generic formatter.
-async function withdrawErrorMessage(res: Response): Promise<string> {
+async function withdrawError(res: Response): Promise<ApiError> {
   const body = await res.text();
   if (res.status === 404)
-    return "This offer is no longer available — it may have been accepted or already claimed back.";
+    return new ApiError(
+      "This offer is no longer available — it may have been accepted or already claimed back.",
+    );
   if (res.status === 409)
-    return "This offer can no longer be claimed back — it was already accepted or settled.";
-  return friendlyError(res.status, body);
+    return new ApiError(
+      "This offer can no longer be claimed back — it was already accepted or settled.",
+    );
+  return apiError(res.status, body);
 }
 
 export async function prepareWithdrawTransfer(
@@ -486,7 +492,7 @@ export async function prepareWithdrawTransfer(
     `${baseUrl}/api/v2/transfer/outgoing/${encodeURIComponent(contractId)}/withdraw/prepare`,
     { method: "POST", headers: authHeaders },
   );
-  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
+  if (!res.ok) throw await withdrawError(res);
   const data = await res.json();
   return {
     transferId: data.transfer_id as string,
@@ -513,7 +519,7 @@ export async function executeWithdrawTransfer(
       body: JSON.stringify({ transfer_id: transferId, signature, signed_by: signedBy }),
     },
   );
-  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
+  if (!res.ok) throw await withdrawError(res);
 }
 
 // Custodial claim-back: the middleware holds the user's Canton key and signs
@@ -528,5 +534,5 @@ export async function withdrawCustodialTransfer(
     `${baseUrl}/api/v2/transfer/outgoing/${encodeURIComponent(contractId)}/withdraw/custodial`,
     { method: "POST", headers: authHeaders },
   );
-  if (!res.ok) throw new Error(await withdrawErrorMessage(res));
+  if (!res.ok) throw await withdrawError(res);
 }

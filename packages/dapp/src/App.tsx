@@ -6,9 +6,10 @@ import { useRegistration } from "./hooks/useRegistration";
 import { useAutoNetworkSwitch } from "./hooks/useAutoNetworkSwitch";
 import { NETWORK } from "./lib/config";
 import { NON_CUSTODIAL_ENABLED } from "./lib/features";
-import { personalSign } from "./lib/ethereum";
-import { getUser, SessionExpiredError, type UserProfile } from "./lib/middleware";
-import { getSession, storeSession, clearSession, clearAllSessions } from "./lib/session";
+import { isUserRejection } from "./lib/ethereum";
+import { ensureAuthToken, NotRegisteredError, SessionExpiredError } from "./lib/auth";
+import { getUser, type UserProfile } from "./lib/middleware";
+import { getSession, clearSession, clearAllSessions } from "./lib/session";
 import { Spinner } from "./components/Spinner";
 import { LandingPage } from "./pages/LandingPage";
 import { RegistrationChoicePage } from "./pages/RegistrationChoicePage";
@@ -89,20 +90,21 @@ export default function App() {
   useAutoNetworkSwitch(NETWORK, mm.address);
 
   // Auto-reconnect on refresh: if MetaMask already has an account and we have a
-  // cached session signature, skip the landing page and go straight to dashboard.
+  // cached session token, skip the landing page and go straight to dashboard.
+  // Non-interactive so a page load never pops a MetaMask signature prompt — an
+  // expired session just lands back on the connect button.
   useEffect(() => {
     if (page !== "landing") return;
     if (mm.autoConnecting) return;
     const addr = mm.address;
     if (!addr) return;
 
-    const session = getSession(addr);
-    if (!session) return;
+    if (!getSession(addr)) return;
 
     // setReconnecting via .then() so it's in a callback, not the synchronous effect body.
     Promise.resolve()
       .then(() => setReconnecting(true))
-      .then(() => getUser(NETWORK.middlewareUrl, addr, session.signature, session.message))
+      .then(() => getUser(NETWORK.middlewareUrl, addr, { interactive: false }))
       .then((existing) => {
         if (existing) {
           setProfile(existing);
@@ -200,31 +202,13 @@ export default function App() {
           const addr = await mm.connect();
           if (!addr) return;
 
-          // Get or create a session signature for authenticating GET /user.
-          // If the server rejects the cached signature as expired, clear it and re-sign once.
-          const freshSign = async () => {
-            const message = `login:${addr.toLowerCase()}:${Math.floor(Date.now() / 1000)}`;
-            const signature = await personalSign(message, addr);
-            storeSession(addr, message, signature);
-            return { message, signature };
-          };
-
-          let session = getSession(addr);
-          if (!session) {
-            try {
-              session = await freshSign();
-            } catch {
-              return; // user rejected signing
-            }
-          }
-
           try {
-            const existing = await getUser(
-              NETWORK.middlewareUrl,
-              addr,
-              session.signature,
-              session.message,
-            );
+            // getUser runs the SIWE sign-in (nonce + personal_sign +
+            // /auth/login) when no live token is cached, so this is where the
+            // one MetaMask signature prompt happens. The middleware only
+            // issues tokens to registered addresses, so a fresh address
+            // surfaces as NotRegisteredError rather than a null profile.
+            const existing = await getUser(NETWORK.middlewareUrl, addr);
             if (existing) {
               setProfile(existing);
               setPage("dashboard");
@@ -232,32 +216,12 @@ export default function App() {
               goRegister();
             }
           } catch (e) {
-            if (e instanceof SessionExpiredError) {
-              clearSession(addr);
-              try {
-                session = await freshSign();
-              } catch {
-                return; // user rejected re-signing
-              }
-              try {
-                const existing = await getUser(
-                  NETWORK.middlewareUrl,
-                  addr,
-                  session.signature,
-                  session.message,
-                );
-                if (existing) {
-                  setProfile(existing);
-                  setPage("dashboard");
-                } else {
-                  goRegister();
-                }
-              } catch (e2) {
-                setConnectError((e2 as Error).message);
-              }
-            } else {
-              setConnectError((e as Error).message);
+            if (e instanceof NotRegisteredError) {
+              goRegister();
+              return;
             }
+            if (isUserRejection(e)) return; // user dismissed the signature prompt
+            setConnectError((e as Error).message);
           }
         }}
       />
@@ -335,13 +299,23 @@ export default function App() {
         cantonPartyId={done?.cantonPartyId ?? ""}
         fingerprint={done?.fingerprint ?? ""}
         wasAlreadyRegistered={reg.wasAlreadyRegistered}
-        onDashboard={() => {
+        onDashboard={async () => {
           if (done) {
             setProfile({
               cantonPartyId: done.cantonPartyId,
               fingerprint: done.fingerprint,
               keyMode: mode === "noncustodial" ? "external" : "custodial",
             });
+          }
+          // Registration is self-authenticating, so no JWT exists yet. Run the
+          // SIWE sign-in here, tied to an explicit click, rather than letting
+          // the dashboard's first read calls pop a surprise signature prompt.
+          // A dismissed prompt stays on this page so the user can click again;
+          // any other failure falls through and the reads retry the login.
+          try {
+            await ensureAuthToken(NETWORK.middlewareUrl, address);
+          } catch (e) {
+            if (isUserRejection(e)) return;
           }
           setPage("dashboard");
         }}

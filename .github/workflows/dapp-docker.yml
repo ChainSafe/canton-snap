@@ -84,8 +84,14 @@ jobs:
     name: Open devnet deploy PR
     needs: build-push
     runs-on: ubuntu-latest
-    # Deploy stable releases only (tag push, no prerelease suffix).
+    # Devnet deploys automatically on stable dapp-v* tag pushes (no prerelease
+    # suffix); manual dispatches rebuild images only, and prod
+    # (validator-prod1/prod2) promotion stays manual.
+    # See ChainSafe/infrastructure-general#1353.
     if: github.event_name == 'push' && needs.build-push.outputs.is_latest == 'true' && needs.build-push.outputs.version != ''
+    env:
+      DIR: definitions/canton/validator-dev1
+      FILE: canton-dapp-ui-values.yml
     steps:
       - name: Checkout infra-kubernetes
         uses: actions/checkout@v4
@@ -97,50 +103,70 @@ jobs:
       - name: Update image tag
         env:
           VERSION: ${{ needs.build-push.outputs.version }}
-          DIR: definitions/canton/validator-dev1
         run: |
           yq e '.["canton-dapp-ui"].image.tag = strenv(VERSION) | .["canton-dapp-ui"].image.tag style="double"' \
-            -i "${DIR}/canton-dapp-ui-values.yml"
+            -i "${DIR}/${FILE}"
 
       - name: Create signed commit and open PR
         env:
           VERSION: ${{ needs.build-push.outputs.version }}
           GH_TOKEN: ${{ secrets.INFRA_GH_TOKEN }}
-          DIR: definitions/canton/validator-dev1
           REPO: ChainSafe/infra-kubernetes
           SOURCE_REPO: ${{ github.repository }}
           SOURCE_SHA: ${{ github.sha }}
         run: |
-          FILE="canton-dapp-ui-values.yml"
           BRANCH="cd/devnet-canton-dapp-${VERSION}"
           COMMIT_MSG="chore(devnet): deploy canton-dapp ${VERSION}"
 
+          # Get current HEAD SHA of main
           HEAD_SHA=$(gh api repos/${REPO}/git/ref/heads/main --jq '.object.sha')
+
+          # Create branch pointing at main HEAD (no-op if already exists)
           gh api repos/${REPO}/git/refs \
             --method POST \
             --field ref="refs/heads/${BRANCH}" \
             --field sha="${HEAD_SHA}" > /dev/null 2>&1 || true
 
+          # Get current branch HEAD SHA
           BRANCH_SHA=$(gh api repos/${REPO}/git/ref/heads/${BRANCH} --jq '.object.sha')
 
-          ADDITIONS=$(jq -nc \
-            --arg path "${DIR}/${FILE}" \
-            --arg contents "$(base64 -w0 ${DIR}/${FILE})" \
-            '[{path: $path, contents: $contents}]')
+          # Commit the bump unless the branch already has it (idempotent
+          # re-run). Everything after this block always runs, so a re-run
+          # repairs a missing PR instead of exiting early.
+          BRANCH_TAG=$(gh api "repos/${REPO}/contents/${DIR}/${FILE}?ref=${BRANCH}" \
+            -H "Accept: application/vnd.github.raw" 2>/dev/null \
+            | yq e '.["canton-dapp-ui"].image.tag' - 2>/dev/null || echo "")
+          if [ "$BRANCH_TAG" = "$VERSION" ]; then
+            echo "Branch already at tag ${VERSION}, skipping commit"
+          else
+            # Commits via createCommitOnBranch are automatically signed by
+            # GitHub (Verified).
+            ADDITIONS=$(jq -nc \
+              --arg path "${DIR}/${FILE}" \
+              --arg contents "$(base64 -w0 ${DIR}/${FILE})" \
+              '[{path: $path, contents: $contents}]')
 
-          jq -nc \
-            --arg repo "$REPO" --arg branch "$BRANCH" --arg oid "$BRANCH_SHA" \
-            --arg msg "$COMMIT_MSG" --argjson additions "$ADDITIONS" \
-            '{
-              query: "mutation($repo: String!, $branch: String!, $oid: GitObjectID!, $msg: String!, $additions: [FileAddition!]!) { createCommitOnBranch(input: { branch: { repositoryNameWithOwner: $repo, branchName: $branch }, message: { headline: $msg }, fileChanges: { additions: $additions }, expectedHeadOid: $oid }) { commit { url } } }",
-              variables: { repo: $repo, branch: $branch, oid: $oid, msg: $msg, additions: $additions }
-            }' | gh api graphql --input -
+            jq -nc \
+              --arg repo "$REPO" --arg branch "$BRANCH" --arg oid "$BRANCH_SHA" \
+              --arg msg "$COMMIT_MSG" --argjson additions "$ADDITIONS" \
+              '{
+                query: "mutation($repo: String!, $branch: String!, $oid: GitObjectID!, $msg: String!, $additions: [FileAddition!]!) { createCommitOnBranch(input: { branch: { repositoryNameWithOwner: $repo, branchName: $branch }, message: { headline: $msg }, fileChanges: { additions: $additions }, expectedHeadOid: $oid }) { commit { url } } }",
+                variables: { repo: $repo, branch: $branch, oid: $oid, msg: $msg, additions: $additions }
+              }' | gh api graphql --input -
+          fi
 
-          gh pr create \
-            --repo "${REPO}" \
-            --title "${COMMIT_MSG}" \
-            --body "Automated devnet deploy. Source: [${SOURCE_REPO}@${SOURCE_SHA:0:7}](https://github.com/${SOURCE_REPO}/commit/${SOURCE_SHA})" \
-            --base main \
-            --head "${BRANCH}" \
-          || true
+          # Ensure the deploy PR exists. Create failures are fatal: a missing
+          # PR must surface as a red job, not a silently skipped deploy.
+          PR_NUM=$(gh pr list --repo "${REPO}" --head "${BRANCH}" --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -z "${PR_NUM}" ]; then
+            gh pr create \
+              --repo "${REPO}" \
+              --title "${COMMIT_MSG}" \
+              --body "Automated devnet deploy to \`validator-dev1\`. Source: [${SOURCE_REPO}@${SOURCE_SHA:0:7}](https://github.com/${SOURCE_REPO}/commit/${SOURCE_SHA})" \
+              --base main \
+              --head "${BRANCH}"
+          else
+            echo "PR #${PR_NUM} already open for ${BRANCH}"
+          fi
           gh pr merge --auto --squash --repo "${REPO}" "${BRANCH}"
