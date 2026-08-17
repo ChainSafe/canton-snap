@@ -10,8 +10,23 @@ RUN npm ci
 # Copy dapp source (snap source not needed for dapp build)
 COPY packages/dapp packages/dapp
 
-# Write placeholder env values — replaced at container startup via docker-entrypoint.d
-RUN printf 'VITE_MIDDLEWARE_URL=__VITE_MIDDLEWARE_URL__\nVITE_NETWORK=__VITE_NETWORK__\nVITE_SNAP_ID=__VITE_SNAP_ID__\nVITE_ENABLE_NON_CUSTODIAL=__VITE_ENABLE_NON_CUSTODIAL__\nVITE_SIWE_DOMAIN=__VITE_SIWE_DOMAIN__\nVITE_SIWE_URI=__VITE_SIWE_URI__\n' > .env
+# Write placeholder env values — replaced at container startup via docker-entrypoint.d.
+#
+# Only vars used as OPAQUE STRINGS may be injected this way. Vite inlines each
+# `import.meta.env.VITE_X` as the literal placeholder, and the minifier then
+# constant-folds any expression around it: `placeholder || fallback` becomes
+# just the placeholder (truthy), deleting the runtime fallback — startup sed
+# then leaves "" when the var is unset. That broke VITE_SIWE_DOMAIN/URI (empty
+# SIWE domain → unparseable login message) and VITE_SNAP_ID (empty snap id),
+# so those are deliberately NOT defined here: building with them undefined
+# inlines their code-side defaults (the page origin / the published snap).
+#
+# Known limitation: VITE_ENABLE_NON_CUSTODIAL is folded too (`=== "true"` on a
+# placeholder minifies to `false`), so the flag is effectively build-time-only
+# and image deployments always get it off. Making it runtime-switchable needs
+# a runtime config object (e.g. entrypoint-written window.__ENV__) instead of
+# string substitution.
+RUN printf 'VITE_MIDDLEWARE_URL=__VITE_MIDDLEWARE_URL__\nVITE_NETWORK=__VITE_NETWORK__\nVITE_ENABLE_NON_CUSTODIAL=__VITE_ENABLE_NON_CUSTODIAL__\n' > .env
 
 RUN npm run build:dapp
 
