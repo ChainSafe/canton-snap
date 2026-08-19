@@ -169,11 +169,20 @@ jobs:
           # Get current HEAD SHA of main
           HEAD_SHA=$(gh api repos/${REPO}/git/ref/heads/main --jq '.object.sha')
 
-          # Create branch pointing at main HEAD (no-op if already exists)
-          gh api repos/${REPO}/git/refs \
-            --method POST \
-            --field ref="refs/heads/${BRANCH}" \
-            --field sha="${HEAD_SHA}" > /dev/null 2>&1 || true
+          # Create branch pointing at main HEAD. Tolerate ONLY "already
+          # exists" (idempotent re-run); any other failure — e.g. an
+          # INFRA_GH_TOKEN without contents:write — must surface with the
+          # API's actual error here, not as a bare 404 from the ref lookup
+          # two commands later.
+          if ! CREATE_OUT=$(gh api repos/${REPO}/git/refs \
+              --method POST \
+              --field ref="refs/heads/${BRANCH}" \
+              --field sha="${HEAD_SHA}" 2>&1); then
+            if ! grep -q "Reference already exists" <<<"${CREATE_OUT}"; then
+              echo "::error::failed to create ${BRANCH} on ${REPO}: ${CREATE_OUT}"
+              exit 1
+            fi
+          fi
 
           # Get current branch HEAD SHA
           BRANCH_SHA=$(gh api repos/${REPO}/git/ref/heads/${BRANCH} --jq '.object.sha')
