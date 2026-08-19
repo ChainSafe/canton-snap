@@ -19,19 +19,15 @@ escape_sed() {
 ESC_URL=$(escape_sed "$VITE_MIDDLEWARE_URL")
 ESC_NETWORK=$(escape_sed "$VITE_NETWORK")
 
-ESC_SNAP_ID=$(escape_sed "${VITE_SNAP_ID:-}")
 ESC_NON_CUSTODIAL=$(escape_sed "${VITE_ENABLE_NON_CUSTODIAL:-}")
 
-# Optional SIWE sign-in overrides; empty means "use the dapp's own origin".
-ESC_SIWE_DOMAIN=$(escape_sed "${VITE_SIWE_DOMAIN:-}")
-ESC_SIWE_URI=$(escape_sed "${VITE_SIWE_URI:-}")
-
+# VITE_SNAP_ID / VITE_SIWE_DOMAIN / VITE_SIWE_URI are intentionally absent:
+# they are baked at image build time to their code-side defaults (published
+# snap id, page origin) — see the Dockerfile for why runtime injection cannot
+# express "value or fallback".
 find /usr/share/nginx/html \( -name '*.js' -o -name '*.html' -o -name '*.css' -o -name '*.map' \) \
   -exec sed -i \
     -e "s|__VITE_MIDDLEWARE_URL__|${ESC_URL}|g" \
     -e "s|__VITE_NETWORK__|${ESC_NETWORK}|g" \
-    -e "s|__VITE_SNAP_ID__|${ESC_SNAP_ID}|g" \
     -e "s|__VITE_ENABLE_NON_CUSTODIAL__|${ESC_NON_CUSTODIAL}|g" \
-    -e "s|__VITE_SIWE_DOMAIN__|${ESC_SIWE_DOMAIN}|g" \
-    -e "s|__VITE_SIWE_URI__|${ESC_SIWE_URI}|g" \
   {} +
