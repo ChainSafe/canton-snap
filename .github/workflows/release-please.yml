@@ -5,12 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# packages: write is not used here directly — it caps what the called
-# dapp-docker.yml workflow may hold, and its build job pushes to ghcr.
 permissions:
   contents: write
   pull-requests: write
-  packages: write
   id-token: write
 
 jobs:
@@ -40,6 +37,12 @@ jobs:
     name: Build versioned dapp image
     needs: release-please
     if: needs.release-please.outputs.dapp_release_created == 'true'
+    # Job-level grant caps the called workflow's token: only this job gets
+    # ghcr push rights, not the release-please action or the npm publish job
+    # (which runs arbitrary dependency code via npm ci / lint / tests).
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/dapp-docker.yml
     with:
       tag: ${{ needs.release-please.outputs.dapp_tag_name }}
