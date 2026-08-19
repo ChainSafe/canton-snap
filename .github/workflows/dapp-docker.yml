@@ -1,7 +1,12 @@
 name: Build and push dapp Docker image
 
 on:
+  # Devnet continuously tracks main: every push to main builds a main-<sha>
+  # image and opens the auto-merge devnet deploy PR (same model as
+  # canton-middleware's docker-build-release.yml).
   push:
+    branches:
+      - main
     tags:
       - 'dapp-v*'
   workflow_dispatch:
@@ -9,9 +14,27 @@ on:
       tag:
         description: 'Tag to build (e.g. dapp-v1.1.0)'
         required: true
+  # release-please calls this directly with the fresh dapp-v* tag: tags created
+  # with the workflow's own GITHUB_TOKEN never fire the push trigger above
+  # (GitHub suppresses workflow runs for GITHUB_TOKEN-created events), so the
+  # release run must invoke the versioned build itself. Release builds are for
+  # manual prod promotion only — devnet is NOT deployed from them.
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. dapp-v1.1.0)'
+        required: true
+        type: string
+    secrets:
+      INFRA_GH_TOKEN:
+        required: true
 
+# inputs.tag keeps release builds (workflow_call evaluates github.ref in the
+# caller's context = refs/heads/main) out of the main-push group: GitHub holds
+# only ONE pending run per group, so a queued release build sharing the main
+# group would be silently displaced — and cancelled — by the next main push.
 concurrency:
-  group: dapp-docker-${{ github.ref }}
+  group: dapp-docker-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -23,10 +46,15 @@ jobs:
       packages: write
     outputs:
       version: ${{ steps.version.outputs.version }}
+      deploy_devnet: ${{ steps.version.outputs.deploy_devnet }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          # `inputs` covers both workflow_dispatch and workflow_call; on push
+          # events it is empty and github.sha pins the pushed commit — the ref
+          # name would resolve to the branch TIP at checkout time, letting a
+          # build tagged main-<shaA> silently contain a later push's tree.
+          ref: ${{ inputs.tag || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -41,31 +69,40 @@ jobs:
       - name: Compute image version
         id: version
         env:
-          INPUT: ${{ github.event.inputs.tag }}
+          INPUT: ${{ inputs.tag }}
           REF: ${{ github.ref_name }}
         run: |
+          # deploy_devnet is the single source of truth for "main-tracking
+          # build": it drives the `latest` tag and the open-devnet-pr job, so
+          # the three can't drift apart. True only for pushes to main —
+          # dispatch and workflow_call always set INPUT, tag pushes hit the
+          # dapp-v* branch.
           if [ -n "$INPUT" ]; then
             VERSION="${INPUT#dapp-v}"
+            DEPLOY_DEVNET=false
           elif [[ "$REF" == dapp-v* ]]; then
             VERSION="${REF#dapp-v}"
+            DEPLOY_DEVNET=false
+          elif [ "$REF" = "main" ]; then
+            VERSION="main-${GITHUB_SHA::7}"
+            DEPLOY_DEVNET=true
           else
-            VERSION=""
+            echo "::error::cannot derive an image version from ref '$REF' (expected main, a dapp-v* tag, or a tag input)"
+            exit 1
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          if [[ "$VERSION" != *-* ]]; then
-            echo "is_latest=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_latest=false" >> $GITHUB_OUTPUT
-          fi
+          echo "deploy_devnet=$DEPLOY_DEVNET" >> $GITHUB_OUTPUT
 
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/chainsafe/canton-dapp
+          # `latest` tracks main (what devnet runs); versioned release images
+          # keep their X.Y.Z tag only, for manual prod promotion.
           tags: |
-            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
-            type=raw,value=latest,enable=${{ steps.version.outputs.is_latest == 'true' && steps.version.outputs.version != '' }}
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable=${{ steps.version.outputs.deploy_devnet == 'true' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -83,10 +120,11 @@ jobs:
     name: Open devnet deploy PR
     needs: build-push
     runs-on: ubuntu-latest
-    # Devnet deploys automatically on dapp-v* tag pushes; manual dispatches
-    # rebuild images only, and prod (validator-prod1/prod2) promotion stays
-    # manual. See ChainSafe/infrastructure-general#1353.
-    if: github.event_name == 'push'
+    # Devnet continuously tracks main: deploy the main-<sha> image on every
+    # push to main. Versioned release builds (workflow_call) and manual
+    # dispatches build images only; prod (validator-prod1/prod2) promotion
+    # stays manual. See ChainSafe/infrastructure-general#1353.
+    if: needs.build-push.outputs.deploy_devnet == 'true'
     env:
       DIR: definitions/canton/validator-dev1
       FILE: canton-dapp-ui-values.yml
@@ -114,6 +152,19 @@ jobs:
         run: |
           BRANCH="cd/devnet-canton-dapp-${VERSION}"
           COMMIT_MSG="chore(devnet): deploy canton-dapp ${VERSION}"
+
+          # Supersede older devnet deploy PRs first: at per-push cadence,
+          # overlapping PRs edit the same image.tag line, so the loser would
+          # sit conflicted forever with auto-merge still armed — a later
+          # "resolve conflicts" on it would roll devnet BACK. Latest push
+          # wins; deleting the branch disarms the stale auto-merge.
+          gh pr list --repo "${REPO}" --state open --json number,headRefName \
+            --jq ".[] | select(.headRefName | startswith(\"cd/devnet-canton-dapp-\")) | select(.headRefName != \"${BRANCH}\") | .number" \
+          | while read -r OLD; do
+              gh pr close "$OLD" --repo "${REPO}" \
+                --comment "Superseded by ${BRANCH}." --delete-branch \
+                || echo "::warning::failed to close superseded deploy PR #${OLD}"
+            done
 
           # Get current HEAD SHA of main
           HEAD_SHA=$(gh api repos/${REPO}/git/ref/heads/main --jq '.object.sha')

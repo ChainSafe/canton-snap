@@ -18,12 +18,36 @@ jobs:
       release_created: ${{ steps.release.outputs['packages/snap--release_created'] }}
       tag_name: ${{ steps.release.outputs['packages/snap--tag_name'] }}
       version: ${{ steps.release.outputs['packages/snap--version'] }}
+      dapp_release_created: ${{ steps.release.outputs['packages/dapp--release_created'] }}
+      dapp_tag_name: ${{ steps.release.outputs['packages/dapp--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # Builds the versioned X.Y.Z dapp image for manual prod promotion. The
+  # dapp-v* tag created above comes from the workflow's GITHUB_TOKEN, and
+  # GitHub never runs workflows for GITHUB_TOKEN-created events — so
+  # dapp-docker.yml's `on: push: tags:` trigger cannot fire for releases; call
+  # it directly instead. Devnet is NOT deployed here — it tracks main via the
+  # branch push trigger in dapp-docker.yml (same pattern as canton-middleware).
+  build-dapp-image:
+    name: Build versioned dapp image
+    needs: release-please
+    if: needs.release-please.outputs.dapp_release_created == 'true'
+    # Job-level grant caps the called workflow's token: only this job gets
+    # ghcr push rights, not the release-please action or the npm publish job
+    # (which runs arbitrary dependency code via npm ci / lint / tests).
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/dapp-docker.yml
+    with:
+      tag: ${{ needs.release-please.outputs.dapp_tag_name }}
+    secrets:
+      INFRA_GH_TOKEN: ${{ secrets.INFRA_GH_TOKEN }}
 
   publish:
     name: Publish to npm
