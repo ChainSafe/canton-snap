@@ -1,7 +1,12 @@
 name: Build and push dapp Docker image
 
 on:
+  # Devnet continuously tracks main: every push to main builds a main-<sha>
+  # image and opens the auto-merge devnet deploy PR (same model as
+  # canton-middleware's docker-build-release.yml).
   push:
+    branches:
+      - main
     tags:
       - 'dapp-v*'
   workflow_dispatch:
@@ -12,19 +17,14 @@ on:
   # release-please calls this directly with the fresh dapp-v* tag: tags created
   # with the workflow's own GITHUB_TOKEN never fire the push trigger above
   # (GitHub suppresses workflow runs for GITHUB_TOKEN-created events), so the
-  # release run must invoke the build itself — same pattern as
-  # canton-middleware's docker-build-release.yml.
+  # release run must invoke the versioned build itself. Release builds are for
+  # manual prod promotion only — devnet is NOT deployed from them.
   workflow_call:
     inputs:
       tag:
         description: 'Tag to build (e.g. dapp-v1.1.0)'
         required: true
         type: string
-      deploy_devnet:
-        description: 'Also open the devnet deploy PR against infra-kubernetes'
-        required: false
-        default: false
-        type: boolean
     secrets:
       INFRA_GH_TOKEN:
         required: true
@@ -45,8 +45,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # `inputs` covers both workflow_dispatch and workflow_call; on tag
-          # pushes it is empty and github.ref is the tag itself.
+          # `inputs` covers both workflow_dispatch and workflow_call; on push
+          # events it is empty and github.ref is the branch or tag itself.
           ref: ${{ inputs.tag || github.ref }}
 
       - name: Set up Docker Buildx
@@ -69,11 +69,15 @@ jobs:
             VERSION="${INPUT#dapp-v}"
           elif [[ "$REF" == dapp-v* ]]; then
             VERSION="${REF#dapp-v}"
+          elif [ "$REF" = "main" ]; then
+            VERSION="main-${GITHUB_SHA::7}"
           else
             VERSION=""
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          if [[ "$VERSION" != *-* ]]; then
+          # `latest` tracks main (what devnet runs); versioned release images
+          # keep their X.Y.Z tag only, for manual prod promotion.
+          if [[ "$VERSION" == main-* ]]; then
             echo "is_latest=true" >> $GITHUB_OUTPUT
           else
             echo "is_latest=false" >> $GITHUB_OUTPUT
@@ -104,14 +108,13 @@ jobs:
     name: Open devnet deploy PR
     needs: build-push
     runs-on: ubuntu-latest
-    # Devnet deploys automatically on releases: either a direct dapp-v* tag
-    # push, or a workflow_call from release-please with deploy_devnet (release
-    # tags come from GITHUB_TOKEN, which cannot fire the push trigger). Manual
-    # dispatches rebuild images only, and prod (validator-prod1/prod2)
-    # promotion stays manual. See ChainSafe/infrastructure-general#1353.
-    # Note: called workflows inherit the caller's event (push to main), so the
-    # tag-push case must check the ref, not just the event name.
-    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/dapp-v')) || inputs.deploy_devnet
+    # Devnet continuously tracks main: deploy the main-<sha> image on every
+    # push to main. Versioned release builds (workflow_call from release-please,
+    # recognizable by inputs.tag — called workflows inherit the caller's push
+    # event, so the event name alone cannot tell them apart) and manual
+    # dispatches build images only; prod (validator-prod1/prod2) promotion
+    # stays manual. See ChainSafe/infrastructure-general#1353.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && inputs.tag == ''
     env:
       DIR: definitions/canton/validator-dev1
       FILE: canton-dapp-ui-values.yml
