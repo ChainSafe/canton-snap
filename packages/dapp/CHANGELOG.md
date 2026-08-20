@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.6.0...dapp-v1.6.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* **dapp:** bake SIWE origin and snap-id defaults into the docker image ([#111](https://github.com/ChainSafe/canton-snap/issues/111)) ([10e71e0](https://github.com/ChainSafe/canton-snap/commit/10e71e01db68a606cfb740fe1b3f6c3b2f77428e))
+
 ## [1.6.0](https://github.com/ChainSafe/canton-snap/compare/dapp-v1.5.0...dapp-v1.6.0) (2026-08-11)
 
 
