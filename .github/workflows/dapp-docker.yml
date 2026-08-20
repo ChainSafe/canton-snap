@@ -126,8 +126,11 @@ jobs:
     # stays manual. See ChainSafe/infrastructure-general#1353.
     if: needs.build-push.outputs.deploy_devnet == 'true'
     env:
-      DIR: definitions/canton/validator-dev1
-      FILE: canton-dapp-ui-values.yml
+      # app-chart values file, read by ArgoCD. The legacy definitions/ block is
+      # enabled: false and renders nothing.
+      DIR: clusters/dev/apps/canton/canton-dapp-ui
+      FILE: values.yaml
+      IMAGE_REPO: ghcr.io/chainsafe/canton-dapp
     steps:
       - name: Checkout infra-kubernetes
         uses: actions/checkout@v4
@@ -140,7 +143,17 @@ jobs:
         env:
           VERSION: ${{ needs.build-push.outputs.version }}
         run: |
-          yq e '.["canton-dapp-ui"].image.tag = strenv(VERSION)' -i "${DIR}/${FILE}"
+          set -euo pipefail
+          yq e '.deployments["canton-dapp-ui"].spec.template.spec.containers[0].image = strenv(IMAGE_REPO) + ":" + strenv(VERSION)' -i "${DIR}/${FILE}"
+
+          # yq strips blank lines before top-level keys. Fail rather than commit a
+          # reformat the infra repo's linters would not catch.
+          CHANGED=$(git diff --numstat -- "${DIR}/${FILE}" | awk '{print $1"/"$2}')
+          if [ "${CHANGED}" != "1/1" ]; then
+            echo "::error::expected exactly one line changed in ${DIR}/${FILE}, got ${CHANGED:-nothing}"
+            git diff -- "${DIR}/${FILE}"
+            exit 1
+          fi
 
       - name: Create signed commit and open PR
         env:
@@ -181,10 +194,11 @@ jobs:
           # Commit the bump unless the branch already has it (idempotent
           # re-run). Everything after this block always runs, so a re-run
           # repairs a missing PR instead of exiting early.
-          BRANCH_TAG=$(gh api "repos/${REPO}/contents/${DIR}/${FILE}?ref=${BRANCH}" \
+          BRANCH_IMAGE=$(gh api "repos/${REPO}/contents/${DIR}/${FILE}?ref=${BRANCH}" \
             -H "Accept: application/vnd.github.raw" 2>/dev/null \
-            | yq e '.["canton-dapp-ui"].image.tag' - 2>/dev/null || echo "")
-          if [ "$BRANCH_TAG" = "$VERSION" ]; then
+            | yq e '.deployments["canton-dapp-ui"].spec.template.spec.containers[0].image' - \
+              2>/dev/null || echo "")
+          if [ "$BRANCH_IMAGE" = "${IMAGE_REPO}:${VERSION}" ]; then
             echo "Branch already at tag ${VERSION}, skipping commit"
           else
             # Commits via createCommitOnBranch are automatically signed by
