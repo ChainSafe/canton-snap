@@ -28,7 +28,9 @@ describe("canton_getPublicKey", () => {
     expect(result).toRespondWith(
       expect.objectContaining({
         compressedPubKey: expect.stringMatching(/^[0-9a-f]{66}$/),
-        spkiDer: expect.stringMatching(/^[0-9a-f]+$/),
+        spkiDer: expect.stringMatching(
+          /^3056301006072a8648ce3d020106052b8104000a03420004[0-9a-f]{128}$/,
+        ),
         fingerprint: expect.stringMatching(/^1220[0-9a-f]{64}$/),
       }),
     );
@@ -86,7 +88,7 @@ describe("canton_signHash", () => {
     const result = await response;
     expect(result).toRespondWith(
       expect.objectContaining({
-        derSignature: expect.stringMatching(/^0x[0-9a-f]+$/),
+        derSignature: expect.stringMatching(/^0x30[0-9a-f]{8,}$/),
         fingerprint: expect.stringMatching(/^1220[0-9a-f]{64}$/),
       }),
     );
@@ -125,7 +127,7 @@ describe("canton_signHash", () => {
     const result = await response;
     expect(result).toRespondWith(
       expect.objectContaining({
-        derSignature: expect.stringMatching(/^0x[0-9a-f]+$/),
+        derSignature: expect.stringMatching(/^0x30[0-9a-f]{8,}$/),
       }),
     );
   });
@@ -158,7 +160,7 @@ describe("canton_signHash", () => {
     const result = await response;
     expect(result).toRespondWith(
       expect.objectContaining({
-        derSignature: expect.stringMatching(/^0x/),
+        derSignature: expect.stringMatching(/^0x30[0-9a-f]{8,}$/),
       }),
     );
   });
@@ -208,7 +210,7 @@ describe("canton_signTopology", () => {
     const result = await response;
     expect(result).toRespondWith(
       expect.objectContaining({
-        derSignature: expect.stringMatching(/^0x[0-9a-f]+$/),
+        derSignature: expect.stringMatching(/^0x30[0-9a-f]{8,}$/),
         fingerprint: expect.stringMatching(/^1220[0-9a-f]{64}$/),
       }),
     );
@@ -336,5 +338,165 @@ describe("unsupported method", () => {
         message: expect.stringContaining("Unsupported"),
       }),
     );
+  });
+});
+
+/**
+ * Recovery, determinism and dialog content through the real sandbox.
+ *
+ * The vitest suites (derivation.test.ts, dialogs.test.ts) prove the same
+ * properties against a stubbed platform, which gives control of the entropy.
+ * These prove they survive the real MetaMask simulation and its serialisation.
+ */
+
+// The simulation's default seed phrase. Stated here because the recovery tests
+// are about identity following the seed, so the seed must be explicit.
+const DEFAULT_SRP = "test test test test test test test test test test test ball";
+const OTHER_SRP = "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong";
+
+/**
+ * Read the Canton fingerprint from a freshly installed Snap.
+ *
+ * Each installSnap is an independent wallet session, which is what makes this
+ * a recovery test rather than a caching test.
+ *
+ * @param {object} [options] Options forwarded to installSnap.
+ * @returns {Promise<string>} The derived fingerprint.
+ */
+async function fingerprintFrom(options) {
+  const { request } = await installSnap(options);
+  const response = request({
+    method: "canton_getFingerprint",
+    params: { keyIndex: 0 },
+  });
+  const ui = await response.getInterface();
+  await ui.ok();
+  return (await response).response.result.fingerprint;
+}
+
+describe("recovery after wallet restore", () => {
+  it("derives the same Canton identity from the same seed phrase", async () => {
+    // Two independent installs from one seed phrase. This is what a user
+    // restoring MetaMask on a new machine does, and if it did not hold their
+    // Canton party would be permanently unreachable.
+    const before = await fingerprintFrom({ options: { secretRecoveryPhrase: DEFAULT_SRP } });
+    const afterRestore = await fingerprintFrom({ options: { secretRecoveryPhrase: DEFAULT_SRP } });
+
+    expect(afterRestore).toBe(before);
+    expect(afterRestore).toMatch(/^1220[0-9a-f]{64}$/);
+  });
+
+  it("derives a different identity from a different seed phrase", async () => {
+    // The negative half. Without it the test above would pass even if the
+    // fingerprint were a constant unrelated to the wallet.
+    const mine = await fingerprintFrom({ options: { secretRecoveryPhrase: DEFAULT_SRP } });
+    const theirs = await fingerprintFrom({ options: { secretRecoveryPhrase: OTHER_SRP } });
+
+    expect(theirs).not.toBe(mine);
+  });
+
+  it("derives the same identity for every origin in a session", async () => {
+    // Keys are scoped to the Snap, not the calling origin, so two dApps
+    // address one Canton identity. Documented in SIGNER_ARCHITECTURE.md
+    // because it is load-bearing and not obvious.
+    const { request } = await installSnap();
+
+    const read = async (origin) => {
+      const response = request({
+        origin,
+        method: "canton_getFingerprint",
+        params: { keyIndex: 0 },
+      });
+      const ui = await response.getInterface();
+      await ui.ok();
+      return (await response).response.result.fingerprint;
+    };
+
+    expect(await read("https://b.example")).toBe(await read("https://a.example"));
+  });
+
+  it("re-derives rather than restoring consent from a previous install", async () => {
+    // A fresh install starts with empty state, so consent must be asked for
+    // again. This documents the consent boundary; it is not evidence for the
+    // determinism above, which holds for a different reason.
+    const { request } = await installSnap({ options: { secretRecoveryPhrase: DEFAULT_SRP } });
+    const response = request({ method: "canton_getFingerprint", params: { keyIndex: 0 } });
+    const ui = await response.getInterface();
+
+    expect(ui.type).toBe("confirmation");
+    await ui.ok();
+    await response;
+  });
+});
+
+describe("determinism within a session", () => {
+  it("returns the same identity from getPublicKey and getFingerprint", async () => {
+    const { request } = await installSnap();
+
+    const pubResponse = request({ method: "canton_getPublicKey", params: { keyIndex: 0 } });
+    await (await pubResponse.getInterface()).ok();
+    const pub = (await pubResponse).response.result;
+
+    const fpResponse = request({ method: "canton_getFingerprint", params: { keyIndex: 0 } });
+    await (await fpResponse.getInterface()).ok();
+    const fp = (await fpResponse).response.result;
+
+    expect(fp.fingerprint).toBe(pub.fingerprint);
+  });
+
+  it("returns a different identity for a different key index", async () => {
+    const { request } = await installSnap();
+
+    const read = async (keyIndex) => {
+      const response = request({ method: "canton_getPublicKey", params: { keyIndex } });
+      await (await response.getInterface()).ok();
+      return (await response).response.result;
+    };
+
+    const zero = await read(0);
+    const one = await read(1);
+
+    expect(one.fingerprint).not.toBe(zero.fingerprint);
+    expect(one.compressedPubKey).not.toBe(zero.compressedPubKey);
+  });
+});
+
+describe("dialog content in the sandbox", () => {
+  it("renders the reported transfer details and the unverifiability caveat", async () => {
+    const { request } = await installSnap();
+
+    const response = request({
+      method: "canton_signHash",
+      params: { hash: validHash, keyIndex: 0, metadata: validMetadata },
+    });
+    const ui = await response.getInterface();
+    const rendered = JSON.stringify(ui.content);
+
+    // Rendered labels, not bare values. Asserting the amount "100" alone would
+    // pass against the fingerprint, which every dialog renders.
+    expect(rendered).toContain(`Operation: ${validMetadata.operation}`);
+    expect(rendered).toContain(`Token: ${validMetadata.tokenSymbol}`);
+    expect(rendered).toContain(`Amount: ${validMetadata.amount}`);
+    expect(rendered).toContain("the snap cannot yet verify these against the hash");
+
+    await ui.ok();
+    await response;
+  });
+
+  it("warns when the dApp supplies no transaction context", async () => {
+    const { request } = await installSnap();
+
+    const response = request({
+      method: "canton_signHash",
+      params: { hash: validHash, keyIndex: 0 },
+    });
+    const ui = await response.getInterface();
+    const rendered = JSON.stringify(ui.content);
+
+    expect(rendered).toContain("RAW HASH SIGNING");
+    expect(rendered).not.toContain("Amount:");
+
+    await ui.ok();
+    await response;
   });
 });
