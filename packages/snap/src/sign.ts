@@ -6,8 +6,16 @@
  * Produces ASN.1 DER signatures identical to Go's
  * keys.CantonKeyPair.SignHashDER() — required for Canton transaction execution.
  *
- * IMPORTANT: The snap receives a pre-hashed 32-byte digest. It signs the
- * digest directly and must NOT re-hash.
+ * IMPORTANT: this function signs the 32 bytes it is given, with no hashing of
+ * its own. The caller supplies the digest.
+ *
+ * That is not the same as saying the snap does not hash. Canton's
+ * EC_DSA_SHA_256 signs sha256 of the transaction hash, so the RPC handlers in
+ * index.ts sha256 the hash they receive and pass the result here, matching
+ * CantonKeyPair.SignDER() in the Go SDK. An earlier version of this comment
+ * claimed the snap must not re-hash, which contradicted the handlers and was
+ * wrong. test/dialogs.test.ts pins the real behaviour by verifying a produced
+ * signature against both candidate digests.
  */
 
 import { secp256k1 } from "@noble/curves/secp256k1";

@@ -101,5 +101,31 @@
         }
       ]
     }
+  ],
+  "entropy_vectors": [
+    {
+      "entropy": "1111111111111111111111111111111111111111111111111111111111111111",
+      "private_key": "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc",
+      "compressed_public_key": "02f29f390a998013819dd6ffdf2f22a2b435609dd5d0f4dcc77e32d10e93e31af7",
+      "fingerprint": "122057817630337f218ebe1dc8968e9bb60cebae91fafab510a1e399b404dd746040"
+    },
+    {
+      "entropy": "0000000000000000000000000000000000000000000000000000000000000000",
+      "private_key": "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925",
+      "compressed_public_key": "03ee0b1602eb18fef7986887a7e8769a30c9df981d33c8380d255edef003abdcd2",
+      "fingerprint": "12205d8876a8f5782ac6b3396d56b7e63a5596ca2e419acef58432bca02b92a128a1"
+    },
+    {
+      "entropy": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "private_key": "af9613760f72635fbdb44a5a0a63c39f12af30f950a6ee5c971be188e89c4051",
+      "compressed_public_key": "03d7546508bc40c907f4a0e2de2c086cf2160c5112ec2f19ae35925cfedf020446",
+      "fingerprint": "122059db89e33dbe5772f324f7ea4feb4480b6f092ba775b32698257d90ffa586c4a"
+    },
+    {
+      "entropy": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "private_key": "8200cf0ce11447bf6353cbac964d07d1c390d61d07e6c5d0214450b3add6449b",
+      "compressed_public_key": "032831d4d46675794456e4fe97be6c857f0c7d26c0af3223f429cfc2717aa471db",
+      "fingerprint": "1220b016be7baceaae0bfe1c076b4608eaf7059e54d3dc80408a7dedcbff5ea40447"
+    }
   ]
 }
