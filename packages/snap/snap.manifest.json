@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Canton Network key management and transaction signing for MetaMask",
   "proposedName": "Canton Snap",
   "repository": {
